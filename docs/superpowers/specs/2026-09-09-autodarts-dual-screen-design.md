@@ -430,7 +430,65 @@ darts/
 | Zwei Vollbild-Fenster auf skalierten Monitoren | Layouts durchgehend in relativen Einheiten; früher Test auf der Zielhardware |
 | Zielrechner ist ein anderer als der Entwicklungsrechner | Früh einen ersten Installer bauen und die Monitor-Erkennung dort real prüfen |
 
-## 18. Offener Punkt
+## 18. Rechtliche Pflichtangaben (EU)
+
+Die Anwendung erscheint als quelloffenes Projekt unter MIT-Lizenz, jedoch unter
+dem Namen Jan Geiger Networking. Weil damit ein geschäftlicher Bezug besteht,
+greift die Ausnahme des Cyber Resilience Act für freie Software außerhalb einer
+Geschäftstätigkeit nicht sicher. Die Pflichtangaben werden deshalb vollständig
+umgesetzt.
+
+Dies ist eine technische Umsetzungsvorgabe, keine Rechtsberatung. Die konkreten
+Angaben liefert der Herausgeber.
+
+### 18.1 Rechtsgrundlagen und Fristen
+
+| Grundlage | Betrifft | Ab wann |
+|---|---|---|
+| Cyber Resilience Act, VO (EU) 2024/2847, Art. 14 | Meldung aktiv ausgenutzter Schwachstellen und schwerwiegender Vorfälle an ENISA und die nationale CSIRT | 11.09.2026 |
+| Cyber Resilience Act, übrige Pflichten | CE-Kennzeichnung, EU-Konformitätserklärung, technische Dokumentation, Support-Zeitraum, SBOM, Schwachstellenmanagement | 11.12.2027 |
+| DSGVO | Verarbeitung von Kontodaten, Spielernamen, Fotos und Statistiken | laufend |
+| § 5 DDG | Anbieterkennzeichnung bei geschäftsmäßigen digitalen Diensten | laufend |
+| Lizenzbedingungen der verwendeten Bibliotheken | Namensnennung und Lizenztexte | laufend |
+
+Nicht anwendbar: Produktsicherheitsverordnung (nur körperliche Produkte),
+Barrierefreiheitsstärkungsgesetz (die Anwendung fällt unter keine der dort
+erfassten Produkt- oder Dienstekategorien), KI-Verordnung (kein KI-System).
+
+### 18.2 Umzusetzende Artefakte
+
+| Artefakt | Ort | Inhalt |
+|---|---|---|
+| Über-Panel | Control-Fenster | Herausgeber mit Anschrift, Kontakt, Version, Lizenz, Verweis auf die übrigen Angaben |
+| Datenschutzhinweise | `PRIVACY.md` und Panel im Control-Fenster | Welche Daten verarbeitet werden, dass sie ausschließlich lokal in `%APPDATA%` liegen, welche Daten an die Autodarts-API gehen, Rechtsgrundlage, Betroffenenrechte |
+| Schwachstellenmeldung | `SECURITY.md` | Kontaktadresse, erwartete Reaktionszeit, Verfahren der koordinierten Offenlegung |
+| Lizenz | `LICENSE` | MIT mit Copyright-Zeile des Herausgebers |
+| Fremdlizenzen | `THIRD-PARTY-LICENSES.md` und Panel | Automatisch aus den Abhängigkeiten erzeugt, im Release-Workflow aktualisiert |
+| Stückliste | Release-Anhang | CycloneDX über `npm sbom --sbom-format cyclonedx`, je Release erzeugt |
+| Support-Zeitraum | `README.md` und Über-Panel | Zeitraum, in dem Sicherheitsaktualisierungen bereitgestellt werden |
+
+### 18.3 Datenverarbeitung im Detail
+
+Damit die Datenschutzhinweise belegbar sind, gilt für die Umsetzung:
+
+- Zugangsdaten werden nie von der Anwendung entgegengenommen; die Anmeldung
+  läuft auf der Autodarts-Seite im eingebetteten Fenster
+- Gespeichert werden ausschließlich lokal: Aktualisierungs-Token in
+  `safeStorage`, Spielerprofile in `players.json`, Fotos im Bilderordner,
+  Aufzeichnungen in `recordings/`
+- Es findet keine Übertragung an Dritte statt außer an die Autodarts-API und
+  an GitHub beim Prüfen auf Aktualisierungen
+- Keine Telemetrie, keine Absturzberichte an Dritte
+- Das Control-Fenster bietet eine Funktion, die alle lokalen Daten löscht
+
+### 18.4 Offen
+
+Die konkreten Angaben — Firmenname mit Rechtsform, Anschrift, Kontaktadresse,
+Sicherheitskontakt, Umsatzsteuer-Identifikationsnummer sofern vorhanden sowie
+der GitHub-Benutzer beziehungsweise die Organisation — werden vom Herausgeber
+geliefert und beim Anlegen der Dateien eingesetzt.
+
+## 19. Offener Punkt
 
 Ob die Anwendung auf dem Entwicklungsrechner selbst läuft oder auf einem
 separaten Darts-PC, ist noch nicht geklärt. Es ändert den Bauplan nicht,
