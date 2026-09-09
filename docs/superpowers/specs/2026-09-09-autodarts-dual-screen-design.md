@@ -37,7 +37,7 @@ Bewusst ausgeklammert, mit den Andockpunkten für später:
 | Laufzeit | Electron | Zwei Vollbild-Fenster auf verschiedenen Monitoren sind eine eingebaute Fähigkeit. `electron-updater` gegen GitHub Releases ist gelöster Standard. Die Broadcast-Animationen sind mit CSS und JavaScript um Größenordnungen billiger als nativ. |
 | UI | React + TypeScript + Vite | Szenen-Umschaltung und Zustandsableitung sind der Kern der Spectator-Ansicht |
 | Animation | Framer Motion | `AnimatePresence` orchestriert Ein- und Ausblendungen ganzer Szenen; von Hand geschriebene CSS-Transitions werden bei überlappenden Szenenwechseln unübersichtlich |
-| Authentifizierung | OAuth Authorization Code + PKCE im `BrowserWindow`, Umleitung abgefangen | Der Device Authorization Grant ist fuer die Client-Kennung von Autodarts gesperrt (eigener Test, Abschnitt 5.2). Das Konto des Herausgebers hat ein Passwort, daher traegt der eingebettete Weg auch dann, wenn Google Webviews verweigert. Die Anwendung sieht nie ein Passwort. |
+| Authentifizierung | OAuth Authorization Code + PKCE im `BrowserWindow`, Umleitung abgefangen | Der Device Authorization Grant ist für die Client-Kennung von Autodarts gesperrt (eigener Test, Abschnitt 5.2). Das Konto des Herausgebers hat ein Passwort, daher trägt der eingebettete Weg auch dann, wenn Google Webviews verweigert. Die Anwendung sieht nie ein Passwort. |
 | Token-Ablage | `safeStorage` (Electron, DPAPI) | Eingebaut, kein zusätzliches natives Modul |
 | Installer | `electron-builder`, NSIS, unsigniert | Kein Zertifikat nötig. Einmalig SmartScreen bestätigen, danach nie wieder. |
 | Ziel-PC | Keine Vorbedingungen | Electron bringt Node und Chromium mit. Node und Git braucht nur der Entwicklungsrechner. |
