@@ -12,7 +12,7 @@ fortsetzen.
 
 ## Unterstützung
 
-Es werden Aktualisierungen für 36 Monate ab dem jeweiligen Release
+Sicherheitsaktualisierungen werden für 36 Monate ab dem jeweiligen Release
 bereitgestellt.
 
 ## Lizenz
