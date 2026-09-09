@@ -481,12 +481,32 @@ Damit die Datenschutzhinweise belegbar sind, gilt für die Umsetzung:
 - Keine Telemetrie, keine Absturzberichte an Dritte
 - Das Control-Fenster bietet eine Funktion, die alle lokalen Daten löscht
 
-### 18.4 Offen
+### 18.4 Angaben des Herausgebers
 
-Die konkreten Angaben — Firmenname mit Rechtsform, Anschrift, Kontaktadresse,
-Sicherheitskontakt, Umsatzsteuer-Identifikationsnummer sofern vorhanden sowie
-der GitHub-Benutzer beziehungsweise die Organisation — werden vom Herausgeber
-geliefert und beim Anlegen der Dateien eingesetzt.
+| Feld | Wert |
+|---|---|
+| Diensteanbieter | Jan Geiger Networking |
+| Inhaber | Jan Geiger |
+| Anschrift | Dorfstr. 10A, 32107 Bad Salzuflen, Nordrhein-Westfalen, Deutschland |
+| E-Mail | hey@bsbnet.eu |
+| Telefon | +49 5222 9179070 |
+| Web | https://jgnet.eu |
+| Rechtsform | Einzelunternehmen / Kleingewerbe |
+| Umsatzsteuer | Kleinunternehmer nach § 19 UStG, keine Umsatzsteuer-Identifikationsnummer |
+| Aufsichtsbehörde | Gewerbeamt der Stadt Bad Salzuflen, Rudolph-Brandes-Allee 19, 32105 Bad Salzuflen |
+| Repository | https://github.com/Jan-Geiger-Networking/autodarts-screens |
+| Sicherheitskontakt | hey@bsbnet.eu |
+| Support-Zeitraum | 36 Monate ab dem jeweiligen Release |
+
+Ergänzend in die Anbieterkennzeichnung aufzunehmen: der Hinweis auf die
+Online-Streitbeilegungsplattform der Europäischen Kommission
+(`https://ec.europa.eu/consumers/odr`) samt der Erklärung, dass keine
+Bereitschaft zur Teilnahme an Verbraucherschlichtungsverfahren besteht.
+
+Nicht übernommen werden die website-bezogenen Teile der bestehenden
+Anbieterkennzeichnung von jgnet.eu — Hosting-Infrastruktur, Kundenportal und
+die Haftung für externe Links betreffen den Webauftritt, nicht die Anwendung.
+An deren Stelle tritt der Gewährleistungsausschluss der MIT-Lizenz.
 
 ## 19. Offener Punkt
 
