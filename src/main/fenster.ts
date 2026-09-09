@@ -1,7 +1,7 @@
 // Fensterverwaltung: erzeugt, plaziert und verfolgt die drei Fenster der
 // Anwendung (Control, Player, Spectator) und verteilt den MatchState an sie.
 
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, shell } from 'electron'
 import { join } from 'node:path'
 import type { FensterArt, MatchState } from '../shared/typen'
 import type { Verbindungszustand } from '../autodarts/websocket'
@@ -33,6 +33,19 @@ function rendererLaden(fensterInstanz: BrowserWindow, art: FensterArt): void {
   } else {
     fensterInstanz.loadFile(join(import.meta.dirname, `../renderer/${art}/index.html`))
   }
+}
+
+// Oeffnet eine externe Adresse im Systembrowser statt in einem neuen
+// Electron-Fenster, das ohne eigene webPreferences die Preload-Bruecke des
+// Oeffners erben wuerde (Befund 4 - z.B. der ODR-Link im Ueber-Panel mit
+// target="_blank"; Electrons Voreinstellung fuer setWindowOpenHandler ist
+// sonst "allow"). Nur https: wird weitergereicht - file:, javascript: und
+// jedes andere Schema werden verweigert und nirgendwo geoeffnet.
+function externeLinksBeschraenken(fensterInstanz: BrowserWindow): void {
+  fensterInstanz.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://')) void shell.openExternal(url)
+    return { action: 'deny' }
+  })
 }
 
 // Escape verlaesst nur den Vollbildmodus, das Fenster selbst bleibt offen.
@@ -84,6 +97,7 @@ export function fensterOeffnen(art: FensterArt): BrowserWindow {
   }
 
   escapeVerlaesstVollbild(neues)
+  externeLinksBeschraenken(neues)
   // Ohne dieses Aufraeumen wuerde die Map nach dem Schliessen weiter auf ein
   // zerstoertes BrowserWindow zeigen, und der naechste fensterOeffnen()-Aufruf
   // fuer dieselbe Art wuerde auf isDestroyed()/focus() eines toten Objekts treffen.

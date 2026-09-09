@@ -19,7 +19,13 @@ const WS_ADRESSE = 'wss://api.autodarts.com/ms/v0/subscribe'
 
 export type Verbindung = {
   abonnieren(kanal: string, thema: string): void
-  schliessen(): void
+  // Liefert ein Promise, das erst aufgeloest wird, wenn eine laufende
+  // Aufzeichnung tatsaechlich vollstaendig auf die Platte geschrieben ist -
+  // damit die Anwendung beim Beenden darauf warten kann, statt den Prozess
+  // zu beenden, waehrend der letzte Schreibvorgang noch unterwegs ist.
+  // Loest nie ab (siehe Implementierung unten): ein Schreibfehler beim
+  // Beenden wird protokolliert, nicht an den Aufrufer durchgereicht.
+  schliessen(): Promise<void>
 }
 
 /**
@@ -159,7 +165,8 @@ function wiedergabeVerbindung(pfad: string, beiEreignis: (roh: unknown) => void)
       // Es gibt keine echte Verbindung, also nichts zu abonnieren.
     },
     schliessen: () => {
-      // Siehe Kommentar oben.
+      // Siehe Kommentar oben - nichts zu schliessen, nichts zu erwarten.
+      return Promise.resolve()
     },
   }
 }
@@ -245,6 +252,14 @@ async function echteVerbindung(
       if (istAuthFehler(fehler)) zustandMelden(zustandsRueckruf, 'nichtAngemeldet')
       throw fehler
     }
+
+    // schliessen() kann waehrend dieses Awaits aufgerufen worden sein (z.B.
+    // beim Beenden der Anwendung mitten in einem Wiederverbindungsversuch).
+    // Ohne diese Pruefung wuerde jetzt trotzdem ein neuer Socket aufgebaut,
+    // Abonnements gesendet und Ereignisse an einen Aufzeichnungsstream
+    // weitergereicht, dessen Beenden schon lief.
+    if (geschlossen) return
+
     const ticket = ticketAusAntwort(ticketAntwort)
     // Annahme: WebSocket-Adresse samt ?ticket=-Parameter, siehe Dateikopf.
     const neuerSocket = new WebSocket(`${WS_ADRESSE}?ticket=${encodeURIComponent(ticket)}`)
@@ -306,12 +321,18 @@ async function echteVerbindung(
         aktiverSocket.send(JSON.stringify({ channel: kanal, type: 'subscribe', topic: thema }))
       }
     },
-    schliessen(): void {
+    schliessen(): Promise<void> {
       geschlossen = true
       if (wiederverbindungsTimer) clearTimeout(wiederverbindungsTimer)
       aktiverSocket?.close()
       aktiverSocket = null
-      if (schreiben) void aufzeichnungBeenden()
+      if (!schreiben) return Promise.resolve()
+      // .catch() statt weiterwerfen: ein Schreibfehler beim Beenden waere
+      // sonst eine unbehandelte Ablehnung und wuerde den Node-Hauptprozess
+      // beenden - protokollieren reicht, die Verbindung ist ohnehin zu.
+      return aufzeichnungBeenden().catch((fehler: unknown) => {
+        console.error('Aufzeichnung liess sich beim Schliessen nicht sauber beenden:', fehler)
+      })
     },
   }
 }

@@ -29,11 +29,27 @@ export function monitoreAuflisten(): MonitorEintrag[] {
   })
 }
 
+// Laeuft die Einblendung schon, startet ein weiterer Aufruf keine zweite
+// (Re-Entrancy-Schutz, Befund 5) - sonst koennte ein Renderer denselben
+// Kanal schnell mehrfach aufrufen und Ueberlagerungen aus mehreren Fenster-
+// Saetzen je Monitor erzeugen, die sich gegenseitig nicht mehr schliessen.
+let laeuftBereits = false
+
 // Zeigt kurz auf jedem Monitor eine grosse Ziffer an, damit die Reihenfolge aus
 // monitoreAuflisten() physisch zugeordnet werden kann. Rahmenlos, klickdurchlaessig
 // und schliesst sich nach 2 Sekunden von selbst.
 export function monitoreIdentifizieren(): void {
-  screen.getAllDisplays().forEach((display, index) => {
+  if (laeuftBereits) return
+  const displays = screen.getAllDisplays()
+  if (displays.length === 0) return
+  laeuftBereits = true
+  let offen = displays.length
+  const einesGeschlossen = (): void => {
+    offen -= 1
+    if (offen <= 0) laeuftBereits = false
+  }
+
+  displays.forEach((display, index) => {
     const nummer = index + 1
     const fenster = new BrowserWindow({
       x: display.bounds.x,
@@ -50,6 +66,7 @@ export function monitoreIdentifizieren(): void {
       webPreferences: { sandbox: true },
     })
     fenster.setIgnoreMouseEvents(true)
+    fenster.on('closed', einesGeschlossen)
     const html = `<!doctype html><html><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,0.85)"><span style="font-family:sans-serif;font-size:40vh;color:#f8fafc">${nummer}</span></body></html>`
     // loadURL liefert ein Promise, das ablehnt, wenn das Fenster waehrend des
     // Ladens zerstoert wird (z. B. App beendet sich sofort danach). Das Fenster

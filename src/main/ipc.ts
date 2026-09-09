@@ -31,6 +31,12 @@ const NUR_CONTROL: ReadonlySet<string> = new Set([
   'konfiguration:lesen',
   'konfiguration:setzen',
   'daten:loeschen',
+  // monitore:identifizieren HANDELT: es legt fuer zwei Sekunden auf jedem
+  // Monitor ein alwaysOnTop-Fenster ab (Befund 5). Aus dem Player- oder
+  // Spectator-Renderer aufgerufen deckt es mitten im Match beliebig oft alle
+  // Monitore zu - anders als monitore:auflisten, das nur Monitordaten
+  // herausgibt und deshalb bewusst NICHT in dieser Liste steht.
+  'monitore:identifizieren',
 ])
 
 /**
@@ -71,8 +77,15 @@ export function ipcRegistrieren(): void {
     event.returnValue = app.getVersion()
   })
 
+  // Gibt nur Monitordaten heraus (Aufloesung, Position, Skalierung) - kein
+  // Geheimnis, keine Handlung. Bewusst nicht in NUR_CONTROL, siehe Kommentar
+  // dort.
   ipcMain.handle('monitore:auflisten', () => monitoreAuflisten())
-  ipcMain.handle('monitore:identifizieren', () => monitoreIdentifizieren())
+
+  ipcMain.handle('monitore:identifizieren', (event) => {
+    kanalPruefen(event, 'monitore:identifizieren')
+    monitoreIdentifizieren()
+  })
 
   ipcMain.handle('konfiguration:lesen', (event) => {
     kanalPruefen(event, 'konfiguration:lesen')

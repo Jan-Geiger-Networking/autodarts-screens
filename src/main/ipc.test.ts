@@ -8,6 +8,7 @@ describe('darfKanalNutzen', () => {
     expect(darfKanalNutzen('control', 'konfiguration:lesen')).toBe(true)
     expect(darfKanalNutzen('control', 'konfiguration:setzen')).toBe(true)
     expect(darfKanalNutzen('control', 'daten:loeschen')).toBe(true)
+    expect(darfKanalNutzen('control', 'monitore:identifizieren')).toBe(true)
   })
 
   it('verweigert dem Player-Fenster die eingeschraenkten Kanaele', () => {
@@ -26,9 +27,18 @@ describe('darfKanalNutzen', () => {
     expect(darfKanalNutzen(null, 'fenster:oeffnen')).toBe(false)
   })
 
+  // monitore:identifizieren HANDELT (blendet auf jedem Monitor ein Fenster
+  // ein) und gehoert deshalb in die Waechterliste (Befund 5) - anders als
+  // monitore:auflisten, das nur Daten herausgibt und bewusst offen bleibt.
+  it('verweigert Player und Spectator monitore:identifizieren, weil es handelt', () => {
+    expect(darfKanalNutzen('player', 'monitore:identifizieren')).toBe(false)
+    expect(darfKanalNutzen('spectator', 'monitore:identifizieren')).toBe(false)
+    expect(darfKanalNutzen(null, 'monitore:identifizieren')).toBe(false)
+  })
+
   it('laesst uneingeschraenkte Kanaele fuer jedes Fenster zu', () => {
     expect(darfKanalNutzen('player', 'monitore:auflisten')).toBe(true)
-    expect(darfKanalNutzen('spectator', 'monitore:identifizieren')).toBe(true)
+    expect(darfKanalNutzen('spectator', 'monitore:auflisten')).toBe(true)
     expect(darfKanalNutzen(null, 'monitore:auflisten')).toBe(true)
   })
 })
