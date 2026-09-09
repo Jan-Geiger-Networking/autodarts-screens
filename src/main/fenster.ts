@@ -99,6 +99,19 @@ export function fensterSchliessen(art: FensterArt): void {
 }
 
 /**
+ * Liefert die Fensterart des uebergebenen BrowserWindow, oder null, wenn es
+ * keines der von fensterOeffnen() verwalteten drei Fenster ist. Der
+ * IPC-Waechter in ipc.ts nutzt das, um Kanaele auf das Control-Fenster zu
+ * beschraenken, ohne eine zweite Zuordnung parallel zu dieser Map zu pflegen.
+ */
+export function fensterArtVon(win: BrowserWindow): FensterArt | null {
+  for (const [art, w] of fenster) {
+    if (w === win) return art
+  }
+  return null
+}
+
+/**
  * Schickt den aktuellen MatchState an alle offenen Fenster. Prueft vor jedem
  * Senden, ob Fenster und webContents noch leben, statt eine Exception zu
  * riskieren (z. B. wenn ein Fenster gerade waehrend des Sendens schliesst).
