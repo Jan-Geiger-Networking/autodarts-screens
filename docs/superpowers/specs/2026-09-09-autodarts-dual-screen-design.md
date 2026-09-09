@@ -196,8 +196,13 @@ Schritt.
 
 Der Mitschnitt aus Schritt 5.2a bleibt dauerhaft eingebaut:
 
-- **Record** — jede Sitzung kann ihre Roh-Ereignisse mit Zeitstempel nach
-  `%APPDATA%/autodarts-screens/recordings/*.jsonl` schreiben
+- **Record** — jede Sitzung kann ihre Roh-Ereignisse mit Zeitstempel
+  aufzeichnen. Standardmäßig nach `%APPDATA%/autodarts-screens/recordings/*.jsonl`
+  (siehe `PRIVACY.md`, Abschnitt 3); der Zielpfad bleibt bewusst frei wählbar
+  (Umgebungsvariable `AD_AUFZEICHNEN`), damit ein Mitschnitt z. B. direkt als
+  Testfixture ins Repository geschrieben werden kann. Wählt der Nutzer selbst
+  einen Pfad, landet die Aufzeichnung dort statt im Standardordner —
+  weiterhin ausschließlich lokal.
 - **Replay** — eine Aufzeichnung wird mit Originalgeschwindigkeit oder im
   Zeitraffer eingespielt, statt sich mit der API zu verbinden
 
@@ -382,9 +387,13 @@ wird die laufende abgekürzt statt in eine Warteschlange gestellt.
 
 ## 9. Checkout-Logik
 
-Statische Tabelle für Rest 2 bis 170, jeweils in Varianten für drei, zwei und
-einen verbleibenden Dart. Einmal erzeugt, zur Laufzeit nur nachgeschlagen —
-kein Solver.
+Deckt Rest 2 bis 170 ab, jeweils für drei, zwei und einen verbleibenden Dart.
+Umgesetzt als erschöpfende Suche zur Laufzeit bei jedem Aufruf (`checkoutWeg()`
+in `src/shared/checkout.ts`), nicht als statisch erzeugte Tabelle — bewusste,
+bei der Umsetzung getroffene Entscheidung: höchstens rund 62² Kombinationen im
+schlechtesten Fall, günstiger als eine gepflegte 170-Einträge-Tabelle, und die
+Vorlieben (siehe `BEVORZUGTE_DOPPEL`) bleiben eine Stellschraube statt 170
+Handeinträgen. Nur das Ergebnis ist stabil und getestet, nicht der Weg dorthin.
 
 Regeln:
 

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -121,6 +121,13 @@ describe('zugriffsToken: Single-Flight und Fehlerklassifizierung', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+  })
+
+  // Das per mkdtempSync erzeugte Verzeichnis (siehe oben) blieb bisher ohne
+  // Aufraeumen liegen (Befund 12) - afterAll statt afterEach, weil userDataDir
+  // fuer alle Tests in diesem describe-Block gemeinsam gilt.
+  afterAll(() => {
+    rmSync(userDataDir, { recursive: true, force: true })
   })
 
   it('buendelt zwei gleichzeitige Aufrufe bei abgelaufenem Token zu genau einer Erneuerungsanfrage', async () => {

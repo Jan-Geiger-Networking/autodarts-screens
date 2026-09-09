@@ -43,7 +43,11 @@ describe('checkoutWeg', () => {
       if (checkoutWeg(rest) === null) ohneWeg.push(rest)
     }
     expect(ohneWeg).toEqual([159, 162, 163, 165, 166, 168, 169])
-    expect([...BOGEY_ZAHLEN].sort((a, b) => a - b)).toEqual(ohneWeg)
+    // Kein zusaetzliches expect(BOGEY_ZAHLEN).toEqual(ohneWeg) hier: BOGEY_ZAHLEN
+    // wird in checkout.ts mit genau derselben Schleife ueber checkoutWeg()
+    // berechnet wie ohneWeg oben - dieser Vergleich waere eine Tautologie
+    // (beide Seiten aus derselben Berechnung), keine unabhaengige Zusicherung.
+    // Der Beweis steht in der Zeile darueber, gegen die hartkodierte Liste.
   })
 
   it('liefert nichts fuer 1 und fuer mehr als 170', () => {
