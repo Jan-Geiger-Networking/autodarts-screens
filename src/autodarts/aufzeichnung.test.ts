@@ -1,8 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import * as fs from 'node:fs'
+import { PassThrough } from 'node:stream'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { aufzeichnungBeenden, aufzeichnungStarten, wiedergeben } from './aufzeichnung'
+
+// Nur createWriteStream wird ersetzt (Attrappe fuer den Stream-Fehler-Test
+// unten), alle anderen fs-Funktionen bleiben echt - normale Aufzeichnung und
+// Wiedergabe in den anderen Tests laufen also unveraendert gegen die Platte.
+vi.mock('node:fs', async () => {
+  const echt = await vi.importActual<typeof import('node:fs')>('node:fs')
+  return { ...echt, createWriteStream: vi.fn(echt.createWriteStream) }
+})
 
 const neuerPfad = () => join(mkdtempSync(join(tmpdir(), 'ad-')), 'mitschnitt.jsonl')
 
@@ -96,18 +106,29 @@ describe('Aufzeichnung und Wiedergabe', () => {
     expect(ergebnis.uebersprungen).toBe(1)
   })
 
+  // Das 'error'-Ereignis wird hier direkt auf einer Attrappe ausgeloest statt
+  // ueber einen unbeschreibbaren Pfad provoziert: OB createWriteStream bei
+  // einem kaputten Ziel beim Oeffnen oder erst beim ersten write() fehlschlaegt,
+  // ist plattformabhaengig (z.B. sofort auf Windows, teils erst beim Schreiben
+  // auf Linux/macOS) - ein ueber einen kaputten Pfad provozierter Test koennte
+  // auf einer Plattform gruen sein, ohne den Fehlerfall je auszuloesen, und
+  // damit falsche Sicherheit erzeugen. Die direkte Emission ist auf jeder
+  // Plattform deterministisch. Bitte nicht durch einen "echten" kaputten Pfad
+  // ersetzen.
   it('uebersteht einen Stream-Fehler waehrend einer laufenden Aufzeichnung', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    // Ein Verzeichnis statt einer Datei als Ziel loest beim Schreiben
-    // zuverlaessig einen 'error' auf dem WriteStream aus.
-    const verzeichnis = mkdtempSync(join(tmpdir(), 'ad-'))
-    const pfad = join(verzeichnis, 'als-ordner')
-    mkdirSync(pfad)
+
+    const attrappe = new PassThrough()
+    vi.mocked(fs.createWriteStream).mockImplementationOnce(
+      () => attrappe as unknown as fs.WriteStream,
+    )
+
+    const pfad = neuerPfad()
     const schreiben = aufzeichnungStarten(pfad)
 
-    // Der Stream-Fehler tritt asynchron ein - abwarten, bis er protokolliert wurde.
-    await vi.waitFor(() => expect(warnSpy).toHaveBeenCalled())
+    attrappe.emit('error', new Error('simulierter Schreibfehler'))
 
+    expect(warnSpy).toHaveBeenCalled()
     expect(() => schreiben({ nr: 1 })).not.toThrow()
     await expect(aufzeichnungBeenden()).resolves.toBeUndefined()
 
