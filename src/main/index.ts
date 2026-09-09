@@ -7,7 +7,7 @@ function control() {
     height: 800,
     backgroundColor: '#020617',
     webPreferences: {
-      preload: join(import.meta.dirname, '../preload/index.js'),
+      preload: join(import.meta.dirname, '../preload/index.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
