@@ -23,9 +23,14 @@ function kandidaten(rest: number, darts: number): Kandidat[] {
   const gefunden: Kandidat[] = []
 
   // hatDoppelAufbau: ob einer der Darts VOR dem Finish selbst ein Doppel war.
-  // Spieler zielen im Aufbau nicht bewusst auf ein Doppel, daher Strafzuschlag
-  // auf die Stufe statt reiner Aufbau-Summe (die einen Doppel-Aufbau sonst
-  // faelschlich aufwerten wuerde, z.B. Rest 60 ueber D20+D10 statt 20+D20).
+  // Ein Doppel ist im Aufbau schlechter als ein Single/Treble gleichen Werts,
+  // weil kein Spieler im Aufbau bewusst auf ein Doppel zielt (das Doppelfeld
+  // ist schmaler und wird nur zum Ausmachen anvisiert) — daher Strafzuschlag
+  // auf die Stufe statt reiner Aufbau-Summe. Ohne die Strafe gewinnt bei
+  // Rest 141 die Route T17+BULL+D20 (BULL als Aufbau-Doppel, Finish auf dem
+  // bevorzugten D20) gegen die tatsaechlich gaengige Route T20+T19+D12,
+  // weil das Finish-Doppel vor dem Aufbau verglichen wird. Weitere Faelle
+  // mit konkreten Zahlen stehen im Task-6-Report.
   const suchen = (
     offen: number,
     uebrig: number,
@@ -81,7 +86,11 @@ export const BOGEY_ZAHLEN: ReadonlySet<number> = new Set(
 
 /**
  * Wurf, der einen nicht ausmachbaren Rest in einen ausmachbaren verwandelt.
- * `null`, wenn der Rest bereits ausmachbar ist.
+ * `null`, wenn der Rest bereits ausmachbar ist. Ab Rest 231 kann kein
+ * einzelner Wurf (hoechster Feldwert T20 = 60) den Rest unter die
+ * checkoutWeg-Obergrenze 170 druecken (230 - 60 = 170 ist die letzte
+ * erreichbare Zahl) — dann ist die richtige Empfehlung schlicht der
+ * hoechste Scoring-Wurf, T20.
  */
 export function setupWurf(rest: number): string | null {
   if (checkoutWeg(rest) !== null) return null
@@ -89,5 +98,5 @@ export function setupWurf(rest: number): string | null {
     const uebrig = rest - f.wert
     if (uebrig >= 2 && checkoutWeg(uebrig) !== null) return f.name
   }
-  return null
+  return 'T20'
 }

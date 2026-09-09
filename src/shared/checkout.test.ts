@@ -61,13 +61,19 @@ describe('checkoutWeg', () => {
 })
 
 describe('setupWurf', () => {
-  it('empfiehlt einen Wurf, der eine ausmachbare Zahl uebrig laesst', () => {
-    for (const rest of [...BOGEY_ZAHLEN, 171, 200, 301, 501]) {
+  it('empfiehlt einen Wurf, der eine ausmachbare Zahl uebrig laesst, wo das moeglich ist', () => {
+    for (const rest of [...BOGEY_ZAHLEN, 171, 200, 230]) {
       const wurf = setupWurf(rest)
       expect(wurf, `Rest ${rest}`).not.toBeNull()
       const uebrig = rest - WERT[wurf!]!
       expect(uebrig, `Rest ${rest}`).toBeGreaterThanOrEqual(2)
       expect(checkoutWeg(uebrig), `Rest ${rest} laesst ${uebrig}`).not.toBeNull()
+    }
+  })
+
+  it('empfiehlt bei zu hohem Rest den hoechsten Scoring-Wurf', () => {
+    for (const rest of [231, 301, 501]) {
+      expect(setupWurf(rest), `Rest ${rest}`).toBe('T20')
     }
   })
 
