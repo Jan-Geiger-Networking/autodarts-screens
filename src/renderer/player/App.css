@@ -117,5 +117,11 @@
 }
 
 .wurf-summe {
-  font-weight: 800;
+  /* Bewusst nicht --jg-text/800 wie .rest: sonst sind Rest-Score und
+     Wurfsumme aus der Entfernung kaum zu unterscheiden (Review-Befund,
+     Screenshot-Vergleich bestaetigt --jg-muted als klarer). Die Zeilengroesse
+     (6vh vs. 40vh) traegt den Groessenunterschied schon, die Farbe macht die
+     Zugehoerigkeit eindeutig. */
+  font-weight: 700;
+  color: var(--jg-muted);
 }

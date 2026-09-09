@@ -24,9 +24,7 @@ export function App() {
 
       <fieldset className="bereich">
         <legend>Verbindung</legend>
-        <p>
-          Angemeldet als: <strong>nicht angemeldet</strong>
-        </p>
+        <p className="hinweis">Angemeldet als: unbekannt — Anmeldung noch nicht angebunden.</p>
         <label className="feld">
           Board-ID
           <input
