@@ -170,4 +170,36 @@ describe('verbinden: Zustandsmeldungen und Abonnement-Dedublizierung', () => {
 
     verbindung.schliessen()
   })
+
+  // Nachtrag zur Anmelden/Abmelden-Aufgabe: schliessen() darf einen
+  // gezielten Abbruch nicht als 'getrennt' melden (siehe onclose in
+  // echteVerbindung), sonst zeigte das Control-Fenster nach einer bewussten
+  // Abmeldung "getrennt - Wiederverbindung laeuft automatisch" an, obwohl
+  // gar keine Wiederverbindung geplant ist. Zwei Tests, die sich gegenseitig
+  // absichern: der eine haette dieselbe zustaende-Assertion auch bestanden,
+  // wenn 'getrennt' komplett verschwunden waere.
+  it('meldet "getrennt" weiterhin bei einem unerwarteten Verbindungsabbruch', async () => {
+    vi.mocked(senden).mockResolvedValueOnce('ticket-1')
+    const zustaende: string[] = []
+    const verbindung = await verbinden(() => {}, (z) => zustaende.push(z))
+
+    // Abbruch von aussen (z.B. Netzwerk weg) - nicht ueber schliessen().
+    AttrappeWebSocket.instanzen[0]!.close()
+
+    expect(zustaende).toEqual(['verbunden', 'getrennt'])
+    verbindung.schliessen()
+  })
+
+  it('meldet "getrennt" NICHT nach einem gezielten schliessen()', async () => {
+    vi.mocked(senden).mockResolvedValueOnce('ticket-1')
+    const zustaende: string[] = []
+    const verbindung = await verbinden(() => {}, (z) => zustaende.push(z))
+
+    // schliessen() setzt geschlossen=true und ruft dann aktiverSocket.close()
+    // auf - das loest denselben onclose-Zuhoerer aus wie im Test oben, aber
+    // wegen geschlossen=true soll er hier kein 'getrennt' mehr melden.
+    await verbindung.schliessen()
+
+    expect(zustaende).toEqual(['verbunden'])
+  })
 })

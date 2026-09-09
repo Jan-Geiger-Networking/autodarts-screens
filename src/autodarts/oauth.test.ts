@@ -3,8 +3,46 @@ import { createHash } from 'node:crypto'
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { codeAusUmleitung, pkcePaar, tokenNochGueltig, zugriffsToken } from './oauth'
+import { anmelden, codeAusUmleitung, pkcePaar, tokenNochGueltig, zugriffsToken } from './oauth'
 import { NichtAngemeldetFehler } from './fehler'
+
+// Attrappe fuer das Anmeldefenster, das anmelden() (genauer:
+// anmeldungDurchfuehren()) per `new BrowserWindow(...)` oeffnet. Nur die
+// Instanzen zaehlen und der 'closed'-Zuhoerer werden gebraucht: der Test
+// unten simuliert einen Nutzer, der das Fenster schliesst, ohne den echten
+// OAuth-Ablauf (Umleitung, Code-Tausch) nachzubilden - das genuegt, um die
+// Single-Flight-Sperre laufendeAnmeldung zu pruefen, ohne fetch() mocken zu
+// muessen.
+class FakeAnmeldeFenster {
+  static instanzen: FakeAnmeldeFenster[] = []
+  webContents = { setWindowOpenHandler: vi.fn(), on: vi.fn() }
+  closedZuhoerer: (() => void) | null = null
+  geschlossen = false
+
+  constructor() {
+    FakeAnmeldeFenster.instanzen.push(this)
+  }
+
+  on(ereignis: string, zuhoerer: () => void): void {
+    if (ereignis === 'closed') this.closedZuhoerer = zuhoerer
+  }
+
+  loadURL(): Promise<void> {
+    return Promise.resolve()
+  }
+
+  close(): void {
+    // Reine Attrappe: ein echtes BrowserWindow riefe seinen eigenen
+    // 'closed'-Zuhoerer beim tatsaechlichen Schliessen auf - hier reicht es,
+    // dass isDestroyed() danach wahr ist, falls anmeldungDurchfuehren() es
+    // abfragt (fenster.close() im Erfolgsfall).
+    this.geschlossen = true
+  }
+
+  isDestroyed(): boolean {
+    return this.geschlossen
+  }
+}
 
 describe('pkcePaar', () => {
   it('erzeugt einen Verifier zwischen 43 und 128 Zeichen', () => {
@@ -100,6 +138,14 @@ vi.mock('electron', () => ({
     encryptString: (s: string) => Buffer.from(s, 'utf8'),
     decryptString: (b: Buffer) => b.toString('utf8'),
   },
+  // Fuer anmelden()/anmeldungDurchfuehren() unten (Single-Flight-Test) -
+  // FakeAnmeldeFenster steht schon, wenn diese Factory tatsaechlich laeuft:
+  // oauth.ts importiert 'electron' nur dynamisch (await import('electron'))
+  // zur Laufzeit innerhalb der Testfunktionen, also lange nach dem
+  // synchronen Auswerten dieser Datei.
+  BrowserWindow: FakeAnmeldeFenster,
+  session: { fromPartition: () => ({ setUserAgent: vi.fn() }) },
+  shell: { openExternal: vi.fn() },
 }))
 
 describe('zugriffsToken: Single-Flight und Fehlerklassifizierung', () => {
@@ -165,5 +211,61 @@ describe('zugriffsToken: Single-Flight und Fehlerklassifizierung', () => {
   it('wirft NichtAngemeldetFehler ohne Netzaufruf, wenn noch nie ein Aktualisierungs-Token gespeichert wurde', async () => {
     await expect(zugriffsToken()).rejects.toBeInstanceOf(NichtAngemeldetFehler)
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+// Deckt laufendeAnmeldung ab (Nachtrag zur Anmelden/Abmelden-Aufgabe): ohne
+// diese Sperre wuerde ein Doppelklick auf den Anmelden-Knopf zwei
+// Anmeldefenster gleichzeitig oeffnen. Gleicher Massstab wie beim
+// Erneuerungs-Single-Flight oben: zwei WIRKLICH gleichzeitige Aufrufe
+// (ausgewertet, bevor irgendein await dazwischenkommt) duerfen nur einen
+// Vorgang ausloesen, und nach dessen Abschluss muss ein dritter Aufruf einen
+// neuen Vorgang starten - eine haengengebliebene Sperre waere schlimmer als
+// gar keine.
+describe('anmelden: Single-Flight fuer gleichzeitige Anmeldeversuche', () => {
+  beforeEach(() => {
+    FakeAnmeldeFenster.instanzen = []
+  })
+
+  // anmeldungDurchfuehren() haengt zwischen dem synchronen anmelden()-Aufruf
+  // und dem tatsaechlichen `new BrowserWindow(...)` noch am dynamischen
+  // `await import('electron')` - eine Handvoll Mikrotasks reichen nicht
+  // sicher, ein echter Tick (setTimeout) schon.
+  const bisFensterOffen = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+  it('buendelt zwei gleichzeitige Aufrufe zu genau einem Anmeldeversuch (nur ein Fenster geoeffnet)', async () => {
+    // Wie beim Erneuerungs-Test: beide Aufrufe stehen im selben Ausdruck,
+    // damit anmelden() sie synchron nacheinander auswertet, bevor der erste
+    // ueberhaupt beim ersten await angekommen ist - erst so trifft der
+    // zweite Aufruf wirklich auf ein bereits gesetztes laufendeAnmeldung.
+    const [p1, p2] = [anmelden(), anmelden()]
+
+    await bisFensterOffen()
+    expect(FakeAnmeldeFenster.instanzen).toHaveLength(1)
+
+    // Nutzer schliesst das (einzige) Anmeldefenster - beide Aufrufe haengen
+    // an derselben laufendeAnmeldung-Promise und lehnen deshalb gemeinsam ab.
+    FakeAnmeldeFenster.instanzen[0]!.closedZuhoerer?.()
+
+    await expect(p1).rejects.toThrow('Anmeldung abgebrochen')
+    await expect(p2).rejects.toThrow('Anmeldung abgebrochen')
+    expect(FakeAnmeldeFenster.instanzen).toHaveLength(1)
+  })
+
+  it('loest die Sperre nach Abschluss wieder: ein dritter Aufruf startet einen neuen Anmeldeversuch', async () => {
+    const ersterVersuch = anmelden()
+    await bisFensterOffen()
+    expect(FakeAnmeldeFenster.instanzen).toHaveLength(1)
+    FakeAnmeldeFenster.instanzen[0]!.closedZuhoerer?.()
+    await expect(ersterVersuch).rejects.toThrow('Anmeldung abgebrochen')
+
+    // Waere laufendeAnmeldung nicht zurueckgesetzt worden, bliebe dieser
+    // dritte Aufruf für immer an der ersten (bereits abgeschlossenen)
+    // Promise haengen, statt ein zweites Fenster zu oeffnen.
+    const zweiterVersuch = anmelden()
+    await bisFensterOffen()
+    expect(FakeAnmeldeFenster.instanzen).toHaveLength(2)
+    FakeAnmeldeFenster.instanzen[1]!.closedZuhoerer?.()
+    await expect(zweiterVersuch).rejects.toThrow('Anmeldung abgebrochen')
   })
 })
