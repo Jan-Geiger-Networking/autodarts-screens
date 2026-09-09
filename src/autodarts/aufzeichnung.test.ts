@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -7,6 +7,13 @@ import { aufzeichnungBeenden, aufzeichnungStarten, wiedergeben } from './aufzeic
 const neuerPfad = () => join(mkdtempSync(join(tmpdir(), 'ad-')), 'mitschnitt.jsonl')
 
 describe('Aufzeichnung und Wiedergabe', () => {
+  afterEach(async () => {
+    // Jeder Test hinterlaesst einen sauberen Modulzustand. Ohne das haengt
+    // "beenden ohne laufende Aufzeichnung" davon ab, was der Test davor
+    // liegen gelassen hat, und die Reihenfolge wird Teil der Zusicherung.
+    await aufzeichnungBeenden()
+  })
+
   it('schreibt eine JSON-Zeile je Ereignis, mit Zeitstempel', async () => {
     const pfad = neuerPfad()
     const schreiben = aufzeichnungStarten(pfad)
