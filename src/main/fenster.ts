@@ -23,6 +23,13 @@ export function konfigurationAktualisieren(k: Konfiguration): void {
   aktuelleKonfiguration = k
 }
 
+// Letzter an alle Fenster verteilter MatchState. Wer den Player- oder
+// Spectator-Screen per Escape verlaesst und ueber das Control-Fenster neu
+// oeffnet, soll nicht bis zum naechsten Ereignis auf dem Ruhezustands-Logo
+// haengen bleiben - Design-Spec Abschnitt 14: "Im Zweifel zeigt die
+// Anwendung den letzten bekannten guten Zustand".
+let letzterZustand: MatchState | null = null
+
 function preloadPfad(): string {
   return join(import.meta.dirname, '../preload/index.cjs')
 }
@@ -103,6 +110,20 @@ export function fensterOeffnen(art: FensterArt): BrowserWindow {
   // fuer dieselbe Art wuerde auf isDestroyed()/focus() eines toten Objekts treffen.
   neues.on('closed', () => fenster.delete(art))
   fenster.set(art, neues)
+
+  // Sobald der Inhalt geladen ist (React ist gemountet, beiZustand() bereits
+  // registriert), den letzten bekannten Zustand einmalig nachliefern - ein
+  // frisch geoeffnetes Fenster hat sonst keinen Zustand, bis das naechste
+  // echte Ereignis eintrifft.
+  if (letzterZustand) {
+    const zustandBeimOeffnen = letzterZustand
+    neues.webContents.once('did-finish-load', () => {
+      if (!neues.isDestroyed() && !neues.webContents.isDestroyed()) {
+        neues.webContents.send('zustand', zustandBeimOeffnen)
+      }
+    })
+  }
+
   rendererLaden(neues, art)
   return neues
 }
@@ -132,6 +153,7 @@ export function fensterArtVon(win: BrowserWindow): FensterArt | null {
  * riskieren (z. B. wenn ein Fenster gerade waehrend des Sendens schliesst).
  */
 export function zustandVerteilen(z: MatchState): void {
+  letzterZustand = z
   for (const fensterInstanz of fenster.values()) {
     if (!fensterInstanz.isDestroyed() && !fensterInstanz.webContents.isDestroyed()) {
       fensterInstanz.webContents.send('zustand', z)
