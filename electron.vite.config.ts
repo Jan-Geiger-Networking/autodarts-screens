@@ -22,6 +22,7 @@ export default defineConfig({
       rollupOptions: {
         input: {
           control: resolve('src/renderer/control/index.html'),
+          player: resolve('src/renderer/player/index.html'),
         },
       },
     },

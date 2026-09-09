@@ -61,3 +61,7 @@ export type MatchEvent = { seq: number } & (
   | { kind: 'legWon'; playerId: string }
   | { kind: 'matchWon'; playerId: string }
 )
+
+// Fensterarten der Anwendung. Von Main, Preload und Renderer gemeinsam
+// genutzt, deshalb hier und nicht in src/main/fenster.ts definiert.
+export type FensterArt = 'control' | 'player' | 'spectator'
