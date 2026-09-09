@@ -9,8 +9,9 @@
 //
 // Kein Top-Level-Import von 'electron': oauth.test.ts prueft die reinen
 // Funktionen (pkcePaar, tokenNochGueltig, codeAusUmleitung) unter Vitest ohne
-// laufende Electron-Runtime. Alles, was Electron-APIs braucht, holt sie sich
-// per dynamischem import('electron'), sobald es tatsaechlich aufgerufen wird
+// laufende Electron-Runtime, und mockt 'electron' fuer die Tests der
+// Erneuerung. Alles, was Electron-APIs braucht, holt sie sich per
+// dynamischem import('electron'), sobald es tatsaechlich aufgerufen wird
 // (gleiches Muster wie in src/main/konfiguration.ts).
 
 import { createHash, randomBytes } from 'node:crypto'
@@ -27,6 +28,12 @@ const SCOPE = 'openid profile email'
 const SITZUNGSPARTITION = 'persist:autodarts-anmeldung'
 const PUFFER_SEKUNDEN = 60
 
+// Fuenf Minuten sind reichlich fuer eine Anmeldung inklusive Zwei-Faktor.
+// Ohne diese Grenze wuerde ein Nutzer, der das Anmeldefenster offen laesst,
+// ohne zu navigieren und ohne es zu schliessen, anmelden() fuer immer haengen
+// lassen - weder will-redirect noch will-navigate noch closed feuern dann.
+const ANMELDE_ZEITLIMIT_MS = 5 * 60 * 1000
+
 // Google verweigert OAuth-Anmeldungen aus erkennbaren Webviews. Das Konto des
 // Herausgebers hat ein Passwort und traegt den Weg auch bei einer
 // Google-Sperre (siehe Design-Dokument, Abschnitt 5.2) - ohne Not soll sie
@@ -34,9 +41,13 @@ const PUFFER_SEKUNDEN = 60
 const DESKTOP_USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
 
+function zufallswert(bytesLaenge: number): string {
+  return randomBytes(bytesLaenge).toString('base64url')
+}
+
 /** Erzeugt ein PKCE-Paar: 64 Zeichen aus dem erlaubten Alphabet, S256-Challenge. */
 export function pkcePaar(): { verifier: string; challenge: string } {
-  const verifier = randomBytes(48).toString('base64url')
+  const verifier = zufallswert(48)
   const challenge = createHash('sha256').update(verifier).digest('base64url')
   return { verifier, challenge }
 }
@@ -53,17 +64,27 @@ export function tokenNochGueltig(laeuftAbUm: number, jetzt: number, pufferSekund
 }
 
 /**
- * Entnimmt den Autorisierungscode oder den Fehler aus einer Umleitungsadresse.
- * Reine Funktion: prueft selbst, ob url ueberhaupt mit dem Umleitungsziel
- * beginnt, damit sie auch mit einer voellig anderen Adresse (Zwischenseite,
- * Google-Login) sinnvoll und ohne Ausnahme antwortet.
+ * Entnimmt den Autorisierungscode oder den Fehler aus einer Umleitungsadresse
+ * und prueft dabei den state-Parameter gegen den erwarteten Wert (CSRF-Schutz
+ * in der Tiefe - der Ablauf hat keinen von aussen erreichbaren Callback und
+ * PKCE bindet den Code bereits an den lokalen Verifier, trotzdem gehoert die
+ * Pruefung hin). Stimmt der state nicht, wird der Code bewusst nicht
+ * herausgegeben, selbst wenn er in der Adresse steht - der Aufrufer tauscht
+ * ihn dann nicht ein. Reine Funktion: prueft selbst, ob url ueberhaupt mit
+ * dem Umleitungsziel beginnt, damit sie auch mit einer voellig anderen
+ * Adresse (Zwischenseite, Google-Login) sinnvoll und ohne Ausnahme antwortet.
  */
-export function codeAusUmleitung(url: string): { code: string } | { fehler: string } {
+export function codeAusUmleitung(url: string, erwarteterState: string): { code: string } | { fehler: string } {
   if (!url.startsWith(UMLEITUNG)) {
     return { fehler: `Unerwartete Adresse: ${url}` }
   }
 
   const parameter = new URL(url).searchParams
+
+  if (parameter.get('state') !== erwarteterState) {
+    return { fehler: 'Umleitung enthielt einen unerwarteten state-Parameter' }
+  }
+
   const code = parameter.get('code')
   if (code) return { code }
 
@@ -76,7 +97,7 @@ export function codeAusUmleitung(url: string): { code: string } | { fehler: stri
   return { fehler: 'Umleitung enthielt weder code noch error' }
 }
 
-function autorisierungsAdresse(challenge: string): string {
+function autorisierungsAdresse(challenge: string, state: string): string {
   const parameter = new URLSearchParams({
     client_id: CLIENT_ID,
     response_type: 'code',
@@ -84,6 +105,7 @@ function autorisierungsAdresse(challenge: string): string {
     scope: SCOPE,
     code_challenge: challenge,
     code_challenge_method: 'S256',
+    state,
   })
   return `${AUTORISIERUNG}?${parameter.toString()}`
 }
@@ -92,6 +114,19 @@ type TokenAntwort = {
   access_token: string
   refresh_token?: string
   expires_in?: number
+}
+
+// Traegt den HTTP-Status der abgelehnten Anfrage, damit die Aufrufer
+// unterscheiden koennen: eine echte Ablehnung durch den Server (ungueltiges/
+// widerrufenes/rotiertes Aktualisierungs-Token, Status 400/401) ist etwas
+// anderes als ein Netzwerkausfall oder ein serverseitiger 5xx-Fehler.
+class AutodartsHttpFehler extends Error {
+  readonly status: number
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'AutodartsHttpFehler'
+    this.status = status
+  }
 }
 
 // Der Server nimmt JSON-Ruempfe, nicht application/x-www-form-urlencoded -
@@ -105,7 +140,10 @@ async function postJson(url: string, rumpf: Record<string, string>): Promise<Res
   })
   if (!antwort.ok) {
     const text = await antwort.text().catch(() => '')
-    throw new Error(`Autodarts-Anfrage an ${url} fehlgeschlagen (${antwort.status}): ${text}`)
+    throw new AutodartsHttpFehler(
+      antwort.status,
+      `Autodarts-Anfrage an ${url} fehlgeschlagen (${antwort.status}): ${text}`,
+    )
   }
   return antwort
 }
@@ -151,15 +189,24 @@ async function ablageVerwerfen(): Promise<void> {
 // Anwendungsstart neu ueber das Aktualisierungs-Token beschafft.
 let zugriff: { token: string; laeuftAbUm: number } | null = null
 
+// Minimale, von Electrons konkreten Event-Typen entkoppelte Form dessen, was
+// will-redirect/will-navigate liefern: die Zieladresse, ob es der Hauptrahmen
+// ist (ein Unterrahmen, der zufaellig auf eine gleich beginnende Adresse
+// navigiert, soll den Ablauf nicht vorzeitig beenden) und preventDefault.
+type UmleitungsEreignis = { url: string; isMainFrame: boolean; preventDefault: () => void }
+
 /**
  * Oeffnet das Autodarts-Anmeldefenster in eigener Sitzungspartition, fuehrt
- * den Authorization-Code-Ablauf mit PKCE durch und legt das Aktualisierungs-
- * Token verschluesselt ab. Bricht der Nutzer ab (Fenster geschlossen ohne
- * Code), wirft "Anmeldung abgebrochen". Enthaelt die Umleitung einen Fehler
- * statt eines Codes, wirft die Serverantwort.
+ * den Authorization-Code-Ablauf mit PKCE und state durch und legt das
+ * Aktualisierungs-Token verschluesselt ab. Bricht der Nutzer ab (Fenster
+ * geschlossen ohne Code, oder fuenf Minuten ohne jede Rueckmeldung), wirft
+ * "Anmeldung abgebrochen" bzw. eine Zeitlimit-Meldung. Enthaelt die Umleitung
+ * einen Fehler oder einen unerwarteten state statt eines Codes, wirft die
+ * jeweilige Meldung, ohne den Code einzutauschen.
  */
 export async function anmelden(): Promise<void> {
   const { verifier, challenge } = pkcePaar()
+  const erwarteterState = zufallswert(24)
   const { BrowserWindow, session } = await import('electron')
 
   const sitzung = session.fromPartition(SITZUNGSPARTITION)
@@ -180,29 +227,44 @@ export async function anmelden(): Promise<void> {
   const code = await new Promise<string>((resolve, reject) => {
     let erledigt = false
 
-    const pruefeUndBeenden = (url: string, verhindern: () => void): void => {
-      if (erledigt || !url.startsWith(UMLEITUNG)) return
+    // Jeder Ausgang (Redirect mit Code/Fehler, Nutzerabbruch, Zeitlimit)
+    // laeuft durch diese Stelle - sie sorgt dafuer, dass der Zeitgeber immer
+    // aufgeraeumt wird und dass nie zweimal aufgeloest/abgelehnt wird.
+    const abschliessen = (aktion: () => void): void => {
+      if (erledigt) return
       erledigt = true
-      verhindern()
-      const ergebnis = codeAusUmleitung(url)
-      fenster.close()
-      if ('code' in ergebnis) resolve(ergebnis.code)
-      else reject(new Error(ergebnis.fehler))
+      clearTimeout(zeitlimit)
+      aktion()
     }
 
-    fenster.webContents.on('will-redirect', (event, url) => pruefeUndBeenden(url, () => event.preventDefault()))
-    fenster.webContents.on('will-navigate', (event, url) => pruefeUndBeenden(url, () => event.preventDefault()))
+    const zeitlimit = setTimeout(() => {
+      abschliessen(() => {
+        if (!fenster.isDestroyed()) fenster.close()
+        reject(new Error('Anmeldung abgebrochen: 5 Minuten ohne Rueckmeldung'))
+      })
+    }, ANMELDE_ZEITLIMIT_MS)
+
+    const pruefeUndBeenden = (ereignis: UmleitungsEreignis): void => {
+      if (!ereignis.isMainFrame || !ereignis.url.startsWith(UMLEITUNG)) return
+      ereignis.preventDefault()
+      abschliessen(() => {
+        fenster.close()
+        const ergebnis = codeAusUmleitung(ereignis.url, erwarteterState)
+        if ('code' in ergebnis) resolve(ergebnis.code)
+        else reject(new Error(ergebnis.fehler))
+      })
+    }
+
+    fenster.webContents.on('will-redirect', pruefeUndBeenden)
+    fenster.webContents.on('will-navigate', pruefeUndBeenden)
 
     // Schliesst der Nutzer das Fenster selbst (Alt+F4, Klick auf X), ohne
     // dass eine der beiden Navigationspruefungen oben bereits ausgeloest hat.
     fenster.on('closed', () => {
-      if (!erledigt) {
-        erledigt = true
-        reject(new Error('Anmeldung abgebrochen'))
-      }
+      abschliessen(() => reject(new Error('Anmeldung abgebrochen')))
     })
 
-    fenster.loadURL(autorisierungsAdresse(challenge))
+    fenster.loadURL(autorisierungsAdresse(challenge, erwarteterState))
   })
 
   const antwort = await tokenAnfragen(AUSTAUSCH, {
@@ -220,19 +282,18 @@ export async function anmelden(): Promise<void> {
   await ablageSchreiben({ refreshToken: antwort.refresh_token })
 }
 
-/**
- * Liefert den zwischengespeicherten Zugriffstoken, solange er noch
- * mindestens 60 Sekunden gueltig ist, sonst erneuert sie ihn ueber das
- * Aktualisierungs-Token. Schlaegt die Erneuerung fehl (oder ist noch nie
- * angemeldet worden), wird die Ablage verworfen und "Bitte erneut anmelden"
- * geworfen - das Control-Fenster kann diese Meldung direkt anzeigen.
- */
-export async function zugriffsToken(): Promise<string> {
-  const jetzt = Date.now() / 1000
-  if (zugriff && tokenNochGueltig(zugriff.laeuftAbUm, jetzt, PUFFER_SEKUNDEN)) {
-    return zugriff.token
-  }
+// Haelt eine laufende Erneuerung fest, damit zwei gleichzeitige
+// zugriffsToken()-Aufrufe bei abgelaufenem Token nicht zwei parallele
+// POST /auth/v1/refresh mit demselben Aktualisierungs-Token ausloesen
+// (Single-Flight). Rotiert der Server das Aktualisierungs-Token bei jeder
+// Erneuerung, wuerde der zweite, ueberfluessige Aufruf sonst mit
+// invalid_grant scheitern und faelschlich die gerade erst gueltig
+// beschriebene Ablage verwerfen. Wird in jedem Ausgang - Erfolg wie Fehler -
+// wieder auf null gesetzt, damit der naechste, spaetere Aufruf einen neuen
+// Versuch startet.
+let laufendeErneuerung: Promise<string> | null = null
 
+async function erneuerungDurchfuehren(): Promise<string> {
   const ablage = await ablageLesen()
   if (!ablage) {
     throw new Error('Bitte erneut anmelden')
@@ -246,11 +307,47 @@ export async function zugriffsToken(): Promise<string> {
     zugriff = { token: antwort.access_token, laeuftAbUm: Date.now() / 1000 + (antwort.expires_in ?? Number.NaN) }
     await ablageSchreiben({ refreshToken: antwort.refresh_token ?? ablage.refreshToken })
     return zugriff.token
-  } catch {
-    zugriff = null
-    await ablageVerwerfen()
-    throw new Error('Bitte erneut anmelden')
+  } catch (fehler) {
+    // Der Server lehnt die Berechtigung ausdruecklich ab (abgelaufenes,
+    // widerrufenes oder rotiertes Aktualisierungs-Token: Status 400/401,
+    // z.B. invalid_grant) - dann ist die Ablage tatsaechlich wertlos und
+    // wird verworfen. Ein Netzwerkfehler oder ein serverseitiger 5xx-Fehler
+    // ist dagegen kein Grund, den Nutzer abzumelden: die Ablage bleibt
+    // unangetastet, ein erneuter Versuch soll wieder greifen - kein Grund,
+    // jemanden abzumelden, weil das WLAN kurz weg war.
+    if (fehler instanceof AutodartsHttpFehler && (fehler.status === 400 || fehler.status === 401)) {
+      zugriff = null
+      await ablageVerwerfen()
+      throw new Error('Bitte erneut anmelden')
+    }
+    throw new Error('Erneuerung des Zugriffstokens fehlgeschlagen, bitte spaeter erneut versuchen', {
+      cause: fehler,
+    })
   }
+}
+
+/**
+ * Liefert den zwischengespeicherten Zugriffstoken, solange er noch
+ * mindestens 60 Sekunden gueltig ist, sonst erneuert sie ihn ueber das
+ * Aktualisierungs-Token (gebuendelt per Single-Flight, siehe
+ * laufendeErneuerung). Schlaegt die Erneuerung mit einer Ablehnung durch den
+ * Server fehl (oder ist noch nie angemeldet worden), wird die Ablage
+ * verworfen und "Bitte erneut anmelden" geworfen - das Control-Fenster kann
+ * diese Meldung direkt anzeigen. Ein Netzwerkfehler wirft eine andere
+ * Meldung und laesst die Ablage unangetastet.
+ */
+export async function zugriffsToken(): Promise<string> {
+  const jetzt = Date.now() / 1000
+  if (zugriff && tokenNochGueltig(zugriff.laeuftAbUm, jetzt, PUFFER_SEKUNDEN)) {
+    return zugriff.token
+  }
+
+  if (!laufendeErneuerung) {
+    laufendeErneuerung = erneuerungDurchfuehren().finally(() => {
+      laufendeErneuerung = null
+    })
+  }
+  return laufendeErneuerung
 }
 
 /** Meldet ab: widerruft das Aktualisierungs-Token, verwirft die Ablage und leert die Sitzungspartition. */
