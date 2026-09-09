@@ -165,3 +165,33 @@ API-Basis — beide Domains beantworteten in dieser Aufgabe den
 Discovery-Aufruf identisch (siehe OAuth-Abschnitt), welche Domain fuer die
 Spiel-/Board-Endpunkte kuenftig massgeblich ist, ist unbekannt und in einer
 spaeteren Aufgabe zu pruefen.
+
+## Endpunkt-Existenz, eigener Test 2026-09-09
+
+Ein unauthentifizierter Aufruf beweist die Existenz eines Pfades: `401
+unauthorized` heißt „Pfad existiert, Token fehlt", `404 page not found` heißt
+„Pfad existiert nicht". Damit ließ sich klären, was die Community-Quellen offen
+gelassen hatten.
+
+| Methode | Pfad | Antwort | Schluss |
+|---|---|---|---|
+| GET | `api.autodarts.com/bs/v0/boards` | 401 | existiert |
+| GET | `api.autodarts.io/bs/v0/boards` | 401 | existiert ebenfalls, beide Domains sind aktiv |
+| GET | `api.autodarts.com/us/v0/users/@me` | 401 | existiert |
+| GET | `api.autodarts.com/gs/v0/matches` | 401 | existiert |
+| POST | `api.autodarts.com/ms/v0/tickets` | 401 | existiert — **Plural ist richtig** |
+| POST | `api.autodarts.com/ms/v0/ticket` | 404 | existiert nicht |
+
+Zwei Folgerungen für die Umsetzung:
+
+1. Der WebSocket-Ticket-Endpunkt heißt `POST /ms/v0/tickets`. Die Angabe
+   `AUTODARTS_API_TICKET_URL = ".../ms/v0/ticket"` aus `AutodartsDefines.h`
+   (Repo `Chade/AutodartsClient`) ist falsch oder veraltet.
+2. `api.autodarts.com` beantwortet alle geprüften Spiel-, Board- und
+   Nachrichten-Pfade. Es gibt keinen Grund, auf `api.autodarts.io`
+   auszuweichen; beide sind erreichbar, `.com` bleibt die Basis.
+
+Der Fehlerrumpf des Servers hat durchgängig die Form
+`{"statusCode":401,"error":{"status":401,"code":"unauthorized","message":"unauthorized"}}`
+— nützlich, um in der Anwendung zwischen „nicht angemeldet" und anderen
+Fehlern zu unterscheiden.
