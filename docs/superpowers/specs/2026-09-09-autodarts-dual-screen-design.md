@@ -37,7 +37,7 @@ Bewusst ausgeklammert, mit den Andockpunkten für später:
 | Laufzeit | Electron | Zwei Vollbild-Fenster auf verschiedenen Monitoren sind eine eingebaute Fähigkeit. `electron-updater` gegen GitHub Releases ist gelöster Standard. Die Broadcast-Animationen sind mit CSS und JavaScript um Größenordnungen billiger als nativ. |
 | UI | React + TypeScript + Vite | Szenen-Umschaltung und Zustandsableitung sind der Kern der Spectator-Ansicht |
 | Animation | Framer Motion | `AnimatePresence` orchestriert Ein- und Ausblendungen ganzer Szenen; von Hand geschriebene CSS-Transitions werden bei überlappenden Szenenwechseln unübersichtlich |
-| Authentifizierung | OAuth Authorization Code + PKCE im `BrowserWindow` | Funktioniert mit E-Mail/Passwort **und** Google-SSO. Die Anwendung sieht nie ein Passwort. |
+| Authentifizierung | OAuth Device Authorization Grant im Systembrowser | Funktioniert mit E-Mail/Passwort **und** Google-SSO, ohne eingebettetes Browserfenster und ohne registriertes Umleitungsziel. Die Anwendung sieht nie ein Passwort. Begründung und der verworfene Alternativweg stehen in Abschnitt 5.2. |
 | Token-Ablage | `safeStorage` (Electron, DPAPI) | Eingebaut, kein zusätzliches natives Modul |
 | Installer | `electron-builder`, NSIS, unsigniert | Kein Zertifikat nötig. Einmalig SmartScreen bestätigen, danach nie wieder. |
 | Ziel-PC | Keine Vorbedingungen | Electron bringt Node und Chromium mit. Node und Git braucht nur der Entwicklungsrechner. |
@@ -95,11 +95,57 @@ Aus öffentlich einsehbaren Community-Projekten ([python-autodarts],
 [tools-for-autodarts]: https://github.com/creazy231/tools-for-autodarts
 [autodarts-api-capabilities]: https://github.com/thomasasen/autodarts_local_tournament/blob/main/docs/autodarts-api-capabilities.md
 
-### 5.2 Offene Punkte und wie sie geschlossen werden
+### 5.2 Anmeldung — Stand nach der Migration vom 28.06.2026
+
+Die Erkundung hat ergeben, dass Autodarts am 28.06.2026 von einem
+Keycloak-Server (`login.autodarts.io`) auf einen selbst betriebenen
+OAuth-2.0-Server unter `api.autodarts.com` umgestellt hat. Der alte Server
+antwortet nicht mehr. Jede Angabe aus älteren Community-Projekten zu Realms,
+Keycloak-Pfaden oder `grant_type=password` ist damit hinfällig.
+
+Die vollständige Tabelle der selbst abgerufenen Werte samt Quelle und
+Vertrauensgrad steht in `docs/autodarts-api.md`. Für das Design zählen zwei
+Feststellungen:
+
+**Erstens:** Für die Client-Kennung `autodarts-play` ist ausschließlich
+`https://play.autodarts.com/auth/google/callback` als Umleitungsziel
+registriert. Ein eigenes Ziel — `localhost` oder ein Custom-Scheme — wird mit
+`400 invalid_redirect_uri` abgelehnt.
+
+**Zweitens:** Der Server bewirbt einen Endpunkt für die Geräte-Autorisierung
+(`https://api.autodarts.com/auth/v1/device/code`) und führt
+`urn:ietf:params:oauth:grant-type:device_code` unter den unterstützten
+Ablaufarten.
+
+Daraus folgt die Wahl des Device Authorization Grant statt des zunächst
+geplanten Authorization Code Flow in einem eingebetteten Fenster:
+
+- Er braucht kein registriertes Umleitungsziel, umgeht also die erste
+  Feststellung vollständig.
+- Google und Apple verweigern OAuth-Anmeldungen aus eingebetteten Webviews.
+  Da hier über Google angemeldet wird, wäre der eingebettete Weg genau am
+  entscheidenden Schritt gescheitert.
+- Die Anmeldung läuft im normalen Systembrowser des Nutzers, in dem er
+  ohnehin angemeldet ist.
+
+Ablauf: Die Anwendung fordert einen Gerätecode an, zeigt Benutzercode und
+Bestätigungsadresse im Control-Fenster, öffnet die Adresse im Systembrowser
+und fragt den Token-Endpunkt im vom Server vorgegebenen Intervall ab, bis die
+Bestätigung vorliegt.
+
+Offen bleibt, ob die Client-Kennung `autodarts-play` diese Ablaufart auch
+tatsächlich benutzen darf — die Liste der Ablaufarten gilt serverweit, nicht je
+Client. Das lässt sich nur mit einem `POST` prüfen, den die Erkundung nicht
+ausführen konnte. Der erste Schritt der Anmelde-Implementierung ist deshalb
+genau dieser Test. Schlägt er fehl, bleibt als Rückfallweg das Abfangen der
+Umleitung auf `play.autodarts.com` in einem eingebetteten Fenster — dann
+allerdings nur für Konten mit E-Mail und Passwort, und die Einschränkung
+gehört in die Oberfläche.
+
+### 5.2a Offene Punkte und wie sie geschlossen werden
 
 Die exakten Kanalnamen, das Ticket-Verfahren für den WebSocket und die
-Ereignis-Payloads sind nirgends offiziell dokumentiert, und Autodarts hat
-kürzlich ein größeres Update ausgeliefert. Deshalb ist der erste
+Ereignis-Payloads sind nirgends offiziell dokumentiert. Deshalb ist der erste
 Implementierungsschritt ein Erkundungsschritt:
 
 1. Mit echtem Account authentifizieren
@@ -113,7 +159,7 @@ Schritt.
 
 ### 5.3 Record & Replay
 
-Der Mitschnitt aus Schritt 5.2 bleibt dauerhaft eingebaut:
+Der Mitschnitt aus Schritt 5.2a bleibt dauerhaft eingebaut:
 
 - **Record** — jede Sitzung kann ihre Roh-Ereignisse mit Zeitstempel nach
   `%APPDATA%/autodarts-screens/recordings/*.jsonl` schreiben
