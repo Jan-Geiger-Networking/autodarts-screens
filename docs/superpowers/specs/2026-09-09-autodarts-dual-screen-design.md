@@ -37,7 +37,7 @@ Bewusst ausgeklammert, mit den Andockpunkten für später:
 | Laufzeit | Electron | Zwei Vollbild-Fenster auf verschiedenen Monitoren sind eine eingebaute Fähigkeit. `electron-updater` gegen GitHub Releases ist gelöster Standard. Die Broadcast-Animationen sind mit CSS und JavaScript um Größenordnungen billiger als nativ. |
 | UI | React + TypeScript + Vite | Szenen-Umschaltung und Zustandsableitung sind der Kern der Spectator-Ansicht |
 | Animation | Framer Motion | `AnimatePresence` orchestriert Ein- und Ausblendungen ganzer Szenen; von Hand geschriebene CSS-Transitions werden bei überlappenden Szenenwechseln unübersichtlich |
-| Authentifizierung | offen, siehe Abschnitt 5.2 | Der Device Authorization Grant ist für die Client-Kennung von Autodarts gesperrt (eigener Test). Es bleiben zwei Wege, die sich in der Zusage unterscheiden, kein Passwort entgegenzunehmen. Die Entscheidung liegt beim Herausgeber. |
+| Authentifizierung | OAuth Authorization Code + PKCE im `BrowserWindow`, Umleitung abgefangen | Der Device Authorization Grant ist fuer die Client-Kennung von Autodarts gesperrt (eigener Test, Abschnitt 5.2). Das Konto des Herausgebers hat ein Passwort, daher traegt der eingebettete Weg auch dann, wenn Google Webviews verweigert. Die Anwendung sieht nie ein Passwort. |
 | Token-Ablage | `safeStorage` (Electron, DPAPI) | Eingebaut, kein zusätzliches natives Modul |
 | Installer | `electron-builder`, NSIS, unsigniert | Kein Zertifikat nötig. Einmalig SmartScreen bestätigen, danach nie wieder. |
 | Ziel-PC | Keine Vorbedingungen | Electron bringt Node und Chromium mit. Node und Git braucht nur der Entwicklungsrechner. |
@@ -150,9 +150,32 @@ Zusage aus Abschnitt 18.3 und aus `PRIVACY.md` wäre damit gebrochen und müsste
 umformuliert werden, und die Anmeldung funktioniert nur für Konten, die
 überhaupt ein Passwort haben — für ein reines Google-Konto nicht.
 
-Die Entscheidung zwischen beiden Wegen liegt beim Herausgeber, weil sie eine
-zugesagte Eigenschaft gegen die Unterstützung von Single-Sign-On abwägt. Bis
-sie getroffen ist, entsteht kein Anmeldecode.
+**Entschieden: Weg 1.** Das Konto des Herausgebers besitzt ein eigenes
+Passwort und ist nicht auf Google angewiesen. Damit entfällt das Risiko des
+eingebetteten Fensters praktisch: sollte Google die Anmeldung in einem Webview
+verweigern, bleibt auf derselben Autodarts-Seite die Anmeldung mit E-Mail und
+Passwort möglich. Die Zusage aus Abschnitt 18.3 und aus `PRIVACY.md`, dass die
+Anwendung keine Zugangsdaten entgegennimmt, bleibt damit unverändert wahr und
+muss nicht umformuliert werden.
+
+Konkreter Ablauf:
+
+1. PKCE-Paar erzeugen, `code_challenge_method=S256`
+2. `https://api.autodarts.com/auth/v1/oauth/authorize` mit
+   `client_id=autodarts-play`, `response_type=code`,
+   `redirect_uri=https://play.autodarts.com/auth/google/callback`,
+   `scope=openid profile email` und der Challenge in einem `BrowserWindow`
+   öffnen, in eigener Sitzungspartition
+3. Navigation abfangen, sobald sie das Umleitungsziel erreicht, den Parameter
+   `code` entnehmen und die Seite nicht laden lassen
+4. `POST /auth/v1/exchange` mit JSON-Rumpf `{code, client_id, redirect_uri,
+   code_verifier}` gegen Zugriffs- und Aktualisierungs-Token tauschen
+5. Aktualisierungs-Token in `safeStorage` ablegen, Erneuerung über
+   `POST /auth/v1/refresh` mit `{refresh_token, client_id}`, Abmeldung über
+   `POST /auth/v1/logout` mit `{refresh_token}`
+
+Der Server nimmt JSON-Rümpfe, nicht `application/x-www-form-urlencoded` —
+mit Form-Encoding antwortet er `invalid request body`.
 
 ### 5.2a Offene Punkte und wie sie geschlossen werden
 
