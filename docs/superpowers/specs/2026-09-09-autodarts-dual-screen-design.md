@@ -37,7 +37,7 @@ Bewusst ausgeklammert, mit den Andockpunkten für später:
 | Laufzeit | Electron | Zwei Vollbild-Fenster auf verschiedenen Monitoren sind eine eingebaute Fähigkeit. `electron-updater` gegen GitHub Releases ist gelöster Standard. Die Broadcast-Animationen sind mit CSS und JavaScript um Größenordnungen billiger als nativ. |
 | UI | React + TypeScript + Vite | Szenen-Umschaltung und Zustandsableitung sind der Kern der Spectator-Ansicht |
 | Animation | Framer Motion | `AnimatePresence` orchestriert Ein- und Ausblendungen ganzer Szenen; von Hand geschriebene CSS-Transitions werden bei überlappenden Szenenwechseln unübersichtlich |
-| Authentifizierung | OAuth Device Authorization Grant im Systembrowser | Funktioniert mit E-Mail/Passwort **und** Google-SSO, ohne eingebettetes Browserfenster und ohne registriertes Umleitungsziel. Die Anwendung sieht nie ein Passwort. Begründung und der verworfene Alternativweg stehen in Abschnitt 5.2. |
+| Authentifizierung | offen, siehe Abschnitt 5.2 | Der Device Authorization Grant ist für die Client-Kennung von Autodarts gesperrt (eigener Test). Es bleiben zwei Wege, die sich in der Zusage unterscheiden, kein Passwort entgegenzunehmen. Die Entscheidung liegt beim Herausgeber. |
 | Token-Ablage | `safeStorage` (Electron, DPAPI) | Eingebaut, kein zusätzliches natives Modul |
 | Installer | `electron-builder`, NSIS, unsigniert | Kein Zertifikat nötig. Einmalig SmartScreen bestätigen, danach nie wieder. |
 | Ziel-PC | Keine Vorbedingungen | Electron bringt Node und Chromium mit. Node und Git braucht nur der Entwicklungsrechner. |
@@ -112,35 +112,47 @@ Feststellungen:
 registriert. Ein eigenes Ziel — `localhost` oder ein Custom-Scheme — wird mit
 `400 invalid_redirect_uri` abgelehnt.
 
-**Zweitens:** Der Server bewirbt einen Endpunkt für die Geräte-Autorisierung
-(`https://api.autodarts.com/auth/v1/device/code`) und führt
-`urn:ietf:params:oauth:grant-type:device_code` unter den unterstützten
-Ablaufarten.
+**Zweitens:** Der Device Authorization Grant steht nicht zur Verfügung, obwohl
+der Server ihn serverweit bewirbt. Die Liste `grant_types_supported` enthält
+`urn:ietf:params:oauth:grant-type:device_code` und es gibt einen Endpunkt
+`/auth/v1/device/code`, aber für die Client-Kennung `autodarts-play` ist die
+Ablaufart gesperrt. Eigener Test am 2026-09-09:
 
-Daraus folgt die Wahl des Device Authorization Grant statt des zunächst
-geplanten Authorization Code Flow in einem eingebetteten Fenster:
+```
+POST https://api.autodarts.com/auth/v1/device/code
+Content-Type: application/json
+{"client_id": "autodarts-play"}
 
-- Er braucht kein registriertes Umleitungsziel, umgeht also die erste
-  Feststellung vollständig.
-- Google und Apple verweigern OAuth-Anmeldungen aus eingebetteten Webviews.
-  Da hier über Google angemeldet wird, wäre der eingebettete Weg genau am
-  entscheidenden Schritt gescheitert.
-- Die Anmeldung läuft im normalen Systembrowser des Nutzers, in dem er
-  ohnehin angemeldet ist.
+400 {"error": "unauthorized_client",
+     "error_description": "client may not use the device authorization grant"}
+```
 
-Ablauf: Die Anwendung fordert einen Gerätecode an, zeigt Benutzercode und
-Bestätigungsadresse im Control-Fenster, öffnet die Adresse im Systembrowser
-und fragt den Token-Endpunkt im vom Server vorgegebenen Intervall ab, bis die
-Bestätigung vorliegt.
+Damit bleiben genau zwei gangbare Wege, und sie unterscheiden sich in einer
+Zusage, die diese Spezifikation und `PRIVACY.md` bereits machen — nämlich dass
+die Anwendung nie ein Passwort entgegennimmt.
 
-Offen bleibt, ob die Client-Kennung `autodarts-play` diese Ablaufart auch
-tatsächlich benutzen darf — die Liste der Ablaufarten gilt serverweit, nicht je
-Client. Das lässt sich nur mit einem `POST` prüfen, den die Erkundung nicht
-ausführen konnte. Der erste Schritt der Anmelde-Implementierung ist deshalb
-genau dieser Test. Schlägt er fehl, bleibt als Rückfallweg das Abfangen der
-Umleitung auf `play.autodarts.com` in einem eingebetteten Fenster — dann
-allerdings nur für Konten mit E-Mail und Passwort, und die Einschränkung
-gehört in die Oberfläche.
+**Weg 1 — eingebettetes Fenster, Umleitung abfangen.** Die Anwendung öffnet den
+Autorisierungs-Endpunkt in einem `BrowserWindow`, der Nutzer meldet sich auf
+der Autodarts-Seite an, und die Anwendung fängt die Navigation ab, sobald sie
+`https://play.autodarts.com/auth/…/callback?code=…` erreicht. Der Code wird
+gegen `/auth/v1/exchange` eingetauscht. Die Anwendung sieht kein Passwort, die
+Zusage bleibt gehalten. Risiko: Google und Apple verweigern OAuth-Anmeldungen
+aus eingebetteten Webviews. Für ein Konto mit Passwort funktioniert der Weg,
+für die Anmeldung über Google ist er unsicher und hängt am gesetzten
+User-Agent.
+
+**Weg 2 — Passwort-Ablauf über `/auth/v1/login`.** Der Endpunkt existiert und
+verlangt laut eigenem Test mit leerem Rumpf die Felder `client_id` und
+`password` (und, sobald diese vorliegen, erwartbar eine Kennung des Kontos).
+Kein Browser, kein Umleitungsziel, keine Webview-Beschränkung. Preis: die
+Anwendung nimmt das Passwort selbst entgegen und muss es weiterreichen. Die
+Zusage aus Abschnitt 18.3 und aus `PRIVACY.md` wäre damit gebrochen und müsste
+umformuliert werden, und die Anmeldung funktioniert nur für Konten, die
+überhaupt ein Passwort haben — für ein reines Google-Konto nicht.
+
+Die Entscheidung zwischen beiden Wegen liegt beim Herausgeber, weil sie eine
+zugesagte Eigenschaft gegen die Unterstützung von Single-Sign-On abwägt. Bis
+sie getroffen ist, entsteht kein Anmeldecode.
 
 ### 5.2a Offene Punkte und wie sie geschlossen werden
 
