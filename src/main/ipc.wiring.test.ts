@@ -27,6 +27,21 @@ vi.mock('./fenster', () => ({
   fensterOeffnen: vi.fn(),
   fensterSchliessen: vi.fn(),
   konfigurationAktualisieren: vi.fn(),
+  verbindungszustandVerteilen: vi.fn(),
+}))
+
+vi.mock('./verbindung', () => ({
+  verbindungStarten: vi.fn().mockResolvedValue(undefined),
+  verbindungBeenden: vi.fn().mockResolvedValue(undefined),
+}))
+
+const anmeldenMock = vi.fn().mockResolvedValue(undefined)
+const abmeldenMock = vi.fn().mockResolvedValue(undefined)
+vi.mock('../autodarts/oauth', () => ({
+  anmelden: anmeldenMock,
+  abmelden: abmeldenMock,
+  istAngemeldet: vi.fn().mockResolvedValue(false),
+  istAnmeldungAbbruch: (fehler: unknown) => fehler instanceof Error && fehler.message.startsWith('Anmeldung abgebrochen'),
 }))
 
 const konfigurationLesenMock = vi.fn().mockResolvedValue({ boardId: null })
@@ -98,5 +113,61 @@ describe('IPC-Waechter-Verdrahtung: Ereignis -> Fensterart -> Erlauben/Werfen', 
 
     const handler = handlers.get('monitore:auflisten')!
     expect(() => handler(fakeEvent)).not.toThrow()
+  })
+
+  // Anmelden/Abmelden gehoeren dem Control-Fenster - Player und Spectator
+  // haben mit der Kontoverwaltung nichts zu tun. Beide Handler sind async,
+  // ein kanalPruefen()-Wurf darin wird deshalb zu einer abgelehnten Promise,
+  // nicht zu einem synchronen Wurf.
+  it.each(['anmeldung:starten', 'anmeldung:beenden'])('verweigert dem Player-Fenster %s', async (kanal) => {
+    fensterArtVonMock.mockReturnValue('player')
+    fromWebContentsMock.mockReturnValue({})
+
+    const handler = handlers.get(kanal)!
+    await expect(handler(fakeEvent)).rejects.toThrow(/Control-Fenster vorbehalten/)
+  })
+
+  it('verweigert dem Player-Fenster anmeldung:status', () => {
+    fensterArtVonMock.mockReturnValue('player')
+    fromWebContentsMock.mockReturnValue({})
+
+    const handler = handlers.get('anmeldung:status')!
+    expect(() => handler(fakeEvent)).toThrow(/Control-Fenster vorbehalten/)
+  })
+
+  it('erlaubt dem Control-Fenster anmeldung:starten und ruft anmelden() auf', async () => {
+    fensterArtVonMock.mockReturnValue('control')
+    fromWebContentsMock.mockReturnValue({})
+
+    const handler = handlers.get('anmeldung:starten')!
+    await expect(handler(fakeEvent)).resolves.toEqual({ erfolg: true })
+    expect(anmeldenMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('meldet einen Abbruch als erfolg:false, abgebrochen:true statt als Fehler', async () => {
+    fensterArtVonMock.mockReturnValue('control')
+    fromWebContentsMock.mockReturnValue({})
+    anmeldenMock.mockRejectedValueOnce(new Error('Anmeldung abgebrochen'))
+
+    const handler = handlers.get('anmeldung:starten')!
+    await expect(handler(fakeEvent)).resolves.toEqual({ erfolg: false, abgebrochen: true })
+  })
+
+  it('meldet einen echten Fehler als erfolg:false, abgebrochen:false', async () => {
+    fensterArtVonMock.mockReturnValue('control')
+    fromWebContentsMock.mockReturnValue({})
+    anmeldenMock.mockRejectedValueOnce(new Error('Netzwerkfehler'))
+
+    const handler = handlers.get('anmeldung:starten')!
+    await expect(handler(fakeEvent)).resolves.toEqual({ erfolg: false, abgebrochen: false })
+  })
+
+  it('erlaubt dem Control-Fenster anmeldung:beenden und ruft abmelden() auf', async () => {
+    fensterArtVonMock.mockReturnValue('control')
+    fromWebContentsMock.mockReturnValue({})
+
+    const handler = handlers.get('anmeldung:beenden')!
+    await handler(fakeEvent)
+    expect(abmeldenMock).toHaveBeenCalledTimes(1)
   })
 })

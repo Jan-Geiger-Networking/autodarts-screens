@@ -3,6 +3,7 @@ import type { FensterArt, MatchState } from '../shared/typen'
 import type { Konfiguration } from '../main/konfiguration'
 import type { MonitorEintrag } from '../main/monitore'
 import type { Verbindungszustand } from '../autodarts/websocket'
+import type { AnmeldungsErgebnis } from '../autodarts/oauth'
 
 contextBridge.exposeInMainWorld('app', {
   // Synchron per sendSync statt eines Umgebungsvariablen-Rueckfalls: npm
@@ -44,4 +45,11 @@ contextBridge.exposeInMainWorld('app', {
   // src/main/datenLoeschen.ts). Die Rueckfrage vor dem Aufruf uebernimmt der
   // Renderer, nicht dieser Kanal.
   datenLoeschen: (): Promise<string[]> => ipcRenderer.invoke('daten:loeschen'),
+
+  // Nur ob es geklappt hat (und ob ein Abbruch keine Fehlermeldung wert ist)
+  // geht ueber diesen Kanal - kein Token, keine Adresse, kein Code (siehe
+  // AnmeldungsErgebnis in oauth.ts).
+  anmeldungStarten: (): Promise<AnmeldungsErgebnis> => ipcRenderer.invoke('anmeldung:starten'),
+  anmeldungBeenden: (): Promise<void> => ipcRenderer.invoke('anmeldung:beenden'),
+  anmeldungStatus: (): Promise<boolean> => ipcRenderer.invoke('anmeldung:status'),
 })

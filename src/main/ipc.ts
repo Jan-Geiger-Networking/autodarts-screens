@@ -1,16 +1,14 @@
 // IPC-Kanaele zwischen Main- und Renderer-Prozessen. Enthaelt nur Kanaele,
-// die heute eine echte Implementierung haben. Anmelden/Abmelden fehlen
-// bewusst: src/autodarts/oauth.ts existiert und wird bereits beim Start
-// genutzt (siehe index.ts, istAngemeldet()), aber es gibt noch keinen Knopf
-// dafuer im Control-Fenster - ein Kanal ins Leere waere schlimmer als gar
-// keiner, das kommt mit der Anmelde-Aufgabe.
+// die heute eine echte Implementierung haben.
 
 import { app, BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron'
 import type { FensterArt } from '../shared/typen'
 import { monitoreAuflisten, monitoreIdentifizieren } from './monitore'
 import { konfigurationLesen, konfigurationSchreiben, zusammenfuehren } from './konfiguration'
-import { fensterArtVon, fensterOeffnen, fensterSchliessen, konfigurationAktualisieren } from './fenster'
+import { fensterArtVon, fensterOeffnen, fensterSchliessen, konfigurationAktualisieren, verbindungszustandVerteilen } from './fenster'
 import { alleDatenLoeschen } from './datenLoeschen'
+import { verbindungBeenden, verbindungStarten } from './verbindung'
+import { abmelden, anmelden, istAngemeldet, istAnmeldungAbbruch, type AnmeldungsErgebnis } from '../autodarts/oauth'
 
 const GUELTIGE_FENSTER_ARTEN: readonly FensterArt[] = ['control', 'player', 'spectator']
 
@@ -37,6 +35,11 @@ const NUR_CONTROL: ReadonlySet<string> = new Set([
   // Monitore zu - anders als monitore:auflisten, das nur Monitordaten
   // herausgibt und deshalb bewusst NICHT in dieser Liste steht.
   'monitore:identifizieren',
+  // Anmelden/Abmelden/Anmeldestatus gehoeren dem Control-Fenster - Player
+  // und Spectator haben mit der Kontoverwaltung nichts zu tun.
+  'anmeldung:starten',
+  'anmeldung:beenden',
+  'anmeldung:status',
 ])
 
 /**
@@ -124,5 +127,46 @@ export function ipcRegistrieren(): void {
   ipcMain.handle('daten:loeschen', (event) => {
     kanalPruefen(event, 'daten:loeschen')
     return alleDatenLoeschen()
+  })
+
+  // Nur ob es geklappt hat geht an den Renderer - kein Token, keine Adresse,
+  // kein Code (siehe AnmeldungsErgebnis in oauth.ts). Bricht der Nutzer die
+  // Anmeldung selbst ab (Fenster geschlossen, Zeitlimit), ist das keine
+  // Fehlermeldung wert, sondern eine ruhig zu behandelnde Entscheidung -
+  // istAnmeldungAbbruch() unterscheidet das von einem echten Fehlerfall, der
+  // im Main-Prozess protokolliert (nicht an den Renderer gereicht) wird.
+  // Nach Erfolg wird sofort verbunden, ohne auf einen Neustart zu warten -
+  // verbindungStarten() ist selbst dagegen abgesichert, neben einer
+  // bestehenden Verbindung eine zweite aufzubauen.
+  ipcMain.handle('anmeldung:starten', async (event): Promise<AnmeldungsErgebnis> => {
+    kanalPruefen(event, 'anmeldung:starten')
+    try {
+      await anmelden()
+    } catch (fehler) {
+      if (istAnmeldungAbbruch(fehler)) return { erfolg: false, abgebrochen: true }
+      console.error('Anmeldung fehlgeschlagen:', fehler)
+      return { erfolg: false, abgebrochen: false }
+    }
+    void verbindungStarten()
+    return { erfolg: true }
+  })
+
+  // Trennt die Verbindung und meldet den Zustand danach ausdruecklich als
+  // "nichtAngemeldet" - ohne das haette das Control-Fenster nach einer
+  // bewussten Abmeldung "getrennt" gezeigt, als wuerde gleich wieder
+  // verbunden (websocket.ts meldet 'getrennt' inzwischen ohnehin nur noch
+  // bei einem echten Abbruch, nicht bei einem gezielten schliessen()).
+  ipcMain.handle('anmeldung:beenden', async (event) => {
+    kanalPruefen(event, 'anmeldung:beenden')
+    await abmelden()
+    await verbindungBeenden()
+    verbindungszustandVerteilen('nichtAngemeldet')
+  })
+
+  // Reine Statusabfrage, kein Geheimnis - nur ob ueberhaupt eine Anmeldung
+  // vorliegt, nie das Token oder das Konto selbst.
+  ipcMain.handle('anmeldung:status', (event) => {
+    kanalPruefen(event, 'anmeldung:status')
+    return istAngemeldet()
   })
 }

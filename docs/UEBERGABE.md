@@ -22,8 +22,11 @@ entstehen, der die Rohereignisse in den Anzeigezustand übersetzt.
   Control-Fenster sagt, warum. Aufzeichnen (`AD_AUFZEICHNEN`) braucht deshalb
   jetzt ebenfalls eine vorher abgeschlossene Anmeldung (Schritt 1) — ohne
   echte Verbindung gäbe es nichts aufzuzeichnen.
-- Anmeldung, REST- und WebSocket-Anbindung sind gebaut, aber nur so weit
-  geprüft, wie es ohne Konto möglich war.
+- Anmelden/Abmelden sind jetzt im Control-Fenster bedienbar (Knöpfe scharf,
+  Anmeldestatus zeigt „angemeldet"/„nicht angemeldet"). REST- und
+  WebSocket-Anbindung sind gebaut, aber nur so weit geprüft, wie es ohne
+  Konto möglich war — der eigentliche Anmeldeablauf mit echtem Konto steht
+  bei dir in Schritt 1 noch aus.
 - Die rechtlichen Pflichtangaben sind vollständig, im Repository und im
   Über-Panel der Anwendung.
 
@@ -32,7 +35,6 @@ entstehen, der die Rohereignisse in den Anzeigezustand übersetzt.
 | Fehlt | Warum |
 |---|---|
 | Adapter von Rohereignis zu Anzeigezustand | Braucht deinen Mitschnitt, sonst wäre das Schema geraten |
-| Anmeldung im Control-Fenster bedienbar | Die Knöpfe sind absichtlich deaktiviert, solange die Anmeldung nicht einmal echt durchgelaufen ist |
 | Zuschauer-Screen, Installer, Auto-Update | Zweiter Bauabschnitt |
 
 ## Vorbereitung
@@ -67,15 +69,21 @@ worden. Sie läuft über ein eingebettetes Fenster auf der echten
 Autodarts-Anmeldeseite; die Anwendung sieht dein Passwort nicht, sie fängt nur
 den Rückgabe-Code ab.
 
-Es gibt bisher keinen Knopf dafür — die Anbindung ans Control-Fenster fehlt
-absichtlich, weil sie erst sinnvoll ist, wenn die Anmeldung nachweislich
-funktioniert. Für diesen einen Test rufe ich `anmelden()` beim Start auf, oder
-du sagst mir, dass ich den Knopf gleich mitbaue.
+**So löst du sie aus:** Anwendung starten (`npm run dev`), im Control-Fenster
+im Bereich „Verbindung" auf „Anmelden" klicken. Der Knopf ist gesperrt,
+während eine Anmeldung läuft — ein zweiter Klick öffnet kein zweites
+Anmeldefenster.
 
 **Erfolgskriterium:** Das Anmeldefenster öffnet sich auf der Autodarts-Seite,
 du meldest dich mit E-Mail und Passwort an, das Fenster schließt sich von
-selbst, und in der Konsole steht ein Token. Beim zweiten Start erscheint kein
-Anmeldefenster mehr, weil der Aktualisierungs-Token greift.
+selbst, „Angemeldet als" wechselt im Control-Fenster auf „angemeldet", und die
+Anwendung verbindet sich sofort — ohne Neustart. Beim zweiten Start der
+Anwendung verbindet sie sich von selbst, ohne dass du erneut auf „Anmelden"
+klicken musst, weil der Aktualisierungs-Token greift. Bricht die Anmeldung ab
+(Fenster geschlossen, fünf Minuten ohne Rückmeldung), bleibt die Anwendung
+ruhig im Ruhezustand, ohne eine Fehlermeldung zu zeigen — das ist deine
+Entscheidung, kein Fehler. Ein echter Fehler (z. B. eine abgelehnte
+Serverantwort) erscheint dagegen als Hinweis im Control-Fenster.
 
 **Was ich dabei wissen muss**, weil es nur aus einer echten Serverantwort
 hervorgeht: Heißen die Felder in der Antwort tatsächlich `refresh_token` und

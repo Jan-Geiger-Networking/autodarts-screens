@@ -200,15 +200,57 @@ let zugriff: { token: string; laeuftAbUm: number } | null = null
 type UmleitungsEreignis = { url: string; isMainFrame: boolean; preventDefault: () => void }
 
 /**
+ * Ergebnis eines Anmeldeversuchs ueber den IPC-Kanal anmeldung:starten
+ * (siehe src/main/ipc.ts). Bewusst ohne Fehlertext: kein Token, keine
+ * Adresse und kein Code sollen je den Hauptprozess verlassen. `abgebrochen`
+ * unterscheidet eine bewusste Nutzerentscheidung (Fenster geschlossen,
+ * Zeitlimit erreicht - siehe istAnmeldungAbbruch) von einem echten
+ * Fehlerfall, den das Control-Fenster anzeigen soll.
+ */
+export type AnmeldungsErgebnis = { erfolg: true } | { erfolg: false; abgebrochen: boolean }
+
+/**
+ * Ob ein von anmelden() geworfener Fehler eine bewusste Nutzerentscheidung
+ * ist (Anmeldefenster geschlossen, oder fuenf Minuten ohne Rueckmeldung)
+ * statt ein echter Fehlerfall - Aufrufer wie ipc.ts sollen das ruhig
+ * behandeln, nicht als Fehler im Control-Fenster anzeigen. Prueft den
+ * Nachrichtentext, weil es dafuer keinen eigenen Fehlertyp gibt (anders als
+ * NichtAngemeldetFehler); beide Nachrichten unten beginnen mit demselben
+ * Praefix.
+ */
+export function istAnmeldungAbbruch(fehler: unknown): boolean {
+  return fehler instanceof Error && fehler.message.startsWith('Anmeldung abgebrochen')
+}
+
+// Verhindert einen zweiten, gleichzeitigen Anmeldeversuch - ohne diese
+// Sperre wuerde ein Doppelklick auf den Anmelden-Knopf im Control-Fenster
+// zwei Anmeldefenster gleichzeitig oeffnen. Gleiches Muster wie
+// laufendeErneuerung weiter unten fuer die Token-Erneuerung: in jedem
+// Ausgang - Erfolg wie Fehler - wieder auf null gesetzt, damit ein
+// spaeterer Versuch neu starten kann.
+let laufendeAnmeldung: Promise<void> | null = null
+
+/**
  * Oeffnet das Autodarts-Anmeldefenster in eigener Sitzungspartition, fuehrt
  * den Authorization-Code-Ablauf mit PKCE und state durch und legt das
  * Aktualisierungs-Token verschluesselt ab. Bricht der Nutzer ab (Fenster
  * geschlossen ohne Code, oder fuenf Minuten ohne jede Rueckmeldung), wirft
  * "Anmeldung abgebrochen" bzw. eine Zeitlimit-Meldung. Enthaelt die Umleitung
  * einen Fehler oder einen unerwarteten state statt eines Codes, wirft die
- * jeweilige Meldung, ohne den Code einzutauschen.
+ * jeweilige Meldung, ohne den Code einzutauschen. Laeuft bereits ein
+ * Anmeldeversuch, liefert ein zweiter Aufruf dieselbe Promise zurueck statt
+ * ein zweites Anmeldefenster zu oeffnen.
  */
 export async function anmelden(): Promise<void> {
+  if (!laufendeAnmeldung) {
+    laufendeAnmeldung = anmeldungDurchfuehren().finally(() => {
+      laufendeAnmeldung = null
+    })
+  }
+  return laufendeAnmeldung
+}
+
+async function anmeldungDurchfuehren(): Promise<void> {
   const { verifier, challenge } = pkcePaar()
   const erwarteterState = zufallswert(24)
   const { BrowserWindow, session, shell } = await import('electron')

@@ -9,17 +9,24 @@ describe('darfKanalNutzen', () => {
     expect(darfKanalNutzen('control', 'konfiguration:setzen')).toBe(true)
     expect(darfKanalNutzen('control', 'daten:loeschen')).toBe(true)
     expect(darfKanalNutzen('control', 'monitore:identifizieren')).toBe(true)
+    expect(darfKanalNutzen('control', 'anmeldung:starten')).toBe(true)
+    expect(darfKanalNutzen('control', 'anmeldung:beenden')).toBe(true)
+    expect(darfKanalNutzen('control', 'anmeldung:status')).toBe(true)
   })
 
   it('verweigert dem Player-Fenster die eingeschraenkten Kanaele', () => {
     expect(darfKanalNutzen('player', 'fenster:oeffnen')).toBe(false)
     expect(darfKanalNutzen('player', 'konfiguration:lesen')).toBe(false)
     expect(darfKanalNutzen('player', 'daten:loeschen')).toBe(false)
+    expect(darfKanalNutzen('player', 'anmeldung:starten')).toBe(false)
+    expect(darfKanalNutzen('player', 'anmeldung:beenden')).toBe(false)
+    expect(darfKanalNutzen('player', 'anmeldung:status')).toBe(false)
   })
 
   it('verweigert dem Spectator-Fenster die eingeschraenkten Kanaele', () => {
     expect(darfKanalNutzen('spectator', 'fenster:schliessen')).toBe(false)
     expect(darfKanalNutzen('spectator', 'konfiguration:setzen')).toBe(false)
+    expect(darfKanalNutzen('spectator', 'anmeldung:starten')).toBe(false)
   })
 
   it('verweigert einem unbekannten Fenster (art null) die eingeschraenkten Kanaele', () => {

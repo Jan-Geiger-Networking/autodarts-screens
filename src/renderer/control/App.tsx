@@ -19,15 +19,56 @@ export function App() {
   const [konfiguration, setKonfiguration] = useState<Konfiguration | null>(null)
   const [monitore, setMonitore] = useState<MonitorEintrag[]>([])
   const [verbindungszustand, setVerbindungszustand] = useState<Verbindungszustand | null>(null)
+  // null: Anmeldestatus noch nicht abgefragt. Wird zusaetzlich aus dem
+  // Verbindungszustand nachgefuehrt (siehe useEffect unten) - "verbunden"
+  // ist nur ueberhaupt moeglich, wenn eine Anmeldung vorliegt, und
+  // "nichtAngemeldet" sagt es direkt.
+  const [angemeldet, setAngemeldet] = useState<boolean | null>(null)
+  const [anmeldungLaeuft, setAnmeldungLaeuft] = useState(false)
+  // Nur fuer einen echten Fehlerfall gesetzt (siehe anmeldenAusloesen) - ein
+  // Abbruch durch den Nutzer selbst bleibt bewusst ohne Meldung.
+  const [anmeldungFehler, setAnmeldungFehler] = useState<string | null>(null)
 
   useEffect(() => {
     window.app.konfigurationLesen().then(setKonfiguration)
     window.app.monitore().then(setMonitore)
-    return window.app.beiVerbindungszustand(setVerbindungszustand)
+    window.app.anmeldungStatus().then(setAngemeldet)
+    return window.app.beiVerbindungszustand((z) => {
+      setVerbindungszustand(z)
+      if (z === 'nichtAngemeldet') setAngemeldet(false)
+      if (z === 'verbunden') setAngemeldet(true)
+    })
   }, [])
 
   async function konfigurationAendern(teil: Partial<Konfiguration>): Promise<void> {
     setKonfiguration(await window.app.konfigurationSetzen(teil))
+  }
+
+  async function anmeldenAusloesen(): Promise<void> {
+    setAnmeldungLaeuft(true)
+    setAnmeldungFehler(null)
+    try {
+      const ergebnis = await window.app.anmeldungStarten()
+      if (ergebnis.erfolg) {
+        setAngemeldet(true)
+      } else if (!ergebnis.abgebrochen) {
+        setAnmeldungFehler('Anmeldung fehlgeschlagen, bitte erneut versuchen.')
+      }
+      // ergebnis.abgebrochen: Nutzerentscheidung, keine Meldung noetig.
+    } finally {
+      setAnmeldungLaeuft(false)
+    }
+  }
+
+  async function abmeldenAusloesen(): Promise<void> {
+    setAnmeldungLaeuft(true)
+    setAnmeldungFehler(null)
+    try {
+      await window.app.anmeldungBeenden()
+      setAngemeldet(false)
+    } finally {
+      setAnmeldungLaeuft(false)
+    }
   }
 
   return (
@@ -36,7 +77,9 @@ export function App() {
 
       <fieldset className="bereich">
         <legend>Verbindung</legend>
-        <p className="hinweis">Angemeldet als: unbekannt — Anmeldung noch nicht angebunden.</p>
+        <p className="hinweis">
+          Angemeldet als: {angemeldet === null ? 'unbekannt' : angemeldet ? 'angemeldet' : 'nicht angemeldet'}
+        </p>
         <label className="feld">
           Board-ID
           <input
@@ -51,25 +94,14 @@ export function App() {
           {verbindungszustand ? VERBINDUNGSTEXT[verbindungszustand] : 'unbekannt'}
         </p>
         <div className="knopfreihe">
-          <button
-            type="button"
-            disabled
-            title="Noch nicht angebunden: src/autodarts/oauth.ts existiert, aber ohne IPC-Kanal"
-          >
+          <button type="button" onClick={anmeldenAusloesen} disabled={anmeldungLaeuft}>
             Anmelden
           </button>
-          <button
-            type="button"
-            disabled
-            title="Noch nicht angebunden: src/autodarts/oauth.ts existiert, aber ohne IPC-Kanal"
-          >
+          <button type="button" onClick={abmeldenAusloesen} disabled={anmeldungLaeuft}>
             Abmelden
           </button>
         </div>
-        <p className="hinweis">
-          Anmelden/Abmelden sind vorbereitet, aber noch nicht mit dem Hauptprozess verbunden — das
-          kommt mit der Anmelde-Aufgabe.
-        </p>
+        {anmeldungFehler && <p className="hinweis">{anmeldungFehler}</p>}
       </fieldset>
 
       <fieldset className="bereich">

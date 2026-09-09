@@ -2,6 +2,7 @@ import type { FensterArt, MatchState } from '../shared/typen'
 import type { Konfiguration } from '../main/konfiguration'
 import type { MonitorEintrag } from '../main/monitore'
 import type { Verbindungszustand } from '../autodarts/websocket'
+import type { AnmeldungsErgebnis } from '../autodarts/oauth'
 
 export {}
 
@@ -18,6 +19,9 @@ declare global {
       fensterOeffnen: (art: FensterArt) => Promise<void>
       fensterSchliessen: (art: FensterArt) => Promise<void>
       datenLoeschen: () => Promise<string[]>
+      anmeldungStarten: () => Promise<AnmeldungsErgebnis>
+      anmeldungBeenden: () => Promise<void>
+      anmeldungStatus: () => Promise<boolean>
     }
   }
 }

@@ -33,6 +33,9 @@ const ERWARTETE_SCHLUESSEL = [
   'fensterOeffnen',
   'fensterSchliessen',
   'datenLoeschen',
+  'anmeldungStarten',
+  'anmeldungBeenden',
+  'anmeldungStatus',
 ].sort()
 
 describe('preload: exponierte window.app-Oberflaeche', () => {

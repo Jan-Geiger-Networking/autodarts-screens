@@ -297,8 +297,14 @@ async function echteVerbindung(
           reject(new Error('Autodarts-WebSocket-Verbindung fehlgeschlagen'))
           return
         }
-        zustandMelden(zustandsRueckruf, 'getrennt')
-        if (!geschlossen) wiederverbindenPlanen()
+        // Nur bei einem echten Abbruch (nicht bei schliessen()) 'getrennt'
+        // melden - sonst zeigte das Control-Fenster nach einer bewussten
+        // Abmeldung "Wiederverbindung laeuft automatisch" an, obwohl gar
+        // keine geplant ist (geschlossen unterdrueckt sie unten ohnehin).
+        if (!geschlossen) {
+          zustandMelden(zustandsRueckruf, 'getrennt')
+          wiederverbindenPlanen()
+        }
       }
     })
   }
