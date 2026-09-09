@@ -8,6 +8,7 @@ import type { FensterArt } from '../shared/typen'
 import { monitoreAuflisten, monitoreIdentifizieren } from './monitore'
 import { konfigurationLesen, konfigurationSchreiben, zusammenfuehren } from './konfiguration'
 import { fensterArtVon, fensterOeffnen, fensterSchliessen, konfigurationAktualisieren } from './fenster'
+import { alleDatenLoeschen } from './datenLoeschen'
 
 const GUELTIGE_FENSTER_ARTEN: readonly FensterArt[] = ['control', 'player', 'spectator']
 
@@ -27,6 +28,7 @@ const NUR_CONTROL: ReadonlySet<string> = new Set([
   'fenster:schliessen',
   'konfiguration:lesen',
   'konfiguration:setzen',
+  'daten:loeschen',
 ])
 
 /**
@@ -91,5 +93,12 @@ export function ipcRegistrieren(): void {
   ipcMain.handle('fenster:schliessen', (event, art: unknown) => {
     kanalPruefen(event, 'fenster:schliessen')
     if (istFensterArt(art)) fensterSchliessen(art)
+  })
+
+  // Die eigentliche Bestaetigung ("bist du sicher?") liegt beim Renderer -
+  // dieser Kanal loescht ohne Rueckfrage, sobald er aufgerufen wird.
+  ipcMain.handle('daten:loeschen', (event) => {
+    kanalPruefen(event, 'daten:loeschen')
+    return alleDatenLoeschen()
   })
 }

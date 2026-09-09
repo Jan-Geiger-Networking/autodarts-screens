@@ -15,6 +15,7 @@ declare global {
       konfigurationSetzen: (teil: Partial<Konfiguration>) => Promise<Konfiguration>
       fensterOeffnen: (art: FensterArt) => Promise<void>
       fensterSchliessen: (art: FensterArt) => Promise<void>
+      datenLoeschen: () => Promise<string[]>
     }
   }
 }

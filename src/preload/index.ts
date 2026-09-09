@@ -24,4 +24,9 @@ contextBridge.exposeInMainWorld('app', {
 
   fensterOeffnen: (art: FensterArt): Promise<void> => ipcRenderer.invoke('fenster:oeffnen', art),
   fensterSchliessen: (art: FensterArt): Promise<void> => ipcRenderer.invoke('fenster:schliessen', art),
+
+  // Liefert die Namen der tatsaechlich geloeschten Dateien/Ordner (siehe
+  // src/main/datenLoeschen.ts). Die Rueckfrage vor dem Aufruf uebernimmt der
+  // Renderer, nicht dieser Kanal.
+  datenLoeschen: (): Promise<string[]> => ipcRenderer.invoke('daten:loeschen'),
 })

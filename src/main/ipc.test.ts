@@ -7,11 +7,13 @@ describe('darfKanalNutzen', () => {
     expect(darfKanalNutzen('control', 'fenster:schliessen')).toBe(true)
     expect(darfKanalNutzen('control', 'konfiguration:lesen')).toBe(true)
     expect(darfKanalNutzen('control', 'konfiguration:setzen')).toBe(true)
+    expect(darfKanalNutzen('control', 'daten:loeschen')).toBe(true)
   })
 
   it('verweigert dem Player-Fenster die eingeschraenkten Kanaele', () => {
     expect(darfKanalNutzen('player', 'fenster:oeffnen')).toBe(false)
     expect(darfKanalNutzen('player', 'konfiguration:lesen')).toBe(false)
+    expect(darfKanalNutzen('player', 'daten:loeschen')).toBe(false)
   })
 
   it('verweigert dem Spectator-Fenster die eingeschraenkten Kanaele', () => {

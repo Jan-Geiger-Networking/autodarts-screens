@@ -1,0 +1,108 @@
+/* Control-Fenster: normales Desktop-Fenster, keine der Ruhe-Vorgaben des
+   Player-Screens. Nutzt dieselben Tokens fuer Farben und Schrift; technische
+   Werte (Monitor-Aufloesung u.ae.) in --jg-font-mono gemaess Abschnitt 12. */
+
+.control {
+  background: var(--jg-bg);
+  color: var(--jg-text);
+  font-family: var(--jg-font-body);
+  min-height: 100vh;
+  padding: 1.5rem 2rem 3rem;
+  box-sizing: border-box;
+}
+
+.bereich {
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-md);
+  background: var(--jg-surface);
+  margin: 0 0 1.25rem;
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+.bereich legend {
+  font-family: var(--jg-font-display);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--jg-accent);
+  padding: 0 0.4rem;
+}
+
+.feld {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0 0 0.75rem;
+  max-width: 28rem;
+  font-size: var(--jg-fs-body-sm);
+}
+
+.feld input,
+.feld select {
+  font-family: var(--jg-font-mono);
+  background: var(--jg-surface-hi);
+  color: var(--jg-text);
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  padding: 0.4rem 0.6rem;
+}
+
+.hinweis {
+  color: var(--jg-muted);
+  font-size: var(--jg-fs-body-sm);
+}
+
+.knopfreihe {
+  display: flex;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+}
+
+button {
+  font-family: var(--jg-font-body);
+  font-weight: 500;
+  background: var(--jg-surface-hi);
+  color: var(--jg-text);
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--jg-border-hover);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ueber-panel section {
+  margin: 0 0 1.25rem;
+}
+
+.ueber-panel h3 {
+  margin: 0 0 0.5rem;
+}
+
+.anbieter-tabelle {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  font-family: var(--jg-font-mono);
+  font-size: var(--jg-fs-body-sm);
+  margin: 0 0 0.75rem;
+}
+
+.anbieter-tabelle dt {
+  color: var(--jg-muted);
+}
+
+.anbieter-tabelle dd {
+  margin: 0;
+}
+
+.loeschmeldung {
+  color: var(--jg-accent);
+}
