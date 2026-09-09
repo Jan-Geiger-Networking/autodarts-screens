@@ -39,7 +39,23 @@ export function aufzeichnungStarten(pfad: string): (roh: unknown) => void {
   laufenderStream = stream
   const start = Date.now()
 
+  // Ohne eigenen Zuhoerer hier waere ein Schreibfehler (Platte voll, Pfad
+  // weggefallen, Rechte entzogen) ein unbehandeltes 'error'-Ereignis, das den
+  // gesamten Prozess beendet - mitten in einem Match, das sich nicht
+  // wiederholen laesst. Die Anzeige des Matches ist wichtiger als die
+  // Aufzeichnung: der Fehler wird einmal protokolliert, danach bleibt die
+  // Aufzeichnung fuer den Rest des Matches stumm ausgeschaltet, statt eine
+  // Fehlerkaskade auszuloesen.
+  let fehlgeschlagen = false
+  stream.on('error', (fehler) => {
+    console.warn(`Aufzeichnung: Stream-Fehler, Aufzeichnung wird beendet (${fehler.message}).`)
+    fehlgeschlagen = true
+    if (laufenderStream === stream) laufenderStream = undefined
+  })
+
   return (roh: unknown) => {
+    if (fehlgeschlagen) return
+
     const t = Date.now() - start
     let text: string
     try {

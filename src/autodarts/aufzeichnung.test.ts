@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { aufzeichnungBeenden, aufzeichnungStarten, wiedergeben } from './aufzeichnung'
@@ -94,5 +94,23 @@ describe('Aufzeichnung und Wiedergabe', () => {
     const ergebnis = await wiedergeben(pfad, (roh) => gesehen.push(roh), 0)
     expect(gesehen).toEqual([{ nr: 2 }])
     expect(ergebnis.uebersprungen).toBe(1)
+  })
+
+  it('uebersteht einen Stream-Fehler waehrend einer laufenden Aufzeichnung', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    // Ein Verzeichnis statt einer Datei als Ziel loest beim Schreiben
+    // zuverlaessig einen 'error' auf dem WriteStream aus.
+    const verzeichnis = mkdtempSync(join(tmpdir(), 'ad-'))
+    const pfad = join(verzeichnis, 'als-ordner')
+    mkdirSync(pfad)
+    const schreiben = aufzeichnungStarten(pfad)
+
+    // Der Stream-Fehler tritt asynchron ein - abwarten, bis er protokolliert wurde.
+    await vi.waitFor(() => expect(warnSpy).toHaveBeenCalled())
+
+    expect(() => schreiben({ nr: 1 })).not.toThrow()
+    await expect(aufzeichnungBeenden()).resolves.toBeUndefined()
+
+    warnSpy.mockRestore()
   })
 })
