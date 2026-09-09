@@ -6,21 +6,15 @@
 // Endpunkte sind nicht bestaetigt.
 
 import { zugriffsToken } from './oauth'
+import { NichtAngemeldetFehler } from './fehler'
+
+// Re-exportiert fuer bestehende und kuenftige Aufrufer, die den Fehlertyp
+// zusammen mit holen()/senden() aus diesem Modul erwarten. Die Klasse selbst
+// lebt in fehler.ts (siehe dortiger Kommentar zur Ringabhaengigkeit mit
+// oauth.ts, das sie ebenfalls wirft).
+export { NichtAngemeldetFehler }
 
 const BASIS = 'https://api.autodarts.com'
-
-/**
- * Wird geworfen, wenn der Server mit dem bekannten Autodarts-401-Fehlerrumpf
- * antwortet (siehe istNichtAngemeldet). Eine eigene, erkennbare Fehlerart -
- * das Control-Fenster kann sie per instanceof erkennen und "Bitte erneut
- * anmelden" zeigen, statt eine rohe HTTP-Meldung durchzureichen.
- */
-export class NichtAngemeldetFehler extends Error {
-  constructor() {
-    super('Bitte erneut anmelden')
-    this.name = 'NichtAngemeldetFehler'
-  }
-}
 
 /**
  * Reine Erkennung des Autodarts-401-Fehlerrumpfs, eigener Test 2026-09-09:

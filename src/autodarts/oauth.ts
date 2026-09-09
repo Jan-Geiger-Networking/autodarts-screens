@@ -17,6 +17,7 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { readFile, writeFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
+import { NichtAngemeldetFehler } from './fehler'
 
 const AUTORISIERUNG = 'https://api.autodarts.com/auth/v1/oauth/authorize'
 const AUSTAUSCH = 'https://api.autodarts.com/auth/v1/exchange'
@@ -296,7 +297,7 @@ let laufendeErneuerung: Promise<string> | null = null
 async function erneuerungDurchfuehren(): Promise<string> {
   const ablage = await ablageLesen()
   if (!ablage) {
-    throw new Error('Bitte erneut anmelden')
+    throw new NichtAngemeldetFehler()
   }
 
   try {
@@ -318,7 +319,7 @@ async function erneuerungDurchfuehren(): Promise<string> {
     if (fehler instanceof AutodartsHttpFehler && (fehler.status === 400 || fehler.status === 401)) {
       zugriff = null
       await ablageVerwerfen()
-      throw new Error('Bitte erneut anmelden')
+      throw new NichtAngemeldetFehler()
     }
     throw new Error('Erneuerung des Zugriffstokens fehlgeschlagen, bitte spaeter erneut versuchen', {
       cause: fehler,
@@ -332,9 +333,11 @@ async function erneuerungDurchfuehren(): Promise<string> {
  * Aktualisierungs-Token (gebuendelt per Single-Flight, siehe
  * laufendeErneuerung). Schlaegt die Erneuerung mit einer Ablehnung durch den
  * Server fehl (oder ist noch nie angemeldet worden), wird die Ablage
- * verworfen und "Bitte erneut anmelden" geworfen - das Control-Fenster kann
- * diese Meldung direkt anzeigen. Ein Netzwerkfehler wirft eine andere
- * Meldung und laesst die Ablage unangetastet.
+ * verworfen und ein NichtAngemeldetFehler geworfen (Nutzertext "Bitte
+ * erneut anmelden", das Control-Fenster kann ihn direkt anzeigen) - Aufrufer
+ * sollen per instanceof auf den Typ pruefen, nicht auf den Nachrichtentext,
+ * der sich jederzeit aendern kann. Ein Netzwerkfehler wirft eine andere
+ * Fehlerart und laesst die Ablage unangetastet.
  */
 export async function zugriffsToken(): Promise<string> {
   const jetzt = Date.now() / 1000

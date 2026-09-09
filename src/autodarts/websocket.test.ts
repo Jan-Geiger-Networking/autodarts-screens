@@ -126,6 +126,21 @@ describe('verbinden: Zustandsmeldungen und Abonnement-Dedublizierung', () => {
     expect(zustaende).toEqual(['nichtAngemeldet'])
   })
 
+  it('erkennt "nichtAngemeldet" ueber den Fehlertyp, nicht ueber den Nachrichtentext (Fix-Runde 2)', async () => {
+    const fehler = new NichtAngemeldetFehler()
+    // Nachricht nachtraeglich auf einen komplett anderen Wortlaut geaendert -
+    // der Nutzertext ist fuer Menschen gedacht und darf sich jederzeit
+    // aendern. Wuerde istAuthFehler() in websocket.ts (wieder) auf einen
+    // Textvergleich zurueckfallen statt auf instanceof zu pruefen, bliebe
+    // "nichtAngemeldet" hier aus und dieser Test schluege fehl.
+    fehler.message = 'Ein ganz anderer Text, der morgen im UI stehen koennte'
+    vi.mocked(senden).mockRejectedValueOnce(fehler)
+
+    const zustaende: string[] = []
+    await expect(verbinden(() => {}, (z) => zustaende.push(z))).rejects.toBe(fehler)
+    expect(zustaende).toEqual(['nichtAngemeldet'])
+  })
+
   it('meldet einen Anmeldeverlust mitten in der Sitzung, versucht weiter und greift bei erneuter Anmeldung von selbst wieder (Befund 2)', async () => {
     vi.mocked(senden)
       .mockResolvedValueOnce('ticket-1')

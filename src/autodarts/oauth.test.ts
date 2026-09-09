@@ -4,6 +4,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { codeAusUmleitung, pkcePaar, tokenNochGueltig, zugriffsToken } from './oauth'
+import { NichtAngemeldetFehler } from './fehler'
 
 describe('pkcePaar', () => {
   it('erzeugt einen Verifier zwischen 43 und 128 Zeichen', () => {
@@ -146,8 +147,16 @@ describe('zugriffsToken: Single-Flight und Fehlerklassifizierung', () => {
     writeFileSync(ablageDatei, JSON.stringify({ refreshToken: 'r-invalid-grant' }))
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ error: 'invalid_grant' }), { status: 400 }))
 
-    await expect(zugriffsToken()).rejects.toThrow('Bitte erneut anmelden')
+    // Auf den Typ pruefen, nicht auf den Nachrichtentext (Fix-Runde 2,
+    // Task 5) - Aufrufer wie websocket.ts erkennen "nicht angemeldet" per
+    // instanceof, der Text ist nur fuer die Anzeige gedacht.
+    await expect(zugriffsToken()).rejects.toBeInstanceOf(NichtAngemeldetFehler)
 
     expect(existsSync(ablageDatei)).toBe(false)
+  })
+
+  it('wirft NichtAngemeldetFehler ohne Netzaufruf, wenn noch nie ein Aktualisierungs-Token gespeichert wurde', async () => {
+    await expect(zugriffsToken()).rejects.toBeInstanceOf(NichtAngemeldetFehler)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

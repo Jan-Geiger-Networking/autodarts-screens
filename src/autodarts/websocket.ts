@@ -36,16 +36,15 @@ export type Verbindung = {
 export type Verbindungszustand = 'verbunden' | 'getrennt' | 'nichtAngemeldet'
 
 /**
- * Ob fehler bedeutet, dass sich der Nutzer erneut anmelden muss. Deckt zwei
- * Quellen ab, die beide denselben Wortlaut "Bitte erneut anmelden" tragen:
- * oauth.ts wirft ihn direkt (siehe dortiger Docstring - lokal kein oder ein
- * ungueltiges Aktualisierungs-Token), rest.ts wirft ihn ueber
- * NichtAngemeldetFehler, wenn der Server selbst mit dem bekannten
- * 401-Rumpf antwortet. Beide Faelle sind fuer diesen Zweck gleich zu
- * behandeln.
+ * Ob fehler bedeutet, dass sich der Nutzer erneut anmelden muss. Prueft den
+ * Typ, nicht den Nachrichtentext - oauth.ts (lokal kein oder ein ungueltiges
+ * Aktualisierungs-Token) und rest.ts (der Server antwortet mit dem
+ * bestaetigten 401-Fehlerrumpf) werfen beide denselben NichtAngemeldetFehler
+ * (siehe src/autodarts/fehler.ts). Damit bleibt die Erkennung stabil, selbst
+ * wenn sich der - fuer Menschen gedachte - Nachrichtentext einmal aendert.
  */
 function istAuthFehler(fehler: unknown): boolean {
-  return fehler instanceof NichtAngemeldetFehler || (fehler instanceof Error && fehler.message === 'Bitte erneut anmelden')
+  return fehler instanceof NichtAngemeldetFehler
 }
 
 function zustandMelden(rueckruf: ((z: Verbindungszustand) => void) | undefined, zustand: Verbindungszustand): void {
