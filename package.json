@@ -1,0 +1,32 @@
+{
+  "name": "autodarts-screens",
+  "version": "0.1.0",
+  "description": "Zwei Vollbildschirme fuer Autodarts-Matches: Spielerinfo neben der Scheibe, Broadcast-Ansicht fuer Zuschauer",
+  "author": "Jan Geiger Networking <hey@bsbnet.eu>",
+  "license": "MIT",
+  "repository": "github:Jan-Geiger-Networking/autodarts-screens",
+  "main": "./out/main/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^44.3.0",
+    "electron-vite": "^5.0.0",
+    "typescript": "^7.0.2",
+    "vite": "^7.3.6",
+    "vitest": "^5.0.0"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  }
+}
