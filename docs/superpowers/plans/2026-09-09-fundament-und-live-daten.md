@@ -1100,7 +1100,7 @@ Expected: 3 Tests bestanden
 
 - [ ] **Step 6: Wiedergabe von Hand prüfen**
 
-Run: `AD_WIEDERGABE=docs/fixtures/match.jsonl npm run dev`
+Run: `AD_WIEDERGABE=docs/fixtures/beispiel-wiedergabe.jsonl npm run dev`
 Expected: Die Anwendung startet ohne Anmeldefenster und verarbeitet die aufgezeichneten Ereignisse.
 
 - [ ] **Step 7: Commit**
@@ -1231,7 +1231,7 @@ In `electron.vite.config.ts` `player: resolve('src/renderer/player/index.html')`
 
 - [ ] **Step 5: Von Hand prüfen**
 
-Run: `AD_WIEDERGABE=docs/fixtures/match.jsonl npm run dev`
+Run: `AD_WIEDERGABE=docs/fixtures/beispiel-wiedergabe.jsonl npm run dev`
 Expected: Control- und Player-Fenster öffnen sich, das Player-Fenster im Vollbild auf dem eingestellten Monitor. Eine vorübergehende Ausgabe von `JSON.stringify(zustand)` im Player-Renderer zeigt eintreffende, sich ändernde Zustände. Escape verlässt den Vollbildmodus.
 
 - [ ] **Step 6: Commit**
@@ -1321,7 +1321,7 @@ Die Texte werden im Renderer eingebettet, nicht zur Laufzeit aus den Markdown-Da
 
 - [ ] **Step 6: Von Hand prüfen**
 
-Run: `AD_WIEDERGABE=docs/fixtures/match.jsonl npm run dev`
+Run: `AD_WIEDERGABE=docs/fixtures/beispiel-wiedergabe.jsonl npm run dev`
 Expected:
 - Der Player-Screen zeigt den Rest-Score des aktiven Spielers, aus mehreren Metern lesbar
 - Bei einem Rest von 128 erscheint `T20 · T20 · D4`
