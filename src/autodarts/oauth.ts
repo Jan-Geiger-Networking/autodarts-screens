@@ -26,7 +26,10 @@ const ABMELDUNG_ENDPUNKT = 'https://api.autodarts.com/auth/v1/logout'
 const CLIENT_ID = 'autodarts-play'
 const UMLEITUNG = 'https://play.autodarts.com/auth/google/callback'
 const SCOPE = 'openid profile email'
-const SITZUNGSPARTITION = 'persist:autodarts-anmeldung'
+// Exportiert, damit src/main/datenLoeschen.ts dieselbe Partition raeumen
+// kann wie abmelden() unten, ohne den String ein zweites Mal zu tippen und
+// dabei zu riskieren, dass beide Stellen einmal auseinanderlaufen.
+export const SITZUNGSPARTITION = 'persist:autodarts-anmeldung'
 const PUFFER_SEKUNDEN = 60
 
 // Fuenf Minuten sind reichlich fuer eine Anmeldung inklusive Zwei-Faktor.
@@ -208,7 +211,7 @@ type UmleitungsEreignis = { url: string; isMainFrame: boolean; preventDefault: (
 export async function anmelden(): Promise<void> {
   const { verifier, challenge } = pkcePaar()
   const erwarteterState = zufallswert(24)
-  const { BrowserWindow, session } = await import('electron')
+  const { BrowserWindow, session, shell } = await import('electron')
 
   const sitzung = session.fromPartition(SITZUNGSPARTITION)
   sitzung.setUserAgent(DESKTOP_USER_AGENT)
@@ -223,6 +226,14 @@ export async function anmelden(): Promise<void> {
       nodeIntegration: false,
       sandbox: true,
     },
+  })
+
+  // Echte Drittseiten (Google, Autodarts) koennen Popups oeffnen (z.B.
+  // Konto-Auswahl) - die landen im Systembrowser statt in einem neuen
+  // Electron-Fenster (Befund 4, gleiches Muster wie in fenster.ts).
+  fenster.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://')) void shell.openExternal(url)
+    return { action: 'deny' }
   })
 
   const code = await new Promise<string>((resolve, reject) => {

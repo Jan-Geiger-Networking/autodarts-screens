@@ -32,8 +32,8 @@ export function UeberPanel() {
   async function alleDatenLoeschen() {
     const sicher = window.confirm(
       'Wirklich alle lokalen Daten unwiderruflich löschen?\n\n' +
-        'Betroffen: Konfiguration und gespeicherte Anmeldung sowie alle Aufzeichnungen ' +
-        'unter recordings/.',
+        'Betroffen: Konfiguration, gespeicherte Anmeldung samt Anmelde-Sitzung ' +
+        '(danach ist eine erneute Anmeldung nötig) sowie alle Aufzeichnungen unter recordings/.',
     )
     if (!sicher) return
 
@@ -92,9 +92,12 @@ export function UeberPanel() {
         </p>
         <p>
           Alle Daten liegen ausschließlich lokal unter <code>%APPDATA%\autodarts-screens</code>,
-          es gibt keinen Server dieser Anwendung. Übermittelt wird ausschließlich an die
-          Autodarts-API (Anmeldung, Abruf des Matches) und an GitHub (Prüfung auf neue Versionen)
-          — keine Telemetrie, keine Absturzberichte an Dritte.
+          es gibt keinen Server dieser Anwendung. Startet der Nutzer selbst eine Aufzeichnung mit
+          einem eigenen Dateipfad (Entwicklungs- und Testfunktion), landet sie dort statt im
+          Standardordner — weiterhin ausschließlich lokal. Übermittelt wird ausschließlich an die
+          Autodarts-API (Anmeldung, Abruf des Matches) — keine Telemetrie, keine Absturzberichte an
+          Dritte. Eine automatische Prüfung auf neue Versionen ist noch nicht eingebaut; sobald sie
+          es ist, wird sie hier ergänzt.
         </p>
         <p>
           Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung) bzw. lit. f

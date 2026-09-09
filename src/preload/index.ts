@@ -5,7 +5,12 @@ import type { MonitorEintrag } from '../main/monitore'
 import type { Verbindungszustand } from '../autodarts/websocket'
 
 contextBridge.exposeInMainWorld('app', {
-  version: process.env.npm_package_version ?? '0.1.0',
+  // Synchron per sendSync statt eines Umgebungsvariablen-Rueckfalls: npm
+  // setzt process.env.npm_package_version nur unter "npm run ..." - im
+  // gepackten Programm existiert die Variable nicht (Befund 3), der Rueckfall
+  // '0.1.0' hat dann immer gegriffen. app.getVersion() liefert die echte,
+  // aus package.json gepackte Version.
+  version: ipcRenderer.sendSync('app:version') as string,
 
   // Ruft rueckruf bei jedem eintreffenden MatchState auf. Der Rueckgabewert
   // meldet genau diesen einen Zuhoerer wieder ab, damit React ihn beim

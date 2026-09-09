@@ -3,7 +3,7 @@
 ## 1. Verantwortliche Stelle
 
 Jan Geiger Networking, Inhaber Jan Geiger
-Dorfstr. 10A, 32107 Bad Salzuflen, Deutschland
+Dorfstr. 10A, 32107 Bad Salzuflen, Nordrhein-Westfalen, Deutschland
 
 E-Mail: hey@bsbnet.eu
 Telefon: +49 5222 9179070
@@ -22,14 +22,19 @@ eingeschalteter Aufzeichnung gespeichert.
 
 ## 3. Wo die Daten liegen
 
-Die Daten liegen ausschließlich lokal unter `%APPDATA%\autodarts-screens`.
-Es gibt keinen Server dieser Anwendung.
+Die Daten liegen standardmäßig ausschließlich lokal unter
+`%APPDATA%\autodarts-screens`. Es gibt keinen Server dieser Anwendung.
+
+Startet der Nutzer selbst eine Aufzeichnung mit einem eigenen Dateipfad
+(Entwicklungs- und Testfunktion), landet sie dort statt im Standardordner —
+weiterhin ausschließlich lokal, nirgends im Netz.
 
 ## 4. Übermittlung an Dritte
 
-An Autodarts gehen die zur Anmeldung und zum Abruf nötigen Anfragen, an
-GitHub die Prüfung auf neue Versionen. Darüber hinaus findet keine
-Übermittlung statt, es gibt keine Telemetrie.
+An Autodarts gehen die zur Anmeldung und zum Abruf nötigen Anfragen. Darüber
+hinaus findet keine Übermittlung statt, es gibt keine Telemetrie. Eine
+automatische Prüfung auf neue Versionen ist noch nicht eingebaut; sobald sie
+es ist, wird sie hier ergänzt.
 
 ## 5. Rechte
 

@@ -1,9 +1,11 @@
 // IPC-Kanaele zwischen Main- und Renderer-Prozessen. Enthaelt nur Kanaele,
 // die heute eine echte Implementierung haben. Anmelden/Abmelden fehlen
-// bewusst: src/autodarts/oauth.ts existiert noch nicht, und ein Kanal ins
-// Leere waere schlimmer als gar keiner - die kommen mit der Anmelde-Aufgabe.
+// bewusst: src/autodarts/oauth.ts existiert und wird bereits beim Start
+// genutzt (siehe index.ts, istAngemeldet()), aber es gibt noch keinen Knopf
+// dafuer im Control-Fenster - ein Kanal ins Leere waere schlimmer als gar
+// keiner, das kommt mit der Anmelde-Aufgabe.
 
-import { BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron'
+import { app, BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron'
 import type { FensterArt } from '../shared/typen'
 import { monitoreAuflisten, monitoreIdentifizieren } from './monitore'
 import { konfigurationLesen, konfigurationSchreiben, zusammenfuehren } from './konfiguration'
@@ -60,6 +62,15 @@ function kanalPruefen(event: IpcMainInvokeEvent, kanal: string): void {
 
 /** Registriert alle IPC-Handler. Wird einmal beim Start aufgerufen. */
 export function ipcRegistrieren(): void {
+  // Synchron statt handle(): das Ueber-Panel zeigt window.app.version direkt
+  // beim Rendern an, ohne auf ein Promise zu warten. app.getVersion() statt
+  // process.env.npm_package_version im Preload (Befund 3) - npm setzt diese
+  // Variable nur unter "npm run ..."; im gepackten Programm existiert sie
+  // nicht. Nur eine Versionsnummer, kein Geheimnis - offen fuer jedes Fenster.
+  ipcMain.on('app:version', (event) => {
+    event.returnValue = app.getVersion()
+  })
+
   ipcMain.handle('monitore:auflisten', () => monitoreAuflisten())
   ipcMain.handle('monitore:identifizieren', () => monitoreIdentifizieren())
 

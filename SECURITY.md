@@ -25,5 +25,5 @@ bereitgestellt.
 ## Verantwortliche Stelle
 
 Jan Geiger Networking, Inhaber Jan Geiger
-Dorfstr. 10A, 32107 Bad Salzuflen, Deutschland
+Dorfstr. 10A, 32107 Bad Salzuflen, Nordrhein-Westfalen, Deutschland
 hey@bsbnet.eu
