@@ -77,6 +77,16 @@ describe('setupWurf', () => {
     }
   })
 
+  it('faellt auch bei Resten zwischen 219 und 229 auf T20 zurueck, wo Regel 2 scheitert', () => {
+    // Fuer diese Reste hinterlaesst jeder moegliche Wurf entweder eine
+    // Bogey-Zahl oder einen Rest ausserhalb 2..170. Beispiel 219: die einzigen
+    // Felder, die unter 171 bringen, sind T17, BULL, T18, T19 und T20 und
+    // hinterlassen 168, 169, 165, 162 und 159 — alle Bogey.
+    for (const rest of [219, 222, 223, 225, 226, 228, 229]) {
+      expect(setupWurf(rest), `Rest ${rest}`).toBe('T20')
+    }
+  })
+
   it('liefert nichts, wenn der Rest selbst ausmachbar ist', () => {
     expect(setupWurf(40)).toBeNull()
     expect(setupWurf(141)).toBeNull()
