@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { FensterArt, MatchState } from '../shared/typen'
 import type { Konfiguration } from '../main/konfiguration'
 import type { MonitorEintrag } from '../main/monitore'
+import type { Verbindungszustand } from '../autodarts/websocket'
 
 contextBridge.exposeInMainWorld('app', {
   version: process.env.npm_package_version ?? '0.1.0',
@@ -13,6 +14,15 @@ contextBridge.exposeInMainWorld('app', {
     const listener = (_event: Electron.IpcRendererEvent, zustand: MatchState) => rueckruf(zustand)
     ipcRenderer.on('zustand', listener)
     return () => ipcRenderer.removeListener('zustand', listener)
+  },
+
+  // Verbindungszustand zur Autodarts-API, vom Hauptprozess verteilt (siehe
+  // src/main/fenster.ts, verbindungszustandVerteilen) - nur das Control-
+  // Fenster bekommt diese Nachrichten tatsaechlich gesendet.
+  beiVerbindungszustand(rueckruf: (z: Verbindungszustand) => void): () => void {
+    const listener = (_event: Electron.IpcRendererEvent, zustand: Verbindungszustand) => rueckruf(zustand)
+    ipcRenderer.on('verbindungszustand', listener)
+    return () => ipcRenderer.removeListener('verbindungszustand', listener)
   },
 
   monitore: (): Promise<MonitorEintrag[]> => ipcRenderer.invoke('monitore:auflisten'),

@@ -12,7 +12,16 @@ entstehen, der die Rohereignisse in den Anzeigezustand übersetzt.
   Vollbild und zeigt live Rest-Score, Checkout-Weg und den aktuellen Wurf.
 - Checkout-Wege und Setup-Empfehlungen sind vollständig und getestet, inklusive
   der Bogey-Zahlen.
-- Aufzeichnung und Wiedergabe funktionieren ohne Netz und ohne Anmeldung.
+- Wiedergabe einer Aufzeichnung funktioniert vollständig ohne Netz und ohne
+  Anmeldung.
+- Die Live-Verbindung ist jetzt tatsächlich verdrahtet (vorher tote Zeile —
+  siehe Git-Historie): mit Anmeldung verbindet sich die Anwendung beim Start
+  automatisch, das Control-Fenster zeigt den echten Verbindungszustand
+  (verbunden/getrennt/nicht angemeldet). Ohne Anmeldung bleibt sie im
+  Ruhezustand statt mit einem Anmeldefenster zu überfallen, und das
+  Control-Fenster sagt, warum. Aufzeichnen (`AD_AUFZEICHNEN`) braucht deshalb
+  jetzt ebenfalls eine vorher abgeschlossene Anmeldung (Schritt 1) — ohne
+  echte Verbindung gäbe es nichts aufzuzeichnen.
 - Anmeldung, REST- und WebSocket-Anbindung sind gebaut, aber nur so weit
   geprüft, wie es ohne Konto möglich war.
 - Die rechtlichen Pflichtangaben sind vollständig, im Repository und im
@@ -48,8 +57,8 @@ AD_TESTZUSTAND=1 npm run dev
 | Variable | Wirkung |
 |---|---|
 | `AD_TESTZUSTAND=1` | Schickt einen erfundenen Spielzustand an den Player-Screen, ohne Netz und ohne Anmeldung. Zum Ansehen des Layouts. |
-| `AD_AUFZEICHNEN=<pfad>` | Schreibt alle Rohereignisse der echten Verbindung mit. |
-| `AD_WIEDERGABE=<pfad>` | Spielt eine Aufzeichnung ab, statt sich zu verbinden. Fordert kein Token an. |
+| `AD_AUFZEICHNEN=<pfad>` | Schreibt alle Rohereignisse der echten Verbindung mit. Braucht eine vorher abgeschlossene Anmeldung (Schritt 1) — ohne sie bleibt die Anwendung im Ruhezustand, statt sich zu verbinden. Ein relativer Pfad wird gegen das Arbeitsverzeichnis aufgelöst, in dem `npm run dev` läuft — bei `docs\fixtures\match.jsonl` also `F:\DEV\autodarts-screens\docs\fixtures\match.jsonl`. |
+| `AD_WIEDERGABE=<pfad>` | Spielt eine Aufzeichnung ab, statt sich zu verbinden. Fordert kein Token an, funktioniert auch ohne Anmeldung. |
 
 ## Schritt 1 — Anmeldung einmal durchlaufen
 
@@ -97,6 +106,10 @@ Wahrheit über das Ereignis-Schema von Autodarts — es ist nirgends
 dokumentiert, und alle Community-Projekte, die ich gefunden habe, beschreiben
 noch den im Juni 2026 abgeschalteten Keycloak-Server.
 
+Voraussetzung: Schritt 1 (Anmeldung) muss vorher einmal erfolgreich
+durchgelaufen sein — ohne gespeicherte Anmeldung verbindet sich die Anwendung
+gar nicht erst, und `AD_AUFZEICHNEN` hätte nichts mitzuschneiden.
+
 ```powershell
 $env:AD_AUFZEICHNEN = "docs\fixtures\match.jsonl"; npm run dev
 ```
@@ -108,8 +121,12 @@ spielen. Wichtig, damit die Fälle abgedeckt sind:
 - mindestens einmal der Wechsel zum anderen Spieler
 - wenn möglich ein Leg zu Ende ausmachen
 
-Danach die Anwendung beenden. Die Datei landet unter
-`docs/fixtures/match.jsonl`.
+Danach die Anwendung normal beenden (alle Fenster schließen, oder Alt+F4 auf
+dem Control-Fenster). Das Beenden wartet jetzt darauf, dass die Aufzeichnung
+vollständig auf die Platte geschrieben ist, bevor der Prozess tatsächlich
+endet — vorher fehlten dabei die letzten Zeilen. Die Datei landet unter
+`docs/fixtures/match.jsonl` (der Pfad wird gegen das Arbeitsverzeichnis von
+`npm run dev` aufgelöst, siehe Variablentabelle oben).
 
 **Bitte vorher hineinschauen:** Der Mitschnitt enthält Anzeigenamen aus deinem
 Konto — das ist gewollt, damit die Testdaten realistisch sind. Er darf aber

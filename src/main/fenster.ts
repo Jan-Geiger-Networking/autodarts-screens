@@ -4,6 +4,7 @@
 import { BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import type { FensterArt, MatchState } from '../shared/typen'
+import type { Verbindungszustand } from '../autodarts/websocket'
 import { monitorFuer } from './monitore'
 import { standardKonfiguration, type Konfiguration } from './konfiguration'
 
@@ -121,5 +122,19 @@ export function zustandVerteilen(z: MatchState): void {
     if (!fensterInstanz.isDestroyed() && !fensterInstanz.webContents.isDestroyed()) {
       fensterInstanz.webContents.send('zustand', z)
     }
+  }
+}
+
+/**
+ * Schickt den Verbindungszustand zur Autodarts-API an das Control-Fenster -
+ * das einzige Fenster, das ihn anzeigt (siehe App.tsx). Laeuft nur vom
+ * Hauptprozess zum Renderer (webContents.send), nie als IPC-Handler, den ein
+ * Renderer aufrufen koennte - braucht deshalb keine Waechterpruefung in
+ * ipc.ts (gleiches Muster wie zustandVerteilen).
+ */
+export function verbindungszustandVerteilen(z: Verbindungszustand): void {
+  const control = fenster.get('control')
+  if (control && !control.isDestroyed() && !control.webContents.isDestroyed()) {
+    control.webContents.send('verbindungszustand', z)
   }
 }

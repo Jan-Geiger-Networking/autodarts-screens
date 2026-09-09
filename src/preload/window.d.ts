@@ -1,6 +1,7 @@
 import type { FensterArt, MatchState } from '../shared/typen'
 import type { Konfiguration } from '../main/konfiguration'
 import type { MonitorEintrag } from '../main/monitore'
+import type { Verbindungszustand } from '../autodarts/websocket'
 
 export {}
 
@@ -9,6 +10,7 @@ declare global {
     app: {
       version: string
       beiZustand: (rueckruf: (z: MatchState) => void) => () => void
+      beiVerbindungszustand: (rueckruf: (z: Verbindungszustand) => void) => () => void
       monitore: () => Promise<MonitorEintrag[]>
       monitoreIdentifizieren: () => Promise<void>
       konfigurationLesen: () => Promise<Konfiguration>

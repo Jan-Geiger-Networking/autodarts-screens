@@ -1,17 +1,29 @@
 import { useEffect, useState } from 'react'
 import type { Konfiguration } from '../../main/konfiguration'
 import type { MonitorEintrag } from '../../main/monitore'
+import type { Verbindungszustand } from '../../autodarts/websocket'
 import { UeberPanel } from './UeberPanel'
 import '../shared/tokens.css'
 import './App.css'
 
+// Text je Verbindungszustand (siehe src/autodarts/websocket.ts). null heisst:
+// noch keine Meldung erhalten, z.B. kurz nach dem Start oder im
+// AD_TESTZUSTAND-Modus, in dem gar keine Verbindung versucht wird.
+const VERBINDUNGSTEXT: Record<Verbindungszustand, string> = {
+  verbunden: 'verbunden',
+  getrennt: 'getrennt — Wiederverbindung läuft automatisch',
+  nichtAngemeldet: 'nicht angemeldet — bitte einmal anmelden',
+}
+
 export function App() {
   const [konfiguration, setKonfiguration] = useState<Konfiguration | null>(null)
   const [monitore, setMonitore] = useState<MonitorEintrag[]>([])
+  const [verbindungszustand, setVerbindungszustand] = useState<Verbindungszustand | null>(null)
 
   useEffect(() => {
     window.app.konfigurationLesen().then(setKonfiguration)
     window.app.monitore().then(setMonitore)
+    return window.app.beiVerbindungszustand(setVerbindungszustand)
   }, [])
 
   async function konfigurationAendern(teil: Partial<Konfiguration>): Promise<void> {
@@ -35,8 +47,8 @@ export function App() {
           />
         </label>
         <p className="hinweis">
-          Verbindungszustand: unbekannt — die Live-Anbindung an Autodarts ist noch nicht
-          angeschlossen.
+          Verbindungszustand:{' '}
+          {verbindungszustand ? VERBINDUNGSTEXT[verbindungszustand] : 'unbekannt'}
         </p>
         <div className="knopfreihe">
           <button
