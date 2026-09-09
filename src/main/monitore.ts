@@ -51,7 +51,12 @@ export function monitoreIdentifizieren(): void {
     })
     fenster.setIgnoreMouseEvents(true)
     const html = `<!doctype html><html><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,0.85)"><span style="font-family:sans-serif;font-size:40vh;color:#f8fafc">${nummer}</span></body></html>`
-    fenster.loadURL(`data:text/html,${encodeURIComponent(html)}`)
+    // loadURL liefert ein Promise, das ablehnt, wenn das Fenster waehrend des
+    // Ladens zerstoert wird (z. B. App beendet sich sofort danach). Das Fenster
+    // ist reine Anzeige ohne Folgezustand, ein Verschwinden richtet keinen
+    // Schaden an - deshalb hier bewusst stillschweigend verschluckt statt
+    // protokolliert oder weitergereicht.
+    fenster.loadURL(`data:text/html,${encodeURIComponent(html)}`).catch(() => {})
     setTimeout(() => {
       if (!fenster.isDestroyed()) fenster.close()
     }, 2000)

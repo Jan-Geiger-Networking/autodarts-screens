@@ -22,4 +22,11 @@ describe('zusammenfuehren', () => {
     expect(zusammenfuehren('unfug')).toEqual(standardKonfiguration)
     expect(zusammenfuehren([])).toEqual(standardKonfiguration)
   })
+
+  it('verwirft Zahlen, die keine gueltigen Display-Kennungen sein koennen', () => {
+    expect(zusammenfuehren({ playerDisplayId: NaN }).playerDisplayId).toBeNull()
+    expect(zusammenfuehren({ playerDisplayId: Infinity }).playerDisplayId).toBeNull()
+    expect(zusammenfuehren({ spectatorDisplayId: 1.5 }).spectatorDisplayId).toBeNull()
+    expect(zusammenfuehren({ spectatorDisplayId: 42 }).spectatorDisplayId).toBe(42)
+  })
 })

@@ -29,14 +29,15 @@ export function zusammenfuehren(roh: unknown): Konfiguration {
   const quelle = roh as Record<string, unknown>
   return {
     boardId: typeof quelle.boardId === 'string' ? quelle.boardId : standardKonfiguration.boardId,
-    playerDisplayId:
-      typeof quelle.playerDisplayId === 'number'
-        ? quelle.playerDisplayId
-        : standardKonfiguration.playerDisplayId,
-    spectatorDisplayId:
-      typeof quelle.spectatorDisplayId === 'number'
-        ? quelle.spectatorDisplayId
-        : standardKonfiguration.spectatorDisplayId,
+    // Display-Kennungen sind ganze Zahlen. Number.isInteger schliesst NaN,
+    // Infinity und Fliesskommazahlen aus (typeof === 'number' allein wuerde
+    // sie faelschlich als gueltig durchlassen).
+    playerDisplayId: Number.isInteger(quelle.playerDisplayId)
+      ? (quelle.playerDisplayId as number)
+      : standardKonfiguration.playerDisplayId,
+    spectatorDisplayId: Number.isInteger(quelle.spectatorDisplayId)
+      ? (quelle.spectatorDisplayId as number)
+      : standardKonfiguration.spectatorDisplayId,
   }
 }
 
