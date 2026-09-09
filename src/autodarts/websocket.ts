@@ -11,7 +11,7 @@
 // zu scheitern. Kein zusaetzliches Paket - Electron liefert im Hauptprozess
 // eine WebSocket-Implementierung mit.
 
-import { holen, senden } from './rest'
+import { holen, NichtAngemeldetFehler, senden } from './rest'
 import { aufzeichnungBeenden, aufzeichnungStarten, wiedergeben } from './aufzeichnung'
 
 // Annahme: Verbindungsadresse laut Community-Projekten, nicht selbst bestaetigt.
@@ -20,6 +20,42 @@ const WS_ADRESSE = 'wss://api.autodarts.com/ms/v0/subscribe'
 export type Verbindung = {
   abonnieren(kanal: string, thema: string): void
   schliessen(): void
+}
+
+/**
+ * Zustandswechsel der Verbindung, ueber den optionalen zweiten Rueckruf von
+ * verbinden() gemeldet: "verbunden" bei jedem erfolgreichen (Wieder-)Aufbau,
+ * "getrennt" bei einem Abbruch nach vorherigem Erfolg, "nichtAngemeldet",
+ * sobald der Ticket-Abruf an einer fehlenden oder ungueltigen Anmeldung
+ * scheitert - egal ob beim allerersten Verbindungsversuch oder Jahre spaeter
+ * mitten in einer laufenden Sitzung (z.B. weil das Aktualisierungs-Token
+ * inzwischen widerrufen wurde). Die Wiederverbindung laeuft in jedem Fall
+ * weiter; melden sich Nutzer erneut an, greift sie beim naechsten Versuch
+ * von selbst wieder.
+ */
+export type Verbindungszustand = 'verbunden' | 'getrennt' | 'nichtAngemeldet'
+
+/**
+ * Ob fehler bedeutet, dass sich der Nutzer erneut anmelden muss. Deckt zwei
+ * Quellen ab, die beide denselben Wortlaut "Bitte erneut anmelden" tragen:
+ * oauth.ts wirft ihn direkt (siehe dortiger Docstring - lokal kein oder ein
+ * ungueltiges Aktualisierungs-Token), rest.ts wirft ihn ueber
+ * NichtAngemeldetFehler, wenn der Server selbst mit dem bekannten
+ * 401-Rumpf antwortet. Beide Faelle sind fuer diesen Zweck gleich zu
+ * behandeln.
+ */
+function istAuthFehler(fehler: unknown): boolean {
+  return fehler instanceof NichtAngemeldetFehler || (fehler instanceof Error && fehler.message === 'Bitte erneut anmelden')
+}
+
+function zustandMelden(rueckruf: ((z: Verbindungszustand) => void) | undefined, zustand: Verbindungszustand): void {
+  try {
+    rueckruf?.(zustand)
+  } catch (fehler) {
+    // Ein werfender Rueckruf ist ein Programmierfehler des Aufrufers - er
+    // darf aber nie die Verbindungslogik selbst zum Absturz bringen.
+    console.error('Fehler im Rueckruf beiVerbindungszustand:', fehler)
+  }
 }
 
 /**
@@ -91,14 +127,22 @@ function matchIdAusEreignis(roh: unknown): string | null {
  * beim Ticket holen), wirft diese Funktion - der Aufrufer kann das direkt in
  * eine Nutzermeldung uebersetzen. Jeder weitere Abbruch waehrend einer
  * laufenden Sitzung wird intern mit wachsendem Abstand neu verbunden und
- * reisst die Anwendung nie ab.
+ * reisst die Anwendung nie ab; ueber beiVerbindungszustand kann der Aufrufer
+ * trotzdem verfolgen, was gerade passiert (siehe Verbindungszustand) - vor
+ * allem, um mitten in der Sitzung eine ungueltig gewordene Anmeldung
+ * anzuzeigen, statt endlos stumm im 30s-Takt weiterzuversuchen.
+ * beiVerbindungszustand wird im Wiedergabefall nie aufgerufen, es gibt dort
+ * keine echte Verbindung, ueber die es etwas zu melden gaebe.
  */
-export async function verbinden(beiEreignis: (roh: unknown) => void): Promise<Verbindung> {
+export async function verbinden(
+  beiEreignis: (roh: unknown) => void,
+  beiVerbindungszustand?: (zustand: Verbindungszustand) => void,
+): Promise<Verbindung> {
   const wiedergabePfad = process.env.AD_WIEDERGABE
   if (wiedergabePfad) {
     return wiedergabeVerbindung(wiedergabePfad, beiEreignis)
   }
-  return echteVerbindung(beiEreignis)
+  return echteVerbindung(beiEreignis, beiVerbindungszustand)
 }
 
 function wiedergabeVerbindung(pfad: string, beiEreignis: (roh: unknown) => void): Verbindung {
@@ -121,7 +165,10 @@ function wiedergabeVerbindung(pfad: string, beiEreignis: (roh: unknown) => void)
   }
 }
 
-async function echteVerbindung(nutzerEreignis: (roh: unknown) => void): Promise<Verbindung> {
+async function echteVerbindung(
+  nutzerEreignis: (roh: unknown) => void,
+  zustandsRueckruf?: (zustand: Verbindungszustand) => void,
+): Promise<Verbindung> {
   const aufzeichnenPfad = process.env.AD_AUFZEICHNEN
   const schreiben = aufzeichnenPfad ? aufzeichnungStarten(aufzeichnenPfad) : null
 
@@ -188,7 +235,17 @@ async function echteVerbindung(nutzerEreignis: (roh: unknown) => void): Promise<
   }
 
   const verbindungOeffnen = async (): Promise<void> => {
-    const ticketAntwort = await senden<unknown>('/ms/v0/tickets', {})
+    let ticketAntwort: unknown
+    try {
+      ticketAntwort = await senden<unknown>('/ms/v0/tickets', {})
+    } catch (fehler) {
+      // Greift sowohl beim allerersten Verbindungsversuch als auch bei
+      // jedem spaeteren Wiederverbindungsversuch mitten in der Sitzung -
+      // einheitlich behandelt, damit eine mitten in der Sitzung ungueltig
+      // gewordene Anmeldung nicht nur in console.error verschwindet.
+      if (istAuthFehler(fehler)) zustandMelden(zustandsRueckruf, 'nichtAngemeldet')
+      throw fehler
+    }
     const ticket = ticketAusAntwort(ticketAntwort)
     // Annahme: WebSocket-Adresse samt ?ticket=-Parameter, siehe Dateikopf.
     const neuerSocket = new WebSocket(`${WS_ADRESSE}?ticket=${encodeURIComponent(ticket)}`)
@@ -202,6 +259,7 @@ async function echteVerbindung(nutzerEreignis: (roh: unknown) => void): Promise<
         const warWiederverbindung = wiederverbindungsVersuch > 0
         wiederverbindungsVersuch = 0
         alleAbonnementsSenden(neuerSocket)
+        zustandMelden(zustandsRueckruf, 'verbunden')
         resolve()
         // Nach einer Wiederverbindung wird der Match-Zustand neu geladen,
         // statt zu raten, welche Ereignisse in der Trennungszeit verpasst
@@ -225,6 +283,7 @@ async function echteVerbindung(nutzerEreignis: (roh: unknown) => void): Promise<
           reject(new Error('Autodarts-WebSocket-Verbindung fehlgeschlagen'))
           return
         }
+        zustandMelden(zustandsRueckruf, 'getrennt')
         if (!geschlossen) wiederverbindenPlanen()
       }
     })
@@ -234,7 +293,15 @@ async function echteVerbindung(nutzerEreignis: (roh: unknown) => void): Promise<
 
   return {
     abonnieren(kanal: string, thema: string): void {
-      abonnements.set(`${kanal} ${thema}`, { kanal, thema })
+      const schluessel = `${kanal} ${thema}`
+      // Schon bekannt (egal ob laengst wieder-abonniert oder frisch gesetzt)
+      // -> nichts erneut senden. Ohne diese Pruefung wuerde ein zweiter
+      // Aufruf mit demselben Kanal/Thema ein zweites, identisches
+      // subscribe-Rahmenwerk auf die Leitung schicken - wie der Server auf
+      // ein Doppel-Abonnement reagiert, ist unbekannt, im schlechtesten Fall
+      // kaeme jedes Ereignis doppelt an.
+      if (abonnements.has(schluessel)) return
+      abonnements.set(schluessel, { kanal, thema })
       if (aktiverSocket && aktiverSocket.readyState === WebSocket.OPEN) {
         // Annahme: Abonnement-Form laut Community-Projekten, siehe Dateikopf.
         aktiverSocket.send(JSON.stringify({ channel: kanal, type: 'subscribe', topic: thema }))
