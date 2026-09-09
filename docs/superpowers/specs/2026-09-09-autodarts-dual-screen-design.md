@@ -145,6 +145,14 @@ Ruhezustand zurück. Während des Spielens ist keine Bedienung nötig.
 ```ts
 type Segment = { name: string; value: number; multiplier: 1 | 2 | 3 }
 
+type LegEntry = {
+  playerId: string
+  darts: Segment[]     // 1 bis 3 Darts
+  scored: number       // Summe, 0 bei Bust
+  remainingAfter: number
+  bust: boolean
+}
+
 type Player = {
   id: string
   autodartsName: string
@@ -177,22 +185,30 @@ type MatchState = {
   currentThrow: Segment[]       // 0 bis 3 Darts des laufenden Wurfs
   currentThrowTotal: number
   bust: boolean
-  checkout: string[] | null     // z.B. ['T20','T20','D4'], null wenn unmoeglich
+  checkout: string[] | null     // z.B. ['T20','T20','D4'], null wenn kein Finish
+  checkoutHint: string | null   // Setup-Wurf, wenn checkout null ist, z.B. 'T20'
   legHistory: LegEntry[]        // Wurf-fuer-Wurf des laufenden Legs
   lastEvent: MatchEvent | null  // loest Einblendungen aus
 }
 
-type MatchEvent =
+type MatchEvent = { seq: number } & (
   | { kind: 'throw' }
   | { kind: 'playerChange'; toPlayerId: string }
   | { kind: 'oneEighty'; playerId: string }
   | { kind: 'highFinish'; playerId: string; score: number }
   | { kind: 'legWon'; playerId: string }
   | { kind: 'matchWon'; playerId: string }
+)
 ```
 
-`lastEvent` trägt eine monoton steigende Sequenznummer, damit die Renderer eine
-Einblendung genau einmal auslösen und ein erneutes Rendern sie nicht wiederholt.
+`seq` steigt über die gesamte Match-Laufzeit monoton. Die Renderer merken sich
+die zuletzt verarbeitete Nummer und lösen eine Einblendung dadurch genau einmal
+aus; ein erneutes Rendern wiederholt sie nicht.
+
+`checkout` und `checkoutHint` schließen sich aus: ist ein Finish möglich, steht
+der Weg in `checkout` und `checkoutHint` ist `null`. Ist keins möglich (Rest
+über 170 oder Bogey-Zahl), ist `checkout` `null` und `checkoutHint` trägt den
+empfohlenen Setup-Wurf. Beide gleichzeitig gesetzt ist ein Fehler.
 
 ## 7. Player-Screen
 
