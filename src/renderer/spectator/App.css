@@ -46,24 +46,29 @@
 
 .bug {
   position: absolute;
-  top: 2.2vh;
-  left: 2.2vh;
-  height: 3.4vh;
+  top: 2vh;
+  left: 2vh;
+  height: 2.8vh;
   width: auto;
   z-index: 5;
 }
 
-/* ─── Zwei-Spieler-Reihe mit Keil-Zuschnitt ──────────────────────────
-   Die innere Kante jeder Karte laeuft schraeg auf die Mitte zu: an der
-   Kopfzeile (Schraubstollen des imaginaeren Scheiben-Mittelpunkts) fast
-   geschlossen, am unteren Rand deutlich geoeffnet - wie ein Dartscheiben-
-   Segment, das nach unten und aussen ausfaechert. */
+/* ─── Zwei-Spieler-Reihe ──────────────────────────────────────────────
+   Ein durchgehender Keil in der Bildmitte wurde ausprobiert und wieder
+   verworfen (siehe Bildschirmfotos vom ersten und zweiten Anlauf): sobald
+   der Zwischenraum ueber die volle Hoehe lief, wurde er zur dominierenden
+   Form statt einer Kante. Stattdessen jetzt eine gerade, schmale Fuge
+   (--zs-fuge, hoechstens 4% der Bildbreite) und der Dartscheiben-Bezug nur
+   noch als flacher, gespiegelter Anschnitt unten an der Tafel-Unterkante -
+   siehe .spielerkarte-links/-rechts. */
 
 .spielreihe {
   position: relative;
   flex: 1;
   display: flex;
   min-height: 0;
+  --zs-fuge: 3vw;
+  gap: var(--zs-fuge);
 }
 
 /* Intro: dieselbe Tafel wie das Scoreboard, faehrt aber einmalig gerichtet
@@ -106,7 +111,9 @@
   display: flex;
   flex-direction: column;
   background: var(--zs-tafel);
-  padding: 3vh 5vw;
+  /* Oben mehr Luft als unten: das JGN-Logo sitzt in der Bildecke und
+     ueberlappte bei knapperem Abstand mit dem Foto/Initialen-Kasten. */
+  padding: 6vh 5vw 3vh;
   position: relative;
 }
 
@@ -126,14 +133,16 @@
   background: var(--zs-tafel-aktiv);
 }
 
+/* Dartscheiben-Bezug, klein gehalten: nur die untere Innenecke ist flach
+   angeschnitten, gespiegelt zur Mitte hin, dort wo die Tafel auf die
+   Statistikleiste trifft. Zitiert die Keilform, ohne eine Flaeche in die
+   Bildmitte zu setzen. */
 .spielerkarte-links {
-  clip-path: polygon(0 0, 97% 0, 91% 100%, 0 100%);
-  padding-right: 6vw;
+  clip-path: polygon(0 0, 100% 0, 100% 95%, 85% 100%, 0 100%);
 }
 
 .spielerkarte-rechts {
-  clip-path: polygon(3% 0, 100% 0, 100% 100%, 9% 100%);
-  padding-left: 6vw;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 15% 100%, 0 95%);
   align-items: flex-end;
   text-align: right;
 }
@@ -313,20 +322,31 @@
   color: var(--jg-muted);
 }
 
-/* Die eine bewegte Signalkante: zeichnet die geschertem Innenkante der
-   aktiven Tafel nach (siehe SIGNALKANTE_LINKS/RECHTS in App.tsx, muss zum
-   Keil-Zuschnitt oben passen) und faehrt bei jedem Wechsel per
-   clip-path-Uebergang quer ueber die Mitte - kraeftig genug, um sie aus
-   einigen Metern Entfernung zu sehen, aber ohne dass sonst etwas auf dem
-   Screen mitzappelt. */
+/* Die eine bewegte Signalkante: ein gerader, senkrechter Balken an der
+   Innenkante der aktiven Tafel ueber deren volle Hoehe. Beim Spielerwechsel
+   wandert genau dieser Balken per CSS-Transition (left) quer ueber die Fuge
+   zur anderen Seite - ein Objekt, kein Ueberblenden. Zurueckhaltender als
+   ein erster Versuch mit Leuchteffekt: soll aus einigen Metern eindeutig
+   sein, aber nicht das hellste Element im Bild (dafuer sorgt schon die
+   riesige Rest-Punktzahl in --jg-text). */
 .signalkante {
   position: absolute;
-  inset: 0;
+  top: 0;
+  width: 0.5vw;
+  height: 100%;
   background: var(--jg-accent);
-  filter: drop-shadow(0 0 0.4vh var(--jg-accent-glow));
-  transition: clip-path 700ms var(--jg-ease);
+  opacity: 0.85;
+  transition: left 700ms var(--jg-ease);
   z-index: 3;
   pointer-events: none;
+}
+
+.signalkante-links {
+  left: calc(50% - (var(--zs-fuge) / 2) - 0.25vw);
+}
+
+.signalkante-rechts {
+  left: calc(50% + (var(--zs-fuge) / 2) - 0.25vw);
 }
 
 /* ─── Raster ab drei Spielern ─────────────────────────────────────── */
@@ -397,7 +417,10 @@
   gap: 3vw;
   padding: 0 3vw;
   border-top: 1px solid var(--jg-border-strong);
-  background: var(--jg-surface);
+  /* Dieselbe Flaeche wie die Tafeln (--zs-tafel), nicht --jg-surface -
+     sonst stand die Leiste als eigenstaendiger dunkler Streifen ohne
+     erkennbaren Bezug zu den Tafeln darueber. */
+  background: var(--zs-tafel);
   font-size: 2.4vh;
   color: var(--jg-text);
 }

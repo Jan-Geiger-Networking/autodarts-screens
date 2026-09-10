@@ -11,16 +11,6 @@ import './App.css'
 type BigMoment = Extract<Ueberlagerung, { art: 'bigMoment' }>
 type MatchWin = Extract<Ueberlagerung, { art: 'matchWin' }>
 
-// Muss zu den clip-path-Werten von .spielerkarte-links/-rechts in App.css
-// passen (Keil-Zuschnitt: 97%/91% der jeweils eigenen Tafelbreite). Die
-// Signalkante ist ein einzelnes Element, das genau diese geschertem
-// Innenkante nachzeichnet - links oder rechts, je nach activePlayerId.
-// Beide Polygone haben dieselbe Punktzahl, damit der Browser beim Wechsel
-// zwischen ihnen interpoliert statt hart umzuschalten: das ist die eine
-// bewegte Fahrt quer über die Mitte, kein zweites Element, keine Ueberblendung.
-const SIGNALKANTE_LINKS = 'polygon(48% 0%, 49% 0%, 46% 100%, 45% 100%)'
-const SIGNALKANTE_RECHTS = 'polygon(52% 0%, 51% 0%, 54% 100%, 55% 100%)'
-
 export function App() {
   // Vorfuehrmodus (?vorfuehrung in der Adresse) ersetzt window.app komplett -
   // der Screen laesst sich so ohne Hauptprozess begutachten, siehe
@@ -230,11 +220,12 @@ function ZweiSpielerReihe({
         currentThrowTotal={activePlayerId === spielerB.id ? currentThrowTotal : 0}
       />
 
-      {/* Der eine bewusste bewegte Moment im ganzen Screen: zeichnet die
-          geschertem Innenkante der aktiven Tafel nach und faehrt bei jedem
-          Wechsel per Formuebergang (clip-path) quer ueber die Mitte - ein
-          Objekt, kein Ueberblenden. */}
-      <div className="signalkante" style={{ clipPath: aktivIndex === 0 ? SIGNALKANTE_LINKS : SIGNALKANTE_RECHTS }} />
+      {/* Der eine bewusste bewegte Moment im ganzen Screen: ein gerader
+          Balken an der Innenkante der aktiven Tafel, der bei jedem Wechsel
+          per CSS-Transition (left) quer ueber die Fuge wandert - ein
+          Objekt, kein Ueberblenden. Die Positionen selbst stehen in
+          .signalkante-links/-rechts in App.css. */}
+      <div className={`signalkante ${aktivIndex === 0 ? 'signalkante-links' : 'signalkante-rechts'}`} />
     </div>
   )
 }
