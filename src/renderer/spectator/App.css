@@ -646,12 +646,12 @@
 
 .vorspann-folie--ankommend {
   z-index: 2;
-  animation: vorspann-bild-ein 1200ms var(--jg-ease) both;
+  animation: vorspann-bild-ein 2000ms var(--jg-ease) both;
 }
 
 .vorspann-folie--verlassend {
   z-index: 1;
-  animation: vorspann-bild-aus 1200ms var(--jg-ease) both;
+  animation: vorspann-bild-aus 2000ms var(--jg-ease) both;
 }
 
 .vorspann-folie--ankommend.vorspann-folie--invers {
@@ -683,7 +683,7 @@
 }
 
 .vorspann-folie--ankommend .vorspann-foto {
-  animation: vorspann-foto-einrasten 1200ms var(--jg-ease) both;
+  animation: vorspann-foto-einrasten 2000ms var(--jg-ease) both;
 }
 
 @keyframes vorspann-text-ein {
@@ -709,7 +709,7 @@
 }
 
 .vorspann-folie--ankommend .vorspann-text {
-  animation: vorspann-text-ein 950ms var(--jg-ease) 250ms both;
+  animation: vorspann-text-ein 1400ms var(--jg-ease) 450ms both;
 }
 
 .vorspann-wort {

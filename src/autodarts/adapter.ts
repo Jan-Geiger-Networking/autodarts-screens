@@ -95,6 +95,27 @@ export function diagnoseWarnungenZuruecksetzen(): void {
   gewarnteSchluessel.clear()
 }
 
+/** Obergrenze je Sonde, damit das Protokoll lesbar bleibt. */
+const SONDE_MAX_ZEICHEN = 2500
+
+/**
+ * Schreibt den Inhalt eines Feldes einmalig ins Diagnoseprotokoll, sobald er
+ * nicht mehr leer ist. Gedacht fuer die Felder, deren innere Form kein
+ * Mitschnitt belegt - eine Feldnamenliste allein reicht dort nicht, weil die
+ * Namen erst eine Ebene tiefer stehen.
+ */
+function feldSonde(name: string, wert: unknown): void {
+  if (wert === null || wert === undefined) return
+  if (typeof wert === 'object' && Object.keys(wert as object).length === 0) return
+  try {
+    const text = JSON.stringify(wert)
+    if (text === undefined || text === '{}' || text === '[]') return
+    einmaligProtokollieren(`sonde-${name}`, `Feld "${name}" enthaelt: ${text.slice(0, SONDE_MAX_ZEICHEN)}`)
+  } catch {
+    // Ein nicht serialisierbares Feld ist kein Grund, den Adapter zu stoeren.
+  }
+}
+
 function einmaligProtokollieren(schluessel: string, meldung: string): void {
   if (gewarnteSchluessel.has(schluessel)) return
   gewarnteSchluessel.add(schluessel)
@@ -377,22 +398,57 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
     ? ((typeof nutz.winner === 'number' ? effektivePlayers[nutz.winner]?.id : undefined) ?? activePlayerId)
     : null
 
-  // Ob dieser Zug abgeschlossen ist - frueher berechnet als der Leg-Verlauf
-  // unten, weil auch die Statistik davon abhaengt: gezaehlt wird eine
-  // Aufnahme genau einmal, naemlich wenn sie fertig ist.
-  const zugAbgeschlossen = legBeendet || matchBeendet || bust || currentThrow.length >= 3
-  // Wie viele Darts diese Aufnahme hatte. Ist die Wurfliste leer, weil sich
-  // turns[] nicht lesen liess (Feldform unbestaetigt, siehe dartsAusTurns),
-  // wird von einer vollen Aufnahme ausgegangen - sonst bliebe der Average
-  // dauerhaft leer, obwohl die Punkte (turnScore) bekannt sind.
-  const dartsDesZugs = currentThrow.length > 0 ? currentThrow.length : 3
-  if (zugAbgeschlossen && currentThrow.length === 0) {
+  // Gezielte Sonden fuer die drei Felder, deren innere Form bis heute
+  // unbelegt ist. Je einmal pro Programmlauf, und erst wenn tatsaechlich
+  // etwas drinsteht - am Anfang eines Matches sind sie leer und sagen
+  // nichts. Ohne diese Zeilen bleibt die Wurfliste (turns) Ratesache, und
+  // die Anfangsermittlung per Bull-off (state) laesst sich nicht bauen.
+  feldSonde('turns', nutz.turns)
+  feldSonde('stats', nutz.stats)
+  feldSonde('state', nutz.state)
+
+  // ---- Abgeschlossene Aufnahme ---------------------------------------
+  //
+  // Woran erkennt man, dass eine Aufnahme fertig ist? Bis 0.1.0-beta.7 an der
+  // Zahl der Darts in der Wurfliste - und genau daran ist es gescheitert:
+  // laesst sich turns[] nicht lesen (die Feldform ist unbestaetigt, siehe
+  // dartsAusTurns), bleibt die Liste leer, keine Aufnahme gilt je als fertig,
+  // und Average, 180er und Leg-Verlauf bleiben dauerhaft auf 0. Gemeldet:
+  // "ich hatte 2 180er und er hat 0 gezeigt".
+  //
+  // Der verlaessliche Weg braucht die Wurfliste gar nicht: eine Aufnahme ist
+  // vorbei, wenn der naechste Spieler an der Reihe ist. Dann traegt der
+  // VORHERIGE Zustand die Endpunktzahl dieser Aufnahme (turnScore), und der
+  // vorherige aktive Spieler ist derjenige, dem sie gehoert. Beide Felder -
+  // player und turnScore - sind aus einem echten Protokoll belegt.
+  // Der zweite Fall ist das Ende eines Legs oder Matches: dort wechselt
+  // niemand mehr, die letzte Aufnahme steht im AKTUELLEN Ereignis.
+  const spielerWechsel = activePlayerId !== null && zustand.activePlayerId !== null && activePlayerId !== zustand.activePlayerId
+
+  type Abschluss = { playerId: string; punkte: number; darts: number; bust: boolean }
+  let abschluss: Abschluss | null = null
+  if (spielerWechsel && zustand.activePlayerId) {
+    abschluss = {
+      playerId: zustand.activePlayerId,
+      punkte: zustand.bust ? 0 : zustand.currentThrowTotal,
+      darts: zustand.currentThrow.length > 0 ? zustand.currentThrow.length : 3,
+      bust: zustand.bust,
+    }
+  } else if ((legGeradeGewonnen || matchGeradeGewonnen) && activePlayerId) {
+    abschluss = {
+      playerId: legGewinnerId ?? matchGewinnerId ?? activePlayerId,
+      punkte: bust ? 0 : currentThrowTotal,
+      darts: currentThrow.length > 0 ? currentThrow.length : 3,
+      bust,
+    }
+  }
+
+  if (abschluss && currentThrow.length === 0 && zustand.currentThrow.length === 0) {
     einmaligProtokollieren(
       'darts-je-zug-geschaetzt',
       'Wurfliste leer, fuer die Statistik wird mit drei Darts je Aufnahme gerechnet.',
     )
   }
-  const punkteDesZugs = bust ? 0 : currentThrowTotal
 
   // ---- Punktestand je Spieler -----------------------------------------
   const gameScoresRoh = nachIndex(nutz.gameScores)
@@ -433,20 +489,29 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
     // docs/autodarts-api.md) - alle Werte standen deshalb dauerhaft auf 0.
     // Eine Zahl vom Server hat weiter Vorrang, falls sie doch einmal kommt.
     const statsEintrag = statsRoh[index]
-    // Nur fuer den Spieler am Wurf und nur, wenn seine Aufnahme fertig ist.
-    const zaehlt = spieler.id === activePlayerId && zugAbgeschlossen
+    // Gezaehlt wird genau die eine Aufnahme, die mit diesem Ereignis fertig
+    // geworden ist - und die gehoert nicht zwangslaeufig dem Spieler, der
+    // JETZT am Wurf ist (siehe Abschluss oben).
+    const zaehlt = abschluss?.playerId === spieler.id
+    const punkteDesZugs = abschluss?.punkte ?? 0
 
-    const dartsGesamt = (vorheriger?.dartsGesamt ?? 0) + (zaehlt ? dartsDesZugs : 0)
+    const dartsGesamt = (vorheriger?.dartsGesamt ?? 0) + (zaehlt ? (abschluss?.darts ?? 0) : 0)
     const punkteGesamt = (vorheriger?.punkteGesamt ?? 0) + (zaehlt ? punkteDesZugs : 0)
 
     const average3 =
       ersteZahl(statsEintrag, ['average', 'avg', 'threeDartAverage', 'average3'], `stats[${index}].average`) ??
       (dartsGesamt > 0 ? (punkteGesamt / dartsGesamt) * 3 : null)
 
-    // Ein Finishversuch: die Aufnahme begann mit einem Rest, der sich mit drei
+    // Ein Finishversuch: die Aufnahme BEGANN mit einem Rest, der sich mit drei
     // Darts ausmachen laesst. 170 ist der hoechste solche Rest, unter 2 ist
     // keiner mehr moeglich.
-    const restVorZug = vorheriger?.remaining ?? startScore
+    //
+    // Der Rest vor der Aufnahme laesst sich nicht aus der vorherigen
+    // Momentaufnahme lesen - die enthaelt die Darts dieser Aufnahme schon.
+    // Er ergibt sich aus dem Rest DANACH plus den erzielten Punkten. Ohne
+    // diese Rechnung wurde eine Aufnahme, die von 501 auf 40 fuehrte,
+    // faelschlich als Finishversuch gezaehlt.
+    const restVorZug = remaining + punkteDesZugs
     const versuch = zaehlt && restVorZug >= 2 && restVorZug <= 170
     const checkoutAttempts =
       ersteZahl(statsEintrag, ['checkoutAttempts', 'coAttempts'], `stats[${index}].checkoutAttempts`) ??
@@ -488,17 +553,27 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
   // separate Eintraege fuehren.
   const legGeradeVorbei = zustand.phase === 'legBreak' || zustand.phase === 'finished'
   const legHistoryBasis = istNeuesMatch || legGeradeVorbei ? [] : zustand.legHistory
-  const legHistory: LegEntry[] =
-    activePlayerId && zugAbgeschlossen
-      ? [...legHistoryBasis, { playerId: activePlayerId, darts: currentThrow, scored: bust ? 0 : currentThrowTotal, remainingAfter: restAktiv, bust }]
-      : legHistoryBasis
+  const legHistory: LegEntry[] = abschluss
+    ? [
+        ...legHistoryBasis,
+        {
+          playerId: abschluss.playerId,
+          // Die Darts der abgeschlossenen Aufnahme: beim Spielerwechsel
+          // stehen sie im vorherigen Zustand, beim Leg-Ende im aktuellen.
+          darts: spielerWechsel ? zustand.currentThrow : currentThrow,
+          scored: abschluss.punkte,
+          remainingAfter:
+            scores.find((s) => s.playerId === abschluss.playerId)?.remaining ?? restAktiv,
+          bust: abschluss.bust,
+        },
+      ]
+    : legHistoryBasis
 
   // ---- Ereignis -----------------------------------------------------
   // seq zaehlt einen Zaehler IM ZUSTAND hoch, nicht das Rohereignis (siehe
   // Aufgabenstellung) - jeder anwenden()-Aufruf mit einer .state-
   // Momentaufnahme erhoeht ihn um genau 1.
   const seq = (zustand.lastEvent?.seq ?? 0) + 1
-  const spielerWechsel = activePlayerId !== null && zustand.activePlayerId !== null && activePlayerId !== zustand.activePlayerId
 
   let ereignis: MatchEvent
   if (matchGeradeGewonnen) {

@@ -24,13 +24,15 @@ import switchFoto from '../../../assets/vorspann-switch.jpg'
 import { vorfuehrungAktiv, vorspannFolieParam } from './vorfuehrung'
 
 /** Standzeit einer Leistungsfolie - siehe "Takt statt Zufall" in der Vorgabe, unveraendert. */
-const TAKT_MS = 5000
+const TAKT_MS = 6500
 /** Kurzer Atemzug der Zwischenfolie zwischen zwei Leistungen - keine eigene Station. */
-const SIGNAL_HALTEN_MS = 1800
-/** Dauer der Fahrt, muss zu den @keyframes in App.css passen. Auf Rueckmeldung
- * ("wirkt zu hastig") von vormals 700ms auf das 1,7-fache angehoben, die
- * harte Abbremsung (var(--jg-ease)) bleibt erhalten. */
-const UEBERGANG_MS = 1200
+const SIGNAL_HALTEN_MS = 2400
+/** Dauer der Fahrt, muss zu den @keyframes in App.css passen. Zweimal auf
+ * Rueckmeldung angehoben: erst von 700ms auf 1200ms ("wirkt zu hastig"),
+ * dann auf 2000ms ("die geschwindigkeit der animation also transition muss
+ * langsamer werden das wichtig"). Die harte Abbremsung (var(--jg-ease))
+ * bleibt erhalten - die Fahrt ist langsam, kommt aber bestimmt zum Stehen. */
+const UEBERGANG_MS = 2000
 
 // Schriftgroesse nach laengster Zeile von Hand vergeben statt zur Laufzeit
 // ausgemessen: bei fester Spaltenbreite (siehe .vorspann-text in App.css)

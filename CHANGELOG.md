@@ -4,6 +4,46 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.8] - 2026-09-10
+
+Achte Beta. Die Statistik zählt endlich mit.
+
+### Behoben
+- **Alle Statistiken blieben auf 0** — gemeldet: „ich hatte 2 180er und er hat
+  0 gezeigt". Die Ursache lag nicht bei der Statistik selbst: eine Aufnahme
+  galt erst als abgeschlossen, wenn drei Darts in der Wurfliste standen. Diese
+  Liste (`turns`) lässt sich in echten Matches nicht lesen — ihre Form ist bis
+  heute unbelegt —, blieb also leer, und damit galt **keine einzige** Aufnahme
+  je als fertig. Average, 180er, Checkout-Quote und der Leg-Verlauf blieben
+  deshalb leer, und aus demselben Grund blieb die Dartscheibe ohne Pfeile.
+
+  Der Abschluss einer Aufnahme wird jetzt daran erkannt, dass der nächste
+  Spieler an der Reihe ist (oder das Leg endet). Dafür genügen zwei Felder,
+  die aus einem echten Protokoll belegt sind: `player` und `turnScore`. Die
+  Wurfliste wird dafür nicht mehr gebraucht
+- Ein Finishversuch wurde gezählt, sobald der Rest **nach** der Aufnahme unter
+  170 lag — eine Aufnahme von 501 auf 40 galt damit fälschlich als Versuch.
+  Gezählt wird jetzt der Rest, mit dem die Aufnahme begonnen hat
+
+### Geändert
+- Der Übergang im Vorspann läuft langsamer: 2000 statt 1200 Millisekunden,
+  jede Folie steht 6,5 statt 5 Sekunden, die Zwischenfolie 2,4 statt 1,8
+
+### Hinzugefügt
+- Drei gezielte Sonden im Diagnoseprotokoll: sobald `turns`, `stats` oder
+  `state` in einem echten Match tatsächlich etwas enthalten, wird ihr Inhalt
+  einmalig protokolliert. Das sind genau die drei Felder, deren innere Form
+  bisher niemand kennt — an ihnen hängen die Pfeile auf der Scheibe, die
+  Spielerstatistiken des Servers und die Anzeige der Anfangsermittlung
+
+### Bekannte Einschränkungen
+- **Die Pfeile auf der Dartscheibe fehlen weiterhin**, solange die Form von
+  `turns` unbekannt ist. Die Statistik hängt nicht mehr daran, die Anzeige der
+  einzelnen Treffer schon
+- **Die Anfangsermittlung (Bull-off) wird nicht dargestellt.** Auch dafür
+  fehlen die Feldnamen. Beides klärt ein einziges Diagnoseprotokoll aus einem
+  Match mit dieser Version
+
 ## [0.1.0-beta.7] - 2026-09-10
 
 Siebte Beta. Der Player-Screen ist nach dem Vorbild der Autodarts-Spielansicht

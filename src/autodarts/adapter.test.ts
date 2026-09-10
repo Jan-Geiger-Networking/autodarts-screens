@@ -428,47 +428,82 @@ describe('anwenden: Match-Ende ueber den Board-Kanal', () => {
 describe('anwenden: selbst gefuehrte Statistik', () => {
   // Grund: stats[i] war im Protokoll eines echten Matches ein LEERES Objekt,
   // alle Werte standen deshalb dauerhaft auf 0.
+  //
+  // Eine Aufnahme gilt als fertig, wenn der naechste Spieler an der Reihe ist
+  // (oder das Leg endet) - NICHT daran, wie viele Darts in turns[] stehen.
+  // Diese Liste liess sich in echten Matches nicht lesen; solange die
+  // Zaehlung daran hing, blieb die ganze Statistik auf 0 stehen
+  // ("ich hatte 2 180er und er hat 0 gezeigt").
   const dreiDarts = { '0': [{ name: 'T20' }, { name: 'T20' }, { name: 'T20' }], '1': [] }
 
   it('rechnet den Average aus Punkten und Darts, wenn der Server keinen liefert', () => {
     const start = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
-    const nachWurf = anwenden(
+    const wurf = anwenden(
       start,
       stateEreignis('match-1', { player: 0, turnScore: 180, turns: dreiDarts, gameScores: { '0': 321, '1': 501 } }),
     )
+    // Erst der Wechsel auf Spieler 2 schliesst die Aufnahme ab.
+    const nachWechsel = anwenden(wurf, stateEreignis('match-1', { player: 1, turnScore: 0, gameScores: { '0': 321, '1': 501 } }))
 
-    expect(nachWurf.scores[0]!.dartsGesamt).toBe(3)
-    expect(nachWurf.scores[0]!.punkteGesamt).toBe(180)
-    expect(nachWurf.scores[0]!.average3).toBe(180)
+    expect(nachWechsel.scores[0]!.dartsGesamt).toBe(3)
+    expect(nachWechsel.scores[0]!.punkteGesamt).toBe(180)
+    expect(nachWechsel.scores[0]!.average3).toBe(180)
   })
 
   it('zaehlt einen 180er mit', () => {
     const start = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
-    const nachWurf = anwenden(
+    const wurf = anwenden(
       start,
       stateEreignis('match-1', { player: 0, turnScore: 180, turns: dreiDarts, gameScores: { '0': 321, '1': 501 } }),
     )
+    const nachWechsel = anwenden(wurf, stateEreignis('match-1', { player: 1, turnScore: 0, gameScores: { '0': 321, '1': 501 } }))
 
-    expect(nachWurf.scores[0]!.count180).toBe(1)
+    expect(nachWechsel.scores[0]!.count180).toBe(1)
+  })
+
+  it('zaehlt eine Aufnahme genau einmal, auch wenn dieselbe Momentaufnahme mehrfach ankommt', () => {
+    // Nach einer Wiederverbindung schickt der Server den Zustand erneut.
+    const start = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    const wurf = anwenden(start, stateEreignis('match-1', { player: 0, turnScore: 180, turns: dreiDarts }))
+    const wechsel = stateEreignis('match-1', { player: 1, turnScore: 0 })
+    const einmal = anwenden(wurf, wechsel)
+    const zweimal = anwenden(einmal, wechsel)
+
+    expect(zweimal.scores[0]!.count180).toBe(1)
+    expect(zweimal.scores[0]!.dartsGesamt).toBe(3)
   })
 
   it('zaehlt eine Bust-Aufnahme mit Darts, aber ohne Punkte', () => {
     const start = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
-    const nachBust = anwenden(
-      start,
-      stateEreignis('match-1', { player: 0, turnScore: 60, turnBusted: true, turns: dreiDarts }),
-    )
+    const bust = anwenden(start, stateEreignis('match-1', { player: 0, turnScore: 60, turnBusted: true, turns: dreiDarts }))
+    const nachWechsel = anwenden(bust, stateEreignis('match-1', { player: 1, turnScore: 0 }))
 
-    expect(nachBust.scores[0]!.dartsGesamt).toBe(3)
-    expect(nachBust.scores[0]!.punkteGesamt).toBe(0)
+    expect(nachWechsel.scores[0]!.dartsGesamt).toBe(3)
+    expect(nachWechsel.scores[0]!.punkteGesamt).toBe(0)
   })
 
   it('rechnet mit drei Darts, wenn sich die Wurfliste nicht lesen liess', () => {
-    // Sonst bliebe der Average dauerhaft leer, obwohl turnScore bekannt ist.
+    // Der Normalfall in echten Matches: turns[] ist unlesbar, turnScore aber
+    // bekannt. Ohne diese Annahme bliebe der Average leer.
     const start = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
-    const nachWurf = anwenden(start, stateEreignis('match-1', { player: 0, turnScore: 60, turnBusted: true, turns: {} }))
+    const wurf = anwenden(start, stateEreignis('match-1', { player: 0, turnScore: 60, turns: {} }))
+    const nachWechsel = anwenden(wurf, stateEreignis('match-1', { player: 1, turnScore: 0, turns: {} }))
 
-    expect(nachWurf.scores[0]!.dartsGesamt).toBe(3)
+    expect(nachWechsel.scores[0]!.dartsGesamt).toBe(3)
+    expect(nachWechsel.scores[0]!.punkteGesamt).toBe(60)
+  })
+
+  it('schreibt die abgeschlossene Aufnahme in den Leg-Verlauf', () => {
+    const start = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    const wurf = anwenden(
+      start,
+      stateEreignis('match-1', { player: 0, turnScore: 180, turns: dreiDarts, gameScores: { '0': 321, '1': 501 } }),
+    )
+    const nachWechsel = anwenden(wurf, stateEreignis('match-1', { player: 1, turnScore: 0, gameScores: { '0': 321, '1': 501 } }))
+
+    expect(nachWechsel.legHistory).toHaveLength(1)
+    expect(nachWechsel.legHistory[0]!.scored).toBe(180)
+    expect(nachWechsel.legHistory[0]!.remainingAfter).toBe(321)
   })
 
   it('zaehlt Finishversuch und Treffer, wenn ein Leg ausgemacht wird', () => {
@@ -477,8 +512,10 @@ describe('anwenden: selbst gefuehrte Statistik', () => {
       start,
       stateEreignis('match-1', { player: 0, turnScore: 461, turns: dreiDarts, gameScores: { '0': 40, '1': 501 } }),
     )
+    const nachWechsel = anwenden(beiRest40, stateEreignis('match-1', { player: 1, turnScore: 0, gameScores: { '0': 40, '1': 501 } }))
+    const zurueck = anwenden(nachWechsel, stateEreignis('match-1', { player: 0, turnScore: 0, gameScores: { '0': 40, '1': 501 } }))
     const ausgemacht = anwenden(
-      beiRest40,
+      zurueck,
       stateEreignis('match-1', {
         player: 0,
         turnScore: 40,
