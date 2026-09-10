@@ -5,10 +5,19 @@ Broadcast-Ansicht für Zuschauer.
 
 ## Installation
 
-Der Installer ist derzeit unsigniert. Windows SmartScreen zeigt beim ersten
-Start eine Warnung an ("Der Computer wurde durch Windows geschützt"). Über
-„Weitere Informationen" und „Trotzdem ausführen" lässt sich die Installation
-fortsetzen.
+Der Installer liegt als `Autodarts Dual-Screen Setup <Version>.exe` bei den
+[GitHub Releases](https://github.com/Jan-Geiger-Networking/autodarts-screens/releases)
+dieses Repositories. Er installiert pro Benutzerkonto (kein Administratorrecht
+nötig) und legt eine Verknüpfung im Startmenü und auf dem Desktop an.
+
+Der Installer ist derzeit unsigniert — das ist eine bewusste Entscheidung,
+kein Versehen (kein Zertifikat, siehe Spezifikation). Windows SmartScreen
+zeigt beim ersten Start eine Warnung an ("Der Computer wurde durch Windows
+geschützt"). Über „Weitere Informationen" und „Trotzdem ausführen" lässt sich
+die Installation fortsetzen. Das erscheint nur beim ersten Start.
+
+Eine Selbstaktualisierung gibt es noch nicht: eine neue Version muss von Hand
+von der Releases-Seite heruntergeladen und installiert werden.
 
 ## Unterstützung
 
