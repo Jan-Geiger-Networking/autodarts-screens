@@ -745,8 +745,14 @@
    kontrastarm bis "zerschnitten". Dieselbe Behandlung wie .vorspann-signal,
    nur als eigene Klasse statt am geteilten .bug (der bleibt fuer das
    Scoreboard unveraendert, dort steht er immer auf einer flachen Farbe).
-   Groesse auf Rueckmeldung verkleinert ("Signatur, kein Motiv") - vormals
-   2.8vh/0.6vh-1vh Polsterung. */
+   Groesse nach zwei Rueckmeldungen des Herausgebers korrigiert: erst auf
+   1.8vh verkleinert ("Signatur, kein Motiv"), dann korrigiert - "das logo
+   soll groesser sein nicht kleiner" - jetzt deutlich ueber dem
+   urspruenglichen Wert (2.8vh). 5vh bleibt klar unter der kleinsten
+   Leistungs-Schriftgroesse (.vorspann-wort--kompakt, 4.2vw ~ 7.5vh
+   Versalhoehe bei 16:9) - Logo und Wort konkurrieren nicht um dieselbe
+   Aufmerksamkeit. Rein vh/vw wie ueberall in dieser Datei, deshalb bei
+   1080p und 4K gleich gross wirkend. */
 .vorspann-logo {
   position: absolute;
   top: 2vh;
@@ -754,13 +760,13 @@
   z-index: 5;
   display: flex;
   align-items: center;
-  background: rgba(2, 6, 23, 0.55);
-  padding: 0.4vh 0.8vh;
+  background: rgba(2, 6, 23, 0.6);
+  padding: 1vh 1.6vh;
 }
 
 .vorspann-logo img {
   display: block;
-  height: 1.8vh;
+  height: 5vh;
   width: auto;
 }
 
