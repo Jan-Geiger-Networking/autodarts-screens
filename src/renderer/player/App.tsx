@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react'
 import type { LegEntry, MatchState, Player, PlayerScore } from '../../shared/typen'
 import logoWeiss from '../../../assets/logo-white.png'
 import { Dartscheibe } from '../shared/Dartscheibe'
+import { Anfangsermittlung } from '../shared/Anfangsermittlung'
 import { spielerAufteilen } from '../spectator/aufteilung'
 import { legStatistik } from '../spectator/statistik'
 import { useVorfuehrung, vorfuehrungAktiv } from '../spectator/vorfuehrung'
@@ -189,6 +190,18 @@ export function App() {
             </span>
           </p>
         </div>
+      </div>
+    )
+  }
+
+  // Die Anfangsermittlung hat keinen Spielstand - sie bekommt ein eigenes
+  // Bild, sonst staenden dort zwei Tafeln mit 501 und keiner wuesste, worauf
+  // gerade geworfen wird.
+  if (zustand.phase === 'bullOff') {
+    return (
+      <div className="spielbildschirm spielbildschirm-anfang">
+        <Anfangsermittlung zustand={zustand} />
+        <img className="bug" src={logoWeiss} alt="JGNet" />
       </div>
     )
   }

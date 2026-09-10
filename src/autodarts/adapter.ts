@@ -450,8 +450,15 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
   const legGeradeGewonnen = legBeendet && zustand.phase !== 'legBreak' && zustand.phase !== 'finished'
   const matchGeradeGewonnen = matchBeendet && zustand.phase !== 'finished'
 
+  // Die Anfangsermittlung laeuft bei Autodarts als eigener Modus: das Match
+  // traegt dann die Variante "Bull-off" (belegt im Quelltext des Web-Clients,
+  // Variant.BullOff). Jeder wirft einen Dart, wer naeher am Bull liegt,
+  // beginnt - der Abstand steht je Spieler in stats[i].legStats.bullDistance.
+  const istBullOff = variantRoh.toLowerCase().replace(/[^a-z]/g, '') === 'bulloff'
+
   let phase: MatchState['phase']
-  if (matchBeendet) phase = 'finished'
+  if (istBullOff && !matchBeendet) phase = 'bullOff'
+  else if (matchBeendet) phase = 'finished'
   else if (legBeendet) phase = 'legBreak'
   else if (istNeuesMatch) phase = 'intro'
   else phase = 'playing'
@@ -549,11 +556,24 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
     const setsRoh = ersteZahl(punkteRoh[index], ['sets', 'setsWon', 'setCount'], `scores[${index}].sets`)
     const sets = setsRoh ?? vorheriger?.sets ?? 0
 
-    // Die Statistik rechnet die Anwendung selbst mit. Grund: im Protokoll
-    // eines echten Matches war stats[i] ein LEERES Objekt (siehe
-    // docs/autodarts-api.md) - alle Werte standen deshalb dauerhaft auf 0.
-    // Eine Zahl vom Server hat weiter Vorrang, falls sie doch einmal kommt.
+    // Die Statistik kommt vom Server, wenn er sie liefert - und er tut es:
+    // stats[i] traegt legStats und matchStats, jeweils mit average,
+    // dartsThrown und (waehrend der Anfangsermittlung) bullDistance. Belegt
+    // im Quelltext des Autodarts-Web-Clients ("f.legStats.average",
+    // "f.matchStats.average"). Bis 0.1.0-beta.9 wurde eine Ebene zu flach
+    // gesucht (stats[i].average) - deshalb griff immer die eigene Rechnung,
+    // und die hinkte der Anzeige von Autodarts eine Aufnahme hinterher.
+    //
+    // Die eigene Rechnung bleibt als Rueckfall: sie ist besser als eine
+    // leere Anzeige, wenn der Server einmal nichts schickt.
     const statsEintrag = statsRoh[index]
+    const legStats = objekt(objekt(statsEintrag)?.legStats)
+    const matchStats = objekt(objekt(statsEintrag)?.matchStats)
+
+    const legAverage = ersteZahl(legStats, ['average'], `stats[${index}].legStats.average`)
+    const legDarts = ersteZahl(legStats, ['dartsThrown'], `stats[${index}].legStats.dartsThrown`)
+    const bullAbstand = ersteZahl(legStats, ['bullDistance'], `stats[${index}].legStats.bullDistance`)
+    const bullWurf = legStats ? (segmentAusWurf(legStats, `stats[${index}].legStats`) ?? undefined) : undefined
     // Gezaehlt wird genau die eine Aufnahme, die mit diesem Ereignis fertig
     // geworden ist - und die gehoert nicht zwangslaeufig dem Spieler, der
     // JETZT am Wurf ist (siehe Abschluss oben).
@@ -564,7 +584,7 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
     const punkteGesamt = (vorheriger?.punkteGesamt ?? 0) + (zaehlt ? punkteDesZugs : 0)
 
     const average3 =
-      ersteZahl(statsEintrag, ['average', 'avg', 'threeDartAverage', 'average3'], `stats[${index}].average`) ??
+      ersteZahl(matchStats, ['average'], `stats[${index}].matchStats.average`) ??
       (dartsGesamt > 0 ? (punkteGesamt / dartsGesamt) * 3 : null)
 
     // Ein Finishversuch: die Aufnahme BEGANN mit einem Rest, der sich mit drei
@@ -578,19 +598,20 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
     // faelschlich als Finishversuch gezaehlt.
     const restVorZug = remaining + punkteDesZugs
     const versuch = zaehlt && restVorZug >= 2 && restVorZug <= 170
-    const checkoutAttempts =
-      ersteZahl(statsEintrag, ['checkoutAttempts', 'coAttempts'], `stats[${index}].checkoutAttempts`) ??
-      (vorheriger?.checkoutAttempts ?? 0) + (versuch ? 1 : 0)
+    // Fuer die Zahl der Finishversuche gibt es keine Entsprechung beim
+    // Server (er fuehrt checkouts und checkoutPercent, nicht die Versuche) -
+    // sie bleibt deshalb selbst gezaehlt.
+    const checkoutAttempts = (vorheriger?.checkoutAttempts ?? 0) + (versuch ? 1 : 0)
     const checkoutHits =
-      ersteZahl(statsEintrag, ['checkoutHits', 'coHits', 'checkouts'], `stats[${index}].checkoutHits`) ??
+      ersteZahl(matchStats, ['checkouts'], `stats[${index}].matchStats.checkouts`) ??
       (vorheriger?.checkoutHits ?? 0) + (zaehlt && remaining === 0 ? 1 : 0)
     const count180 =
-      ersteZahl(statsEintrag, ['count180', 'oneEighties', 'oneEightys'], `stats[${index}].count180`) ??
+      ersteZahl(matchStats, ['total180'], `stats[${index}].matchStats.total180`) ??
       (vorheriger?.count180 ?? 0) + (zaehlt && punkteDesZugs === 180 ? 1 : 0)
 
     const finishJetzt = zaehlt && remaining === 0 ? punkteDesZugs : 0
     const highestFinish =
-      ersteZahl(statsEintrag, ['highestFinish', 'highFinish', 'bestFinish'], `stats[${index}].highestFinish`) ??
+      ersteZahl(matchStats, ['highestFinish'], `stats[${index}].matchStats.highestFinish`) ??
       (finishJetzt > (vorheriger?.highestFinish ?? 0) ? finishJetzt : (vorheriger?.highestFinish ?? null))
 
     return {
@@ -603,8 +624,12 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
       checkoutHits,
       count180,
       highestFinish,
-      dartsGesamt,
+      dartsGesamt: ersteZahl(matchStats, ['dartsThrown'], `stats[${index}].matchStats.dartsThrown`) ?? dartsGesamt,
       punkteGesamt,
+      legAverage,
+      legDarts,
+      bullAbstand,
+      ...(bullWurf ? { bullWurf } : {}),
     }
   })
 

@@ -7,6 +7,7 @@ import { statistikSeiteParam, useVorfuehrung, vorfuehrungAktiv, vorfuehrungEinge
 import { Vorspann } from './Vorspann'
 import { averageAnzeige, checkoutQuote, finishAnzeige, initialen } from './formatierung'
 import { Dartscheibe } from '../shared/Dartscheibe'
+import { Anfangsermittlung } from '../shared/Anfangsermittlung'
 import { legStatistik } from './statistik'
 import { spielerAufteilen } from './aufteilung'
 import '../shared/tokens.css'
@@ -93,13 +94,27 @@ export function App() {
     return () => window.clearTimeout(timer)
   }, [basis, zustand?.matchId])
 
-  const anzeige = basis === 'idle' ? 'idle' : basis === 'intro' && !introAbgelaufen ? 'intro' : 'scoreboard'
+  const anzeige =
+    basis === 'idle'
+      ? 'idle'
+      : basis === 'bullOff'
+        ? 'bullOff'
+        : basis === 'intro' && !introAbgelaufen
+          ? 'intro'
+          : 'scoreboard'
 
   return (
     <div className="bildschirm-zuschauer">
       {anzeige === 'idle' && <Vorspann />}
 
-      {anzeige !== 'idle' && zustand && (
+      {anzeige === 'bullOff' && zustand && (
+        <div className="bildschirm-anfang">
+          <img className="bug" src={logoWeiss} alt="JGNet" />
+          <Anfangsermittlung zustand={zustand} gross />
+        </div>
+      )}
+
+      {anzeige !== 'idle' && anzeige !== 'bullOff' && zustand && (
         <Spielstand
           zustand={zustand}
           intro={anzeige === 'intro'}

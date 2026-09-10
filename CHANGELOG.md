@@ -4,6 +4,35 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.10] - 2026-09-10
+
+Zehnte Beta. Die Statistik stimmt mit Autodarts überein, und die
+Anfangsermittlung wird angezeigt.
+
+### Behoben
+- **Die Statistik hinkte eine Aufnahme hinterher.** Autodarts liefert sie
+  selbst, nur eine Ebene tiefer als gesucht: `stats[i].matchStats.average`
+  und `stats[i].legStats.average`, nicht `stats[i].average`. Jetzt gelten
+  diese Zahlen; die eigene Rechnung bleibt Rückfall, falls einmal nichts
+  kommt. Damit steht auf beiden Anzeigen dasselbe
+- **Die Punkte lagen auf der Scheibe leicht falsch.** Die Ringmaße stammten
+  aus den Millimetermaßen einer Turnierscheibe, die Auftreffpunkte aber von
+  Autodarts — deren Scheibe hat etwas andere Verhältnisse. Ein Dart, der dort
+  im Doppelring steckt, lag bei uns knapp darunter im einfachen Feld. Das
+  Raster ist jetzt deren
+
+### Hinzugefügt
+- **Die Anfangsermittlung (Bull-off)** wird auf beiden Bildschirmen
+  dargestellt: „Wer beginnt?", die Scheibe mit den geworfenen Bull-Darts und
+  je Spieler der Abstand zum Bull. Wer näher liegt, ist hervorgehoben.
+  Autodarts führt sie als eigene Variante `Bull-off`, den Abstand in
+  `stats[i].legStats.bullDistance`
+- Leg-Average und Leg-Darts kommen jetzt vom Server statt aus dem eigenen
+  Mitzählen — sie stimmen damit auch, wenn die Anwendung erst mitten im Leg
+  dazukommt
+- Der Vorführmodus des Zuschauer-Screens hat einen Schritt für die
+  Anfangsermittlung (`?vorfuehrung&schritt=12`)
+
 ## [0.1.0-beta.9] - 2026-09-10
 
 Neunte Beta. Die Pfeile stehen auf der Scheibe — an der Stelle, an der sie

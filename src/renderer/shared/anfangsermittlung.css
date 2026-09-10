@@ -1,0 +1,97 @@
+/* Anfangsermittlung - siehe Anfangsermittlung.tsx. Groesse steuert die
+   jeweilige Ansicht ueber .anfang-gross. */
+
+.anfang {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5vh;
+  color: var(--jg-text);
+  font-family: var(--jg-font-display);
+}
+
+.anfang-titel {
+  margin: 0;
+  font-size: 4vh;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.anfang-gross .anfang-titel {
+  font-size: 8vh;
+}
+
+.anfang-erklaerung {
+  margin: 0;
+  font-size: 2vh;
+  font-weight: 500;
+  color: var(--jg-muted);
+}
+
+.anfang-gross .anfang-erklaerung {
+  font-size: 3vh;
+}
+
+.anfang-scheibe .dartscheibe {
+  width: 34vh;
+  height: 34vh;
+}
+
+.anfang-gross .anfang-scheibe .dartscheibe {
+  width: 52vh;
+  height: 52vh;
+}
+
+.anfang-spieler {
+  display: flex;
+  gap: 2vw;
+}
+
+.anfang-karte {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3vh;
+  padding: 1.2vh 2vw;
+  border: 1px solid var(--jg-border-strong);
+  border-radius: 1vh;
+  background: var(--jg-surface);
+}
+
+/* Wer naeher am Bull liegt, faengt an - das ist die einzige Aussage dieses
+   Bildschirms und bekommt deshalb die Signalfarbe. */
+.anfang-karte.fuehrt {
+  border-color: var(--jg-accent);
+  background: linear-gradient(160deg, var(--jg-surface-hi) 0%, var(--jg-surface) 70%);
+}
+
+.anfang-name {
+  font-size: 2.2vh;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--jg-muted-strong);
+}
+
+.anfang-karte.fuehrt .anfang-name {
+  color: var(--jg-text);
+}
+
+.anfang-abstand {
+  font-size: 5vh;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.anfang-karte.fuehrt .anfang-abstand {
+  color: var(--jg-accent);
+}
+
+.anfang-gross .anfang-abstand {
+  font-size: 8vh;
+}
+
+.anfang-label {
+  font-size: 1.5vh;
+  color: var(--jg-muted);
+}

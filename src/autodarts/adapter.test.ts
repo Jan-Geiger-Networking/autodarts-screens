@@ -573,3 +573,68 @@ describe('anwenden: selbst gefuehrte Statistik', () => {
     expect(ausgemacht.scores[0]!.highestFinish).toBe(40)
   })
 })
+
+describe('anwenden: Statistik vom Server', () => {
+  // Belegt im Quelltext des Autodarts-Web-Clients: stats[i] traegt legStats
+  // und matchStats. Bis 0.1.0-beta.9 wurde eine Ebene zu flach gesucht,
+  // deshalb hinkte die eigene Rechnung der Anzeige eine Aufnahme hinterher.
+  const mitStats = {
+    '0': { legStats: { average: 82.5, dartsThrown: 6 }, matchStats: { average: 79.1, dartsThrown: 12, total180: 2 } },
+    '1': { legStats: {}, matchStats: {} },
+  }
+
+  it('nimmt Average und Darts aus matchStats, nicht die eigene Rechnung', () => {
+    const ergebnis = anwenden(RUHEZUSTAND, stateEreignis('match-1', { stats: mitStats }))
+
+    expect(ergebnis.scores[0]!.average3).toBe(79.1)
+    expect(ergebnis.scores[0]!.dartsGesamt).toBe(12)
+    expect(ergebnis.scores[0]!.count180).toBe(2)
+  })
+
+  it('nimmt Leg-Average und Leg-Darts aus legStats', () => {
+    const ergebnis = anwenden(RUHEZUSTAND, stateEreignis('match-1', { stats: mitStats }))
+
+    expect(ergebnis.scores[0]!.legAverage).toBe(82.5)
+    expect(ergebnis.scores[0]!.legDarts).toBe(6)
+  })
+
+  it('faellt auf die eigene Rechnung zurueck, wenn der Server nichts liefert', () => {
+    const start = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    const wurf = anwenden(start, stateEreignis('match-1', { player: 0, turnScore: 180 }))
+    const nachWechsel = anwenden(wurf, stateEreignis('match-1', { player: 1, turnScore: 0 }))
+
+    expect(nachWechsel.scores[0]!.average3).toBe(180)
+    expect(nachWechsel.scores[0]!.legAverage).toBeNull()
+  })
+})
+
+describe('anwenden: Anfangsermittlung', () => {
+  it('erkennt die Variante "Bull-off" als eigene Phase', () => {
+    const ergebnis = anwenden(RUHEZUSTAND, stateEreignis('match-1', { variant: 'Bull-off' }))
+
+    expect(ergebnis.phase).toBe('bullOff')
+    expect(ergebnis.variantName).toBe('Bull-off')
+  })
+
+  it('uebernimmt den Abstand zum Bull je Spieler', () => {
+    const ergebnis = anwenden(
+      RUHEZUSTAND,
+      stateEreignis('match-1', {
+        variant: 'Bull-off',
+        stats: {
+          '0': { legStats: { bullDistance: 12.4, coords: { x: 0.01, y: 0.02 }, segment: { number: 25, bed: 'Double' } } },
+          '1': { legStats: { bullDistance: 41.9 } },
+        },
+      }),
+    )
+
+    expect(ergebnis.scores[0]!.bullAbstand).toBe(12.4)
+    expect(ergebnis.scores[1]!.bullAbstand).toBe(41.9)
+    expect(ergebnis.scores[0]!.bullWurf?.koordinaten).toEqual({ x: 0.01, y: 0.02 })
+  })
+
+  it('ist nach dem Ende der Ermittlung keine Bull-off-Phase mehr', () => {
+    const ergebnis = anwenden(RUHEZUSTAND, stateEreignis('match-1', { variant: 'X01' }))
+    expect(ergebnis.phase).not.toBe('bullOff')
+  })
+})

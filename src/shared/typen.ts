@@ -44,6 +44,20 @@ export type PlayerScore = {
   count180: number
   highestFinish: number | null
   /**
+   * Average und geworfene Darts des laufenden Legs, wie Autodarts sie selbst
+   * fuehrt (stats[i].legStats). null, solange keine Zahl vorliegt.
+   */
+  legAverage: number | null
+  legDarts: number | null
+  /**
+   * Abstand zum Bull bei der Anfangsermittlung, in der Einheit, in der
+   * Autodarts ihn liefert (stats[i].legStats.bullDistance). null ausserhalb
+   * einer Anfangsermittlung.
+   */
+  bullAbstand: number | null
+  /** Der Wurf der Anfangsermittlung, wenn er vorliegt. */
+  bullWurf?: Segment
+  /**
    * Geworfene Darts im ganzen Match. Grundlage des selbst gerechneten
    * Averages: das Statistikobjekt von Autodarts war in einem echten Match
    * leer (siehe docs/autodarts-api.md), deshalb rechnet die Anwendung die
@@ -55,7 +69,12 @@ export type PlayerScore = {
 }
 
 export type MatchState = {
-  phase: 'idle' | 'intro' | 'playing' | 'legBreak' | 'finished'
+  /**
+   * 'bullOff' ist die Ermittlung des Anfangsspielers: jeder wirft einen Dart,
+   * wer naeher am Bull liegt, beginnt. Autodarts fuehrt sie als eigenen Modus
+   * (Variant "Bull-off", belegt im Quelltext des Web-Clients).
+   */
+  phase: 'idle' | 'bullOff' | 'intro' | 'playing' | 'legBreak' | 'finished'
   matchId: string | null
   variant: 'x01' | 'other'
   /**

@@ -469,3 +469,44 @@ t.state?.checkoutGuides?.[t.player]
 Bisher nicht genutzt — dieses Projekt rechnet den Weg selbst
 (`src/shared/checkout.ts`). Falls die beiden je auseinanderlaufen, ist hier
 die Vergleichsquelle.
+
+## Spielerstatistik und Anfangsermittlung — belegt aus dem Quelltext 2026-09-10
+
+Gleiche Quelle wie oben (`use-game-*.js`). Vertrauen: **hoch**.
+
+### `stats[i]` hat zwei Ebenen
+
+```js
+legMatchPills(_, f.legStats.average, f.matchStats.average)
+```
+
+Bekannte Felder darunter: `legStats.average`, `legStats.dartsThrown`,
+`legStats.bullDistance`, `legStats.coords`, `matchStats.average`,
+`matchStats.first9Average`, `matchStats.dartsThrown`, `matchStats.checkouts`.
+
+Bis 0.1.0-beta.9 suchte dieses Projekt eine Ebene zu flach
+(`stats[i].average`) und fand deshalb nie etwas. Die eigene Rechnung sprang
+ein — sie zählt eine Aufnahme aber erst beim Spielerwechsel und hinkte der
+Anzeige von Autodarts daher **eine Aufnahme hinterher**. Genau das war zu
+sehen: rechts 19.0, links 0.0, bei identischem Wurf.
+
+### Die Anfangsermittlung ist ein eigener Modus
+
+```js
+Variant.BullOff = `Bull-off`
+```
+
+Das Match trägt während der Ermittlung die Variante `Bull-off`. Der Abstand
+zum Bull steht je Spieler in `stats[i].legStats.bullDistance`, der Wurf
+selbst in `stats[i].legStats.coords` / `.segment`. Zusätzlich gibt es in den
+Match-Einstellungen ein `bullOffMode` mit den Werten `Off`, `Normal` und
+`Official`.
+
+### Die Ringmaße der Scheibe
+
+Autodarts zeichnet die Scheibe mit einem Doppelring-Außenradius von 377,778
+(Bull 15,556 · 25er-Ring 37,778 · Triple 215,556–237,778 · Doppel
+355,556–377,778). Das weicht leicht von den Millimetermaßen einer
+Turnierscheibe ab (Doppelring innen 95,3 % statt 94,1 %). Da die
+Auftreffpunkte von Autodarts kommen, gilt hier deren Raster — sonst liegt ein
+Dart, der dort im Doppel steckt, bei uns knapp darunter im einfachen Feld.

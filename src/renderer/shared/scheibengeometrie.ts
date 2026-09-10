@@ -18,15 +18,25 @@ export const SEKTOREN = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11
 /** Winkel eines Sektors in Grad. */
 export const SEKTOR_WINKEL = 360 / SEKTOREN.length
 
-// Radien in Prozent des Aussenradius (Doppelring aussen = 100), aus den
-// Massen einer Turnierscheibe: Bull 6,35 mm, Single-Bull 15,9 mm,
-// Triple-Ring 99-107 mm, Doppel-Ring 162-170 mm, jeweils geteilt durch 170.
+// Radien in Prozent des Aussenradius (Doppelring aussen = 100).
+//
+// Uebernommen aus der Scheibe, die Autodarts selbst zeichnet (SVG im
+// Web-Client: Bull 15,556, 25er-Ring 37,778, Triple 215,556-237,778, Doppel
+// 355,556-377,778, jeweils bei einem Doppelring-Aussenradius von 377,778) -
+// NICHT aus den Millimetermassen einer Turnierscheibe, wie es hier bis
+// 0.1.0-beta.9 stand.
+//
+// Der Grund: die Auftreffpunkte kommen von Autodarts und sind auf deren
+// Raster bezogen. Mit den Millimetermassen lag ein Dart, der bei Autodarts
+// im Doppelring steckt, bei uns knapp darunter im einfachen Feld - die
+// Punkte standen sichtbar anders als auf deren Anzeige. Wer die Koordinaten
+// liefert, bestimmt auch das Raster.
 export const RADIUS = {
-  bull: 3.7,
-  bullAussen: 9.4,
-  tripleInnen: 58.2,
-  tripleAussen: 62.9,
-  doppelInnen: 95.3,
+  bull: (15.556 / 377.778) * 100,
+  bullAussen: (37.778 / 377.778) * 100,
+  tripleInnen: (215.556 / 377.778) * 100,
+  tripleAussen: (237.778 / 377.778) * 100,
+  doppelInnen: (355.556 / 377.778) * 100,
   doppelAussen: 100,
 } as const
 

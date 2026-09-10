@@ -109,6 +109,9 @@ const scoreLeer = (playerId: string) => ({
   checkoutAttempts: 0,
   checkoutHits: 0,
   count180: 0,
+  legAverage: null,
+  legDarts: null,
+  bullAbstand: null,
   dartsGesamt: 0,
   punkteGesamt: 0,
   highestFinish: null,
@@ -173,6 +176,9 @@ function bauSchritte(): Schritt[] {
         highestFinish: 121,
         dartsGesamt: 45,
         punkteGesamt: 1176,
+        legAverage: 97.8,
+        legDarts: 9,
+        bullAbstand: null,
       },
       {
         playerId: "p2",
@@ -186,6 +192,9 @@ function bauSchritte(): Schritt[] {
         highestFinish: null,
         dartsGesamt: 45,
         punkteGesamt: 977,
+        legAverage: null,
+        legDarts: 0,
+        bullAbstand: null,
       },
     ],
     activePlayerId: "p1",
@@ -358,6 +367,28 @@ function bauSchritte(): Schritt[] {
     lastEvent: { seq: 10, kind: "matchWon", playerId: "p1" },
   });
 
+  // Anfangsermittlung: kein Spielstand, nur zwei Bull-Darts und ihr Abstand.
+  const bullOff: MatchState = {
+    ...idle,
+    phase: 'bullOff',
+    matchId: 'vorfuehrung-bulloff',
+    variantName: 'Bull-off',
+    players: SPIELER,
+    scores: [
+      {
+        ...scoreLeer('p1'),
+        bullAbstand: 8.4,
+        bullWurf: { name: 'BULL', value: 25, multiplier: 2, koordinaten: { x: 0.012, y: 0.021 } },
+      },
+      {
+        ...scoreLeer('p2'),
+        bullAbstand: 34.7,
+        bullWurf: { name: '25', value: 25, multiplier: 1, koordinaten: { x: -0.07, y: 0.05 } },
+      },
+    ],
+    activePlayerId: null,
+  }
+
   return [
     { zustand: idle, haltenMs: 3000 },
     { zustand: intro, haltenMs: 8000 },
@@ -371,6 +402,10 @@ function bauSchritte(): Schritt[] {
     { zustand: legWin, haltenMs: 4500 },
     { zustand: vorMatchgewinn, haltenMs: 2000 },
     { zustand: matchWin, haltenMs: 13000 },
+    // Anfangsermittlung ganz am Ende der Tour statt am Anfang: so bleiben die
+    // Nummern der uebrigen Schritte stabil, auf die in Notizen und
+    // Bildschirmfotos verwiesen wird.
+    { zustand: bullOff, haltenMs: 6000 },
   ];
 }
 

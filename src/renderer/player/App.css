@@ -513,3 +513,9 @@
     transition: none;
   }
 }
+
+/* Anfangsermittlung: nur dieses eine Bild, mittig. */
+.spielbildschirm-anfang {
+  align-items: center;
+  justify-content: center;
+}
