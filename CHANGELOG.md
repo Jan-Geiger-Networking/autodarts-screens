@@ -4,6 +4,43 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.3] - 2026-09-10
+
+Dritte Beta. Anmeldung und Verbindung funktionieren jetzt wirklich, und die
+Anwendung hört auf dem Board mit.
+
+### Behoben
+- Der Verbindungsaufbau scheiterte unmittelbar nach jeder erfolgreichen
+  Anmeldung. Zwei Annahmen aus Community-Projekten waren falsch, beide gegen
+  den echten Server belegt: das WebSocket-Ticket kommt im Feld `code` statt
+  als reine Zeichenkette, und der Subscribe-Endpunkt erwartet den Parameter
+  `code` statt `ticket`. Mit `ticket` antwortete der Server `unauthorized` —
+  er ignorierte den unbekannten Parameter und behandelte die Anwendung wie
+  nicht angemeldet
+- Ein Fehler bei der Anmeldung blieb unsichtbar: das Control-Fenster zeigte
+  nichts an, und es gab nichts zum Nachlesen
+- Statt des Kontonamens stand „Angemeldet als: angemeldet" im
+  Control-Fenster
+
+### Hinzugefügt
+- Die Anwendung abonniert das eingestellte Board und erkennt ein startendes
+  Match. Ohne eingetragene Board-Kennung wird das ausdrücklich gemeldet,
+  statt stumm zu bleiben
+- Diagnoseprotokoll unter `%APPDATA%\autodarts-screens\diagnose.log`, im
+  Control-Fenster verlinkt. Es enthält Hosts, Pfade, Statuscodes und die
+  Namen von Antwortfeldern — niemals Token, Codes oder Passwörter
+- Verständliche Fehlermeldungen im Control-Fenster statt Schweigen
+- Der Kontoname wird angezeigt. Er stammt aus dem Zugriffstoken selbst, ohne
+  zusätzlichen Abruf
+- Vorspann auf dem Zuschauer-Screen: solange kein Match läuft, zeigt er im
+  festen Takt die Leistungen des Herausgebers statt nur des Logos
+
+### Fehlt in dieser Version
+- Der Adapter, der Rohereignisse in die Anzeige übersetzt. Beide Screens
+  zeigen deshalb weiterhin kein laufendes Match — die Ereignisse kommen an
+  und lassen sich aufzeichnen, aber noch nicht darstellen
+- Keine Selbstaktualisierung
+
 ## [0.1.0-beta.2] - 2026-09-10
 
 Zweite Beta. Bringt den Zuschauer-Screen.
