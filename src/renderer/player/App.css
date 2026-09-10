@@ -1,0 +1,127 @@
+/* Player-Screen: steht direkt neben der Dartscheibe. Fast schwarzer Grund,
+   keine Muster, keine Bewegung ausser einer kurzen Ueberblendung beim
+   Zahlenwechsel (siehe transition auf .rest), kein Blinken, keine Popups.
+   Masse durchgehend relativ (vh/vw), damit die Darstellung auf jeder
+   Aufloesung und jedem Monitor traegt. */
+
+.bildschirm {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--jg-bg);
+  color: var(--jg-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.ruhezustand {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--jg-bg);
+}
+
+.ruhezustand-logo {
+  width: 26vw;
+  max-width: 40vh;
+}
+
+.kopfzeile {
+  display: flex;
+  align-items: baseline;
+  gap: 1.5vw;
+  padding: 2.2vh 3vw 0;
+  font-family: var(--jg-font-display);
+  font-size: 3vh;
+  letter-spacing: 0.03em;
+  color: var(--jg-muted);
+}
+
+.kopfzeile-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kopfzeile-stand {
+  flex: 0 0 auto;
+}
+
+.kopfzeile-leg {
+  margin-left: auto;
+}
+
+.rest-bereich {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.rest {
+  font-family: var(--jg-font-display);
+  font-size: 40vh;
+  font-weight: 800;
+  line-height: 0.9;
+  color: var(--jg-text);
+  font-variant-numeric: tabular-nums;
+  transition: color 120ms var(--jg-ease);
+}
+
+.rest.bust {
+  color: var(--jg-warning);
+}
+
+.checkout {
+  font-family: var(--jg-font-display);
+  font-size: 9vh;
+  letter-spacing: 0.08em;
+  color: var(--jg-accent);
+  min-height: 1.2em;
+  text-align: center;
+}
+
+.checkout.setup {
+  color: var(--jg-muted);
+}
+
+.trennlinie {
+  height: 1px;
+  margin: 0 4vw;
+  background: var(--jg-border-strong);
+}
+
+.wurf-zeile {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 2.5vh 4vw 3.5vh;
+  font-family: var(--jg-font-display);
+  font-size: 6vh;
+  color: var(--jg-text);
+}
+
+.wurf-darts {
+  display: flex;
+  gap: 3.5vw;
+}
+
+.wurf-dart {
+  min-width: 2.5ch;
+  text-align: center;
+  color: var(--jg-muted-strong);
+}
+
+.wurf-summe {
+  /* Bewusst nicht --jg-text/800 wie .rest: sonst sind Rest-Score und
+     Wurfsumme aus der Entfernung kaum zu unterscheiden (Review-Befund,
+     Screenshot-Vergleich bestaetigt --jg-muted als klarer). Die Zeilengroesse
+     (6vh vs. 40vh) traegt den Groessenunterschied schon, die Farbe macht die
+     Zugehoerigkeit eindeutig. */
+  font-weight: 700;
+  color: var(--jg-muted);
+}

@@ -589,7 +589,7 @@ git commit -m "feat: Anmeldung bei Autodarts per OAuth mit PKCE im eingebetteten
 
 **Files:**
 - Create: `src/autodarts/rest.ts`, `src/autodarts/websocket.ts`, `werkzeuge/erkundung-mitschnitt.ts`
-- Create: `docs/fixtures/match-<datum>.jsonl`
+- Create: `docs/fixtures/match.jsonl`
 - Modify: `docs/autodarts-api.md`
 
 **Interfaces:**
@@ -655,7 +655,7 @@ Wiederverbindung mit wachsendem Abstand (1 s, 2 s, 4 s, … höchstens 30 s). Na
 Run: `npm run dev` mit aktivem Mitschnitt
 Expected: Nach dem Start erscheinen Board-Ereignisse. Sobald auf autodarts.io ein X01-Match startet, erscheint eine Match-Kennung. Ein vollständiges Leg wird gespielt, dabei mindestens einmal ein Bust und einmal ein Spielerwechsel ausgelöst.
 
-Alle Nachrichten werden mit Zeitstempel als JSON-Zeilen nach `docs/fixtures/match-<datum>.jsonl` geschrieben.
+Alle Nachrichten werden mit Zeitstempel als JSON-Zeilen nach `docs/fixtures/match.jsonl` geschrieben.
 
 - [ ] **Step 5: Schema aus dem Mitschnitt ableiten**
 
@@ -903,7 +903,7 @@ import { readFileSync } from 'node:fs'
 import { anwenden, leererZustand } from './adapter'
 import type { MatchState } from '../shared/typen'
 
-const zeilen = readFileSync('docs/fixtures/match-2026-09-09.jsonl', 'utf8')
+const zeilen = readFileSync('docs/fixtures/match.jsonl', 'utf8')
   .split('\n')
   .filter(Boolean)
   .map((z) => JSON.parse(z))
@@ -1100,7 +1100,7 @@ Expected: 3 Tests bestanden
 
 - [ ] **Step 6: Wiedergabe von Hand prüfen**
 
-Run: `AD_WIEDERGABE=docs/fixtures/match-2026-09-09.jsonl npm run dev`
+Run: `AD_WIEDERGABE=docs/fixtures/beispiel-wiedergabe.jsonl npm run dev`
 Expected: Die Anwendung startet ohne Anmeldefenster und verarbeitet die aufgezeichneten Ereignisse.
 
 - [ ] **Step 7: Commit**
@@ -1231,7 +1231,7 @@ In `electron.vite.config.ts` `player: resolve('src/renderer/player/index.html')`
 
 - [ ] **Step 5: Von Hand prüfen**
 
-Run: `AD_WIEDERGABE=docs/fixtures/match-2026-09-09.jsonl npm run dev`
+Run: `AD_WIEDERGABE=docs/fixtures/beispiel-wiedergabe.jsonl npm run dev`
 Expected: Control- und Player-Fenster öffnen sich, das Player-Fenster im Vollbild auf dem eingestellten Monitor. Eine vorübergehende Ausgabe von `JSON.stringify(zustand)` im Player-Renderer zeigt eintreffende, sich ändernde Zustände. Escape verlässt den Vollbildmodus.
 
 - [ ] **Step 6: Commit**
@@ -1321,7 +1321,7 @@ Die Texte werden im Renderer eingebettet, nicht zur Laufzeit aus den Markdown-Da
 
 - [ ] **Step 6: Von Hand prüfen**
 
-Run: `AD_WIEDERGABE=docs/fixtures/match-2026-09-09.jsonl npm run dev`
+Run: `AD_WIEDERGABE=docs/fixtures/beispiel-wiedergabe.jsonl npm run dev`
 Expected:
 - Der Player-Screen zeigt den Rest-Score des aktiven Spielers, aus mehreren Metern lesbar
 - Bei einem Rest von 128 erscheint `T20 · T20 · D4`

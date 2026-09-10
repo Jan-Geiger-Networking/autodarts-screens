@@ -1,0 +1,5 @@
+{"t":0,"daten":{"channel":"matches","type":"state","topic":"beispiel-match-1","matchId":"beispiel-match-1","hinweis":"erfundenes Beispielereignis, kein echter Mitschnitt - siehe docs/autodarts-api.md"}}
+{"t":150,"daten":{"channel":"matches","type":"event","topic":"beispiel-match-1","matchId":"beispiel-match-1","art":"throw","segment":{"name":"T20","value":20,"multiplier":3}}}
+{"t":300,"daten":{"channel":"matches","type":"event","topic":"beispiel-match-1","matchId":"beispiel-match-1","art":"throw","segment":{"name":"T20","value":20,"multiplier":3}}}
+{"t":450,"daten":{"channel":"matches","type":"event","topic":"beispiel-match-1","matchId":"beispiel-match-1","art":"throw","segment":{"name":"5","value":5,"multiplier":1}}}
+{"t":600,"daten":{"channel":"matches","type":"event","topic":"beispiel-match-1","matchId":"beispiel-match-1","art":"playerChange","toPlayerId":"p2"}}

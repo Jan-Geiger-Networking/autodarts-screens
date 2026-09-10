@@ -1,0 +1,193 @@
+# Übergabe — was jetzt bei dir liegt
+
+Stand: 2026-09-09, Branch `feature/fundament-und-live-daten`
+
+Der erste Bauabschnitt ist fertig. Drei Schritte lassen sich nur mit deinem
+Autodarts-Konto und deiner Dartscheibe erledigen. Erst danach kann der Adapter
+entstehen, der die Rohereignisse in den Anzeigezustand übersetzt.
+
+## Was läuft
+
+- Die Anwendung startet, du wählst Monitore aus, der Player-Screen erscheint im
+  Vollbild und zeigt live Rest-Score, Checkout-Weg und den aktuellen Wurf.
+- Checkout-Wege und Setup-Empfehlungen sind vollständig und getestet, inklusive
+  der Bogey-Zahlen.
+- Wiedergabe einer Aufzeichnung funktioniert vollständig ohne Netz und ohne
+  Anmeldung.
+- Die Live-Verbindung ist jetzt tatsächlich verdrahtet (vorher tote Zeile —
+  siehe Git-Historie): mit Anmeldung verbindet sich die Anwendung beim Start
+  automatisch, das Control-Fenster zeigt den echten Verbindungszustand
+  (verbunden/getrennt/nicht angemeldet). Ohne Anmeldung bleibt sie im
+  Ruhezustand statt mit einem Anmeldefenster zu überfallen, und das
+  Control-Fenster sagt, warum. Aufzeichnen (`AD_AUFZEICHNEN`) braucht deshalb
+  jetzt ebenfalls eine vorher abgeschlossene Anmeldung (Schritt 1) — ohne
+  echte Verbindung gäbe es nichts aufzuzeichnen.
+- Anmelden/Abmelden sind jetzt im Control-Fenster bedienbar (Knöpfe scharf,
+  Anmeldestatus zeigt „angemeldet"/„nicht angemeldet"). REST- und
+  WebSocket-Anbindung sind gebaut, aber nur so weit geprüft, wie es ohne
+  Konto möglich war — der eigentliche Anmeldeablauf mit echtem Konto steht
+  bei dir in Schritt 1 noch aus.
+- Die rechtlichen Pflichtangaben sind vollständig, im Repository und im
+  Über-Panel der Anwendung.
+
+## Was noch fehlt
+
+| Fehlt | Warum |
+|---|---|
+| Adapter von Rohereignis zu Anzeigezustand | Braucht deinen Mitschnitt, sonst wäre das Schema geraten |
+| Zuschauer-Screen, Installer, Auto-Update | Zweiter Bauabschnitt |
+
+## Vorbereitung
+
+```powershell
+cd F:\DEV\autodarts-screens
+npm run dev
+```
+
+Umgebungsvariablen setzt du in PowerShell so:
+
+```powershell
+$env:AD_TESTZUSTAND = "1"; npm run dev
+```
+
+In Git Bash so:
+
+```bash
+AD_TESTZUSTAND=1 npm run dev
+```
+
+| Variable | Wirkung |
+|---|---|
+| `AD_TESTZUSTAND=1` | Schickt einen erfundenen Spielzustand an den Player-Screen, ohne Netz und ohne Anmeldung. Zum Ansehen des Layouts. |
+| `AD_AUFZEICHNEN=<pfad>` | Schreibt alle Rohereignisse der echten Verbindung mit. Braucht eine vorher abgeschlossene Anmeldung (Schritt 1) — ohne sie bleibt die Anwendung im Ruhezustand, statt sich zu verbinden. Ein relativer Pfad wird gegen das Arbeitsverzeichnis aufgelöst, in dem `npm run dev` läuft — bei `docs\fixtures\match.jsonl` also `F:\DEV\autodarts-screens\docs\fixtures\match.jsonl`. |
+| `AD_WIEDERGABE=<pfad>` | Spielt eine Aufzeichnung ab, statt sich zu verbinden. Fordert kein Token an, funktioniert auch ohne Anmeldung. |
+
+## Schritt 1 — Anmeldung einmal durchlaufen
+
+Die Anmeldung ist gebaut, aber noch nie mit einem echten Konto ausgeführt
+worden. Sie läuft über ein eingebettetes Fenster auf der echten
+Autodarts-Anmeldeseite; die Anwendung sieht dein Passwort nicht, sie fängt nur
+den Rückgabe-Code ab.
+
+**So löst du sie aus:** Anwendung starten (`npm run dev`), im Control-Fenster
+im Bereich „Verbindung" auf „Anmelden" klicken. Der Knopf ist gesperrt,
+während eine Anmeldung läuft — ein zweiter Klick öffnet kein zweites
+Anmeldefenster.
+
+**Erfolgskriterium:** Das Anmeldefenster öffnet sich auf der Autodarts-Seite,
+du meldest dich mit E-Mail und Passwort an, das Fenster schließt sich von
+selbst, „Angemeldet als" wechselt im Control-Fenster auf „angemeldet", und die
+Anwendung verbindet sich sofort — ohne Neustart. Beim zweiten Start der
+Anwendung verbindet sie sich von selbst, ohne dass du erneut auf „Anmelden"
+klicken musst, weil der Aktualisierungs-Token greift. Bricht die Anmeldung ab
+(Fenster geschlossen, fünf Minuten ohne Rückmeldung), bleibt die Anwendung
+ruhig im Ruhezustand, ohne eine Fehlermeldung zu zeigen — das ist deine
+Entscheidung, kein Fehler. Ein echter Fehler (z. B. eine abgelehnte
+Serverantwort) erscheint dagegen als Hinweis im Control-Fenster.
+
+**Was ich dabei wissen muss**, weil es nur aus einer echten Serverantwort
+hervorgeht: Heißen die Felder in der Antwort tatsächlich `refresh_token` und
+`expires_in`, und wird der Aktualisierungs-Token bei jeder Erneuerung
+ausgetauscht oder bleibt er gleich? Beides ist bisher nur abgeleitet.
+
+**Falls die Anmeldung über Google statt über Passwort läuft:** Google
+verweigert OAuth-Anmeldungen in eingebetteten Fenstern. Dein Konto hat ein
+Passwort, deshalb ist das kein Problem — nimm im Anmeldefenster die
+Passwort-Anmeldung, nicht den Google-Knopf.
+
+## Schritt 2 — Board-Kennung ermitteln
+
+Nach erfolgreicher Anmeldung:
+
+```
+GET https://api.autodarts.com/bs/v0/boards
+```
+
+Der Pfad ist geprüft und existiert. Was ich brauche: die Kennung deines Boards
+und die tatsächlichen Feldnamen der Antwort. Ich weiß bisher nur, dass der
+Endpunkt antwortet, nicht wie seine Antwort aussieht.
+
+## Schritt 3 — Ein Match mitschneiden
+
+Das ist der wichtigste Schritt. Der Mitschnitt ist die einzige Quelle der
+Wahrheit über das Ereignis-Schema von Autodarts — es ist nirgends
+dokumentiert, und alle Community-Projekte, die ich gefunden habe, beschreiben
+noch den im Juni 2026 abgeschalteten Keycloak-Server.
+
+Voraussetzung: Schritt 1 (Anmeldung) muss vorher einmal erfolgreich
+durchgelaufen sein — ohne gespeicherte Anmeldung verbindet sich die Anwendung
+gar nicht erst, und `AD_AUFZEICHNEN` hätte nichts mitzuschneiden.
+
+```powershell
+$env:AD_AUFZEICHNEN = "docs\fixtures\match.jsonl"; npm run dev
+```
+
+Dann auf autodarts.io ein X01-Match starten und **ein vollständiges Leg**
+spielen. Wichtig, damit die Fälle abgedeckt sind:
+
+- mindestens einmal überwerfen (Bust)
+- mindestens einmal der Wechsel zum anderen Spieler
+- wenn möglich ein Leg zu Ende ausmachen
+
+Danach die Anwendung normal beenden (alle Fenster schließen, oder Alt+F4 auf
+dem Control-Fenster). Das Beenden wartet jetzt darauf, dass die Aufzeichnung
+vollständig auf die Platte geschrieben ist, bevor der Prozess tatsächlich
+endet — vorher fehlten dabei die letzten Zeilen. Die Datei landet unter
+`docs/fixtures/match.jsonl` (der Pfad wird gegen das Arbeitsverzeichnis von
+`npm run dev` aufgelöst, siehe Variablentabelle oben).
+
+**Bitte vorher hineinschauen:** Der Mitschnitt enthält Anzeigenamen aus deinem
+Konto — das ist gewollt, damit die Testdaten realistisch sind. Er darf aber
+kein Token und keine E-Mail-Adresse enthalten. Falls doch, ersetze diese Werte
+durch `"<entfernt>"`, bevor die Datei committet wird.
+
+Der Name `match.jsonl` ist für den echten Mitschnitt reserviert. Unter
+`docs/fixtures/beispiel-wiedergabe.jsonl` liegt eine von Hand erfundene Datei
+mit fünf Ereignissen; sie belegt nur, dass die Wiedergabe läuft, und taugt
+nicht zum Ableiten des Schemas.
+
+## Schritt 4 — Zurück an mich
+
+Sag mir, dass der Mitschnitt da ist. Dann baue ich den Adapter gegen die echten
+Ereignisse und der Player-Screen zeigt dein Match statt eines erfundenen
+Zustands.
+
+## Unbestätigte Annahmen
+
+Diese Punkte stehen im Code als Annahme markiert. Sie fallen bei Schritt 3
+entweder auf oder bestätigen sich:
+
+| Annahme | Wo |
+|---|---|
+| `POST /ms/v0/tickets` liefert das Ticket in einem bestimmten Antwortformat | `src/autodarts/websocket.ts` |
+| Die WebSocket-Adresse lautet `wss://api.autodarts.com/ms/v0/subscribe?ticket=<ticket>` | `src/autodarts/websocket.ts` |
+| Abonnements haben die Form `{"channel","type":"subscribe","topic"}` | `src/autodarts/websocket.ts` |
+| Die Kanal- und Themennamen für Board und Match | `src/autodarts/websocket.ts` |
+| Das Feld, das die Match-Kennung trägt | `src/autodarts/websocket.ts` |
+| Feldnamen `refresh_token` und `expires_in` in der Token-Antwort | `src/autodarts/oauth.ts` |
+
+Der Pfad `/ms/v0/tickets` selbst ist geprüft. Die Variante im Singular
+existiert nicht — das steht in mehreren Community-Projekten falsch.
+
+## Offene Entscheidung von dir
+
+Bei Rest 48 empfiehlt die Checkout-Logik `8 → D20`. Viele Tabellen lehren
+`16 → D16`, weil bei D16 beide Nachbarfelder 8 sind und ein Fehlwurf eine
+gerade Zahl übrig lässt, während D20 die Nachbarn 1 und 5 hat. Dasselbe Muster
+bei Rest 56 (`16 → D20` statt `T8 → D16`).
+
+Beide Wege sind gültig. Die Vorliebe steht als Kommentar über
+`BEVORZUGTE_DOPPEL` in `src/shared/checkout.ts` und ist eine Änderung an einer
+Stelle, falls du die D16-Kette bevorzugst.
+
+## Nützliches
+
+```powershell
+npm test           # Testlauf
+npm run typecheck  # Typprüfung
+npm run build      # Produktionsbau nach out\
+```
+
+Der Screenshot des Player-Screens liegt unter `docs/screenshots/player.png`.
+Die ermittelten API-Endpunkte samt Quelle und Vertrauensgrad stehen in
+`docs/autodarts-api.md`.

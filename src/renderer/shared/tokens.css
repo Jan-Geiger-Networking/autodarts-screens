@@ -1,0 +1,217 @@
+/* ===================================================================
+   JGNet — Colors & Type
+   Single source of truth for JGNet design tokens.
+   Source: Z:\SYNC\Dokumente\00-JGN--Prog\JGNet Design System\colors_and_type.css
+   Uebernommen fuer Task 11: der Google-Fonts-Import wurde durch lokale
+   @font-face-Regeln auf assets/schriften/*.woff2 ersetzt, damit die
+   Anwendung ohne Internetzugang startet und keine Schrift nachlaedt. Die
+   Werte der Tokens selbst sind unveraendert.
+   =================================================================== */
+
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../../../assets/schriften/barlow-condensed-700.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('../../../assets/schriften/barlow-condensed-800.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../../../assets/schriften/dm-sans-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../../../assets/schriften/dm-sans-500.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../../../assets/schriften/dm-sans-700.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../../../assets/schriften/jetbrains-mono-400.woff2') format('woff2');
+}
+
+:root {
+  /* ─── Surfaces & background ──────────────────────────────── */
+  --jg-bg:            #020617;   /* page background – deep slate-navy */
+  --jg-surface:       #0a1324;   /* cards, sections */
+  --jg-surface-hi:    #0f1a2e;   /* highlighted / form fields */
+
+  /* ─── Accent (electric neon green — brand signal color) ──── */
+  --jg-accent:        #04FC4C;
+  --jg-accent-dim:    rgba(4, 252, 76, 0.15);
+  --jg-accent-glow:   rgba(4, 252, 76, 0.25);
+  --jg-accent-strong: rgba(4, 252, 76, 0.8);
+
+  /* ─── Warning (CCTV-only, used sparingly) ────────────────── */
+  --jg-warning:       #ff4444;
+  --jg-warning-dim:   rgba(255, 68, 68, 0.18);
+
+  /* ─── Text ───────────────────────────────────────────────── */
+  --jg-text:          #e5ecf5;   /* body text on dark */
+  --jg-muted:         #8a9db5;   /* secondary */
+  --jg-muted-strong:  #a3b5cc;   /* slightly stronger secondary */
+
+  /* ─── Borders ────────────────────────────────────────────── */
+  --jg-border:        rgba(148, 163, 184, 0.12);
+  --jg-border-hover:  rgba(4, 252, 76, 0.35);
+  --jg-border-strong: rgba(148, 163, 184, 0.22);
+
+  /* ─── Typography — font families ─────────────────────────── */
+  --jg-font-display:  'Barlow Condensed', sans-serif;      /* headings, eyebrows, buttons */
+  --jg-font-body:     'DM Sans', system-ui, -apple-system, sans-serif; /* copy, UI */
+  --jg-font-mono:     'JetBrains Mono', ui-monospace, monospace;        /* code, tech values, phone */
+
+  /* ─── Typography — fluid scale (clamp-based) ─────────────── */
+  --jg-fs-eyebrow:    clamp(0.75rem, 2vw, 0.9rem);
+  --jg-fs-body-sm:    clamp(0.85rem, 1.8vw, 0.95rem);
+  --jg-fs-body:       clamp(0.95rem, 2vw, 1.05rem);
+  --jg-fs-h3:         clamp(1.1rem, 2.5vw, 1.4rem);
+  --jg-fs-h2:         clamp(1.4rem, 3.5vw, 2.2rem);
+  --jg-fs-h1:         clamp(2.1rem, 6.5vw, 4.5rem);
+
+  /* ─── Spacing (8px grid) ─────────────────────────────────── */
+  --jg-sp-1: 0.5rem;   /* 8  */
+  --jg-sp-2: 1rem;     /* 16 */
+  --jg-sp-3: 1.5rem;   /* 24 */
+  --jg-sp-4: 2rem;     /* 32 */
+  --jg-sp-6: 3rem;     /* 48 */
+  --jg-sp-8: 4rem;     /* 64 */
+  --jg-sp-12: 6rem;    /* 96 */
+
+  /* ─── Radii (small, restrained) ──────────────────────────── */
+  --jg-radius-sm: 6px;
+  --jg-radius-md: 10px;
+  --jg-radius-lg: 14px;
+
+  /* ─── Shadows ────────────────────────────────────────────── */
+  --jg-shadow-sm:   0 1px 2px rgba(0, 0, 0, 0.3);
+  --jg-shadow-md:   0 4px 12px rgba(0, 0, 0, 0.4);
+  --jg-shadow-lg:   0 12px 32px rgba(0, 0, 0, 0.5);
+  --jg-shadow-glow: 0 0 16px rgba(4, 252, 76, 0.2);
+
+  /* ─── Dot-grid background (page motif) ───────────────────── */
+  --jg-dot-size: 28px;
+  --jg-dot-opacity: 0.035;
+
+  /* ─── Motion ─────────────────────────────────────────────── */
+  --jg-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --jg-dur-entry: 0.55s;
+  --jg-dur-hover: 0.25s;
+}
+
+/* ─── Semantic element styles ────────────────────────────── */
+body {
+  background: var(--jg-bg);
+  color: var(--jg-text);
+  font-family: var(--jg-font-body);
+  font-weight: 400;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, .jg-h1 {
+  font-family: var(--jg-font-display);
+  font-size: var(--jg-fs-h1);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.05;
+  text-transform: uppercase;
+  color: var(--jg-text);
+  margin: 0 0 1.25rem;
+}
+
+h2, .jg-h2 {
+  font-family: var(--jg-font-display);
+  font-size: var(--jg-fs-h2);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--jg-text);
+  margin: 0 0 1rem;
+}
+
+h3, .jg-h3 {
+  font-family: var(--jg-font-display);
+  font-size: var(--jg-fs-h3);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--jg-text);
+  margin: 0 0 0.75rem;
+}
+
+.jg-eyebrow {
+  font-family: var(--jg-font-display);
+  font-size: var(--jg-fs-eyebrow);
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--jg-accent);
+}
+
+p, .jg-p {
+  font-size: var(--jg-fs-body);
+  font-weight: 300;
+  line-height: 1.75;
+  color: var(--jg-text);
+  margin: 0 0 1rem;
+}
+
+small, .jg-small {
+  font-size: var(--jg-fs-body-sm);
+  color: var(--jg-muted);
+}
+
+code, pre, .jg-code {
+  font-family: var(--jg-font-mono);
+  font-size: 0.9em;
+  color: var(--jg-accent);
+}
+
+a { color: var(--jg-accent); text-decoration: none; transition: color 0.15s ease; }
+a:hover { color: var(--jg-accent-strong); }
+
+/* Page surface helper — dot grid background */
+.jg-page {
+  min-height: 100vh;
+  background-color: var(--jg-bg);
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    rgb(148 163 184 / var(--jg-dot-opacity)) 1px,
+    transparent 0
+  );
+  background-size: var(--jg-dot-size) var(--jg-dot-size);
+  color: var(--jg-text);
+  font-family: var(--jg-font-body);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

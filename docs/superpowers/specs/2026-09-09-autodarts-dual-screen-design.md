@@ -37,7 +37,7 @@ Bewusst ausgeklammert, mit den Andockpunkten für später:
 | Laufzeit | Electron | Zwei Vollbild-Fenster auf verschiedenen Monitoren sind eine eingebaute Fähigkeit. `electron-updater` gegen GitHub Releases ist gelöster Standard. Die Broadcast-Animationen sind mit CSS und JavaScript um Größenordnungen billiger als nativ. |
 | UI | React + TypeScript + Vite | Szenen-Umschaltung und Zustandsableitung sind der Kern der Spectator-Ansicht |
 | Animation | Framer Motion | `AnimatePresence` orchestriert Ein- und Ausblendungen ganzer Szenen; von Hand geschriebene CSS-Transitions werden bei überlappenden Szenenwechseln unübersichtlich |
-| Authentifizierung | OAuth Authorization Code + PKCE im `BrowserWindow` | Funktioniert mit E-Mail/Passwort **und** Google-SSO. Die Anwendung sieht nie ein Passwort. |
+| Authentifizierung | OAuth Authorization Code + PKCE im `BrowserWindow`, Umleitung abgefangen | Der Device Authorization Grant ist für die Client-Kennung von Autodarts gesperrt (eigener Test, Abschnitt 5.2). Das Konto des Herausgebers hat ein Passwort, daher trägt der eingebettete Weg auch dann, wenn Google Webviews verweigert. Die Anwendung sieht nie ein Passwort. |
 | Token-Ablage | `safeStorage` (Electron, DPAPI) | Eingebaut, kein zusätzliches natives Modul |
 | Installer | `electron-builder`, NSIS, unsigniert | Kein Zertifikat nötig. Einmalig SmartScreen bestätigen, danach nie wieder. |
 | Ziel-PC | Keine Vorbedingungen | Electron bringt Node und Chromium mit. Node und Git braucht nur der Entwicklungsrechner. |
@@ -95,11 +95,92 @@ Aus öffentlich einsehbaren Community-Projekten ([python-autodarts],
 [tools-for-autodarts]: https://github.com/creazy231/tools-for-autodarts
 [autodarts-api-capabilities]: https://github.com/thomasasen/autodarts_local_tournament/blob/main/docs/autodarts-api-capabilities.md
 
-### 5.2 Offene Punkte und wie sie geschlossen werden
+### 5.2 Anmeldung — Stand nach der Migration vom 28.06.2026
+
+Die Erkundung hat ergeben, dass Autodarts am 28.06.2026 von einem
+Keycloak-Server (`login.autodarts.io`) auf einen selbst betriebenen
+OAuth-2.0-Server unter `api.autodarts.com` umgestellt hat. Der alte Server
+antwortet nicht mehr. Jede Angabe aus älteren Community-Projekten zu Realms,
+Keycloak-Pfaden oder `grant_type=password` ist damit hinfällig.
+
+Die vollständige Tabelle der selbst abgerufenen Werte samt Quelle und
+Vertrauensgrad steht in `docs/autodarts-api.md`. Für das Design zählen zwei
+Feststellungen:
+
+**Erstens:** Für die Client-Kennung `autodarts-play` ist ausschließlich
+`https://play.autodarts.com/auth/google/callback` als Umleitungsziel
+registriert. Ein eigenes Ziel — `localhost` oder ein Custom-Scheme — wird mit
+`400 invalid_redirect_uri` abgelehnt.
+
+**Zweitens:** Der Device Authorization Grant steht nicht zur Verfügung, obwohl
+der Server ihn serverweit bewirbt. Die Liste `grant_types_supported` enthält
+`urn:ietf:params:oauth:grant-type:device_code` und es gibt einen Endpunkt
+`/auth/v1/device/code`, aber für die Client-Kennung `autodarts-play` ist die
+Ablaufart gesperrt. Eigener Test am 2026-09-09:
+
+```
+POST https://api.autodarts.com/auth/v1/device/code
+Content-Type: application/json
+{"client_id": "autodarts-play"}
+
+400 {"error": "unauthorized_client",
+     "error_description": "client may not use the device authorization grant"}
+```
+
+Damit bleiben genau zwei gangbare Wege, und sie unterscheiden sich in einer
+Zusage, die diese Spezifikation und `PRIVACY.md` bereits machen — nämlich dass
+die Anwendung nie ein Passwort entgegennimmt.
+
+**Weg 1 — eingebettetes Fenster, Umleitung abfangen.** Die Anwendung öffnet den
+Autorisierungs-Endpunkt in einem `BrowserWindow`, der Nutzer meldet sich auf
+der Autodarts-Seite an, und die Anwendung fängt die Navigation ab, sobald sie
+`https://play.autodarts.com/auth/…/callback?code=…` erreicht. Der Code wird
+gegen `/auth/v1/exchange` eingetauscht. Die Anwendung sieht kein Passwort, die
+Zusage bleibt gehalten. Risiko: Google und Apple verweigern OAuth-Anmeldungen
+aus eingebetteten Webviews. Für ein Konto mit Passwort funktioniert der Weg,
+für die Anmeldung über Google ist er unsicher und hängt am gesetzten
+User-Agent.
+
+**Weg 2 — Passwort-Ablauf über `/auth/v1/login`.** Der Endpunkt existiert und
+verlangt laut eigenem Test mit leerem Rumpf die Felder `client_id` und
+`password` (und, sobald diese vorliegen, erwartbar eine Kennung des Kontos).
+Kein Browser, kein Umleitungsziel, keine Webview-Beschränkung. Preis: die
+Anwendung nimmt das Passwort selbst entgegen und muss es weiterreichen. Die
+Zusage aus Abschnitt 18.3 und aus `PRIVACY.md` wäre damit gebrochen und müsste
+umformuliert werden, und die Anmeldung funktioniert nur für Konten, die
+überhaupt ein Passwort haben — für ein reines Google-Konto nicht.
+
+**Entschieden: Weg 1.** Das Konto des Herausgebers besitzt ein eigenes
+Passwort und ist nicht auf Google angewiesen. Damit entfällt das Risiko des
+eingebetteten Fensters praktisch: sollte Google die Anmeldung in einem Webview
+verweigern, bleibt auf derselben Autodarts-Seite die Anmeldung mit E-Mail und
+Passwort möglich. Die Zusage aus Abschnitt 18.3 und aus `PRIVACY.md`, dass die
+Anwendung keine Zugangsdaten entgegennimmt, bleibt damit unverändert wahr und
+muss nicht umformuliert werden.
+
+Konkreter Ablauf:
+
+1. PKCE-Paar erzeugen, `code_challenge_method=S256`
+2. `https://api.autodarts.com/auth/v1/oauth/authorize` mit
+   `client_id=autodarts-play`, `response_type=code`,
+   `redirect_uri=https://play.autodarts.com/auth/google/callback`,
+   `scope=openid profile email` und der Challenge in einem `BrowserWindow`
+   öffnen, in eigener Sitzungspartition
+3. Navigation abfangen, sobald sie das Umleitungsziel erreicht, den Parameter
+   `code` entnehmen und die Seite nicht laden lassen
+4. `POST /auth/v1/exchange` mit JSON-Rumpf `{code, client_id, redirect_uri,
+   code_verifier}` gegen Zugriffs- und Aktualisierungs-Token tauschen
+5. Aktualisierungs-Token in `safeStorage` ablegen, Erneuerung über
+   `POST /auth/v1/refresh` mit `{refresh_token, client_id}`, Abmeldung über
+   `POST /auth/v1/logout` mit `{refresh_token}`
+
+Der Server nimmt JSON-Rümpfe, nicht `application/x-www-form-urlencoded` —
+mit Form-Encoding antwortet er `invalid request body`.
+
+### 5.2a Offene Punkte und wie sie geschlossen werden
 
 Die exakten Kanalnamen, das Ticket-Verfahren für den WebSocket und die
-Ereignis-Payloads sind nirgends offiziell dokumentiert, und Autodarts hat
-kürzlich ein größeres Update ausgeliefert. Deshalb ist der erste
+Ereignis-Payloads sind nirgends offiziell dokumentiert. Deshalb ist der erste
 Implementierungsschritt ein Erkundungsschritt:
 
 1. Mit echtem Account authentifizieren
@@ -113,10 +194,15 @@ Schritt.
 
 ### 5.3 Record & Replay
 
-Der Mitschnitt aus Schritt 5.2 bleibt dauerhaft eingebaut:
+Der Mitschnitt aus Schritt 5.2a bleibt dauerhaft eingebaut:
 
-- **Record** — jede Sitzung kann ihre Roh-Ereignisse mit Zeitstempel nach
-  `%APPDATA%/autodarts-screens/recordings/*.jsonl` schreiben
+- **Record** — jede Sitzung kann ihre Roh-Ereignisse mit Zeitstempel
+  aufzeichnen. Standardmäßig nach `%APPDATA%/autodarts-screens/recordings/*.jsonl`
+  (siehe `PRIVACY.md`, Abschnitt 3); der Zielpfad bleibt bewusst frei wählbar
+  (Umgebungsvariable `AD_AUFZEICHNEN`), damit ein Mitschnitt z. B. direkt als
+  Testfixture ins Repository geschrieben werden kann. Wählt der Nutzer selbst
+  einen Pfad, landet die Aufzeichnung dort statt im Standardordner —
+  weiterhin ausschließlich lokal.
 - **Replay** — eine Aufzeichnung wird mit Originalgeschwindigkeit oder im
   Zeitraffer eingespielt, statt sich mit der API zu verbinden
 
@@ -301,9 +387,13 @@ wird die laufende abgekürzt statt in eine Warteschlange gestellt.
 
 ## 9. Checkout-Logik
 
-Statische Tabelle für Rest 2 bis 170, jeweils in Varianten für drei, zwei und
-einen verbleibenden Dart. Einmal erzeugt, zur Laufzeit nur nachgeschlagen —
-kein Solver.
+Deckt Rest 2 bis 170 ab, jeweils für drei, zwei und einen verbleibenden Dart.
+Umgesetzt als erschöpfende Suche zur Laufzeit bei jedem Aufruf (`checkoutWeg()`
+in `src/shared/checkout.ts`), nicht als statisch erzeugte Tabelle — bewusste,
+bei der Umsetzung getroffene Entscheidung: höchstens rund 62² Kombinationen im
+schlechtesten Fall, günstiger als eine gepflegte 170-Einträge-Tabelle, und die
+Vorlieben (siehe `BEVORZUGTE_DOPPEL`) bleiben eine Stellschraube statt 170
+Handeinträgen. Nur das Ergebnis ist stabil und getestet, nicht der Weg dorthin.
 
 Regeln:
 
