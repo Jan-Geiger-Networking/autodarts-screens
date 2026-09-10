@@ -4,6 +4,18 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.15] - 2026-09-11
+
+Fünfzehnte Beta.
+
+### Neu
+- **Dartanimation im Standby des Player-Screens.** Läuft stumm in Schleife
+  hinter „Warte auf Spielstart", mit sehr wenig Deckkraft und leicht
+  unscharf: Stimmung, ohne den Blick zu binden. Ausschließlich im
+  Ruhezustand — sobald ein Match beginnt, ist der Bildschirm ohnehin durch
+  den Spielstand ersetzt. Wer Bewegung im System abgestellt hat, bekommt den
+  Ruhezustand wie bisher ohne Video
+
 ## [0.1.0-beta.14] - 2026-09-11
 
 Vierzehnte Beta. Turnierabend, Einblendungen auf dem Player-Screen und ein

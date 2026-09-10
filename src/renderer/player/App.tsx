@@ -15,6 +15,7 @@
 import { useEffect, useState } from 'react'
 import type { LegEntry, MatchState, Player, PlayerScore } from '../../shared/typen'
 import logoWeiss from '../../../assets/logo-white.png'
+import standbyVideo from '../../../assets/standby-darts.mp4'
 import { Dartscheibe } from '../shared/Dartscheibe'
 import { Anfangsermittlung } from '../shared/Anfangsermittlung'
 import { Einblendung } from './Einblendung'
@@ -176,6 +177,21 @@ export function App() {
   if (!zustand || zustand.phase === 'idle' || zustand.players.length === 0) {
     return (
       <div className="ruhezustand">
+        {/* Dartanimation als Hintergrund - stumm, in Schleife und mit sehr
+            wenig Deckkraft, damit sie Stimmung macht, ohne den Blick zu
+            binden. Laeuft ausschliesslich im Ruhezustand: sobald ein Match
+            beginnt, ist dieser ganze Zweig durch den Spielstand ersetzt.
+            playsInline und muted, weil ein Video ohne beides gar nicht von
+            selbst startet. */}
+        <video
+          className="ruhezustand-video"
+          src={standbyVideo}
+          autoPlay
+          muted
+          loop
+          playsInline
+          aria-hidden="true"
+        />
         {/* Ringe, die langsam aus der Mitte nach aussen laufen - das Motiv
             der Scheibe selbst. Sehr langsam und sehr leise gehalten: der
             Bildschirm haengt neben dem Board, und sobald geworfen wird, ist

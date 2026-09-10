@@ -691,3 +691,26 @@
     opacity: 0;
   }
 }
+
+/* Dartanimation im Ruhezustand. Sehr schwach im Hintergrund - der Bildschirm
+   haengt neben der Scheibe, und wer davorsteht, soll "Warte auf Spielstart"
+   lesen, nicht ein Video anschauen. Deshalb wenig Deckkraft, leicht
+   unscharf und hinter allem anderen. */
+.ruhezustand-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  opacity: 0.14;
+  filter: blur(1px) saturate(0.8);
+  pointer-events: none;
+}
+
+/* Wer Bewegung abgestellt hat, bekommt den Ruhezustand ohne Video. */
+@media (prefers-reduced-motion: reduce) {
+  .ruhezustand-video {
+    display: none;
+  }
+}
