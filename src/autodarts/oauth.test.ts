@@ -155,6 +155,18 @@ describe('codeAusUmleitung', () => {
 const userDataDir = mkdtempSync(join(tmpdir(), 'ad-oauth-'))
 const ablageDatei = join(userDataDir, 'anmeldung.bin')
 
+// Das Diagnoseprotokoll wird abgeschaltet, nicht nur umgeleitet: oauth.ts
+// ruft protokollieren() bewusst ohne await auf ("void protokollieren(...)"),
+// und ohne echte Electron-Laufzeit scheitert das Schreiben und meldet sich
+// per console.error - erst NACHDEM der Test schon vorbei ist. Vitest bricht
+// den ganzen Lauf dann mit "Closing rpc while onUserConsoleLog was pending"
+// ab, obwohl jeder einzelne Test bestanden hat (genau so geschehen im
+// Release-Lauf zu v0.1.0-beta.6).
+vi.mock('./diagnose', async (importOriginal) => {
+  const echte = await importOriginal<typeof import('./diagnose')>()
+  return { ...echte, protokollieren: vi.fn(async () => {}) }
+})
+
 vi.mock('electron', () => ({
   app: { getPath: () => userDataDir },
   safeStorage: {
