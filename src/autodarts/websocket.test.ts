@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NichtAngemeldetFehler, senden } from './rest'
-import { ticketAusAntwort, verbinden, wartezeit } from './websocket'
+import { subscribeAdresse, ticketAusAntwort, verbinden, wartezeit } from './websocket'
 
 // Ersetzt die Ticket-Beschaffung: senden() kommt aus rest.ts und wuerde ohne
 // Mock echtes fetch()/zugriffsToken() ausloesen. holen() wird ebenfalls
@@ -61,12 +61,43 @@ describe('wartezeit', () => {
   })
 })
 
+describe('subscribeAdresse', () => {
+  // Der Parametername ist gegen den echten Server belegt: mit ?ticket=
+  // antwortet er "unauthorized" (Parameter unbekannt), mit ?code= dagegen
+  // "invalid ticket" - er prueft den Wert also. Genau daran scheiterte die
+  // Verbindung nach erfolgreicher Anmeldung.
+  it('haengt das Ticket als Parameter code an, nicht als ticket', () => {
+    const adresse = subscribeAdresse('abc123')
+    expect(adresse).toContain('?code=abc123')
+    expect(adresse).not.toContain('ticket=')
+  })
+
+  it('kodiert Sonderzeichen im Ticket', () => {
+    expect(subscribeAdresse('a b+c/d')).toContain('?code=a%20b%2Bc%2Fd')
+  })
+
+  it('zeigt auf den Subscribe-Endpunkt', () => {
+    expect(subscribeAdresse('x')).toMatch(/^wss:\/\/api\.autodarts\.com\/ms\/v0\/subscribe\?/)
+  })
+})
+
 describe('ticketAusAntwort', () => {
-  it('akzeptiert eine reine Zeichenkette (Annahme laut Community-Projekten)', () => {
+  // Die echte Antwortform, am 2026-09-10 an einer Serverantwort belegt. Genau
+  // hier scheiterte der Verbindungsaufbau nach erfolgreicher Anmeldung: die
+  // Funktion kannte "ticket", "id" und "token", aber nicht "code".
+  it('liest das Ticket aus dem Feld code', () => {
+    expect(ticketAusAntwort({ code: 'abc123' })).toBe('abc123')
+  })
+
+  it('bevorzugt code, wenn mehrere Felder vorhanden sind', () => {
+    expect(ticketAusAntwort({ code: 'richtig', ticket: 'falsch' })).toBe('richtig')
+  })
+
+  it('akzeptiert weiterhin eine reine Zeichenkette', () => {
     expect(ticketAusAntwort('abc123')).toBe('abc123')
   })
 
-  it('findet ein Ticket in einem Objekt unter gaengigen Feldnamen', () => {
+  it('findet ein Ticket auch unter anderen gaengigen Feldnamen', () => {
     expect(ticketAusAntwort({ ticket: 'xyz' })).toBe('xyz')
     expect(ticketAusAntwort({ id: 'xyz' })).toBe('xyz')
     expect(ticketAusAntwort({ token: 'xyz' })).toBe('xyz')

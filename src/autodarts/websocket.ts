@@ -83,8 +83,34 @@ export function wartezeit(versuch: number): number {
  * protokolliert - ohne den Ticket-Wert selbst zu loggen, er ist wie ein
  * Token einmalig gueltiges Zugangsmaterial.
  */
+/**
+ * Baut die Adresse des Subscribe-Endpunkts. Der Abfrageparameter heisst
+ * `code`, nicht `ticket` - am 2026-09-10 gegen den echten Server belegt:
+ * mit `?ticket=` antwortet er `401 "unauthorized"` (Parameter unbekannt,
+ * also wie gar keiner), mit `?code=` dagegen `401 "invalid ticket"`, prueft
+ * den Wert also tatsaechlich. Passt zur Antwort von POST /ms/v0/tickets, die
+ * das Ticket ebenfalls im Feld `code` liefert.
+ */
+export function subscribeAdresse(ticket: string): string {
+  return `${WS_ADRESSE}?code=${encodeURIComponent(ticket)}`
+}
+
 export function ticketAusAntwort(antwort: unknown): string {
-  if (typeof antwort === 'string' && antwort.length > 0) return antwort
+  // Bestaetigt am 2026-09-10 an einer echten Serverantwort: das Ticket steht
+  // im Feld "code". Die urspruenglich erwartete reine Zeichenkette stammte aus
+  // einem Community-Projekt und war falsch - genau daran scheiterte der erste
+  // Verbindungsaufbau nach einer erfolgreichen Anmeldung.
+  if (typeof antwort === 'object' && antwort !== null) {
+    const wert = (antwort as Record<string, unknown>).code
+    if (typeof wert === 'string' && wert.length > 0) return wert
+  }
+
+  // Nachsicht fuer abweichende Formen, falls Autodarts das Feld je umbenennt:
+  // lieber mit einer Warnung weiterlaufen als ein laufendes Match verlieren.
+  if (typeof antwort === 'string' && antwort.length > 0) {
+    console.warn('Ticket-Antwort war eine reine Zeichenkette statt eines Objekts mit "code".')
+    return antwort
+  }
 
   if (typeof antwort === 'object' && antwort !== null) {
     const rumpf = antwort as Record<string, unknown>
@@ -92,7 +118,7 @@ export function ticketAusAntwort(antwort: unknown): string {
       const wert = rumpf[feld]
       if (typeof wert === 'string' && wert.length > 0) {
         console.warn(
-          `Annahme verletzt: Ticket-Antwort von POST /ms/v0/tickets war ein Objekt (Feld "${feld}"), nicht die erwartete reine Zeichenkette. websocket.ts anpassen.`,
+          `Ticket-Antwort trug das Ticket im Feld "${feld}" statt in "code". websocket.ts pruefen.`,
         )
         return wert
       }
@@ -275,8 +301,7 @@ async function echteVerbindung(
     if (geschlossen) return
 
     const ticket = ticketAusAntwort(ticketAntwort)
-    // Annahme: WebSocket-Adresse samt ?ticket=-Parameter, siehe Dateikopf.
-    const neuerSocket = new WebSocket(`${WS_ADRESSE}?ticket=${encodeURIComponent(ticket)}`)
+    const neuerSocket = new WebSocket(subscribeAdresse(ticket))
 
     await new Promise<void>((resolve, reject) => {
       let geoeffnet = false
