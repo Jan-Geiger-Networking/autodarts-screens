@@ -152,13 +152,18 @@
 }
 
 /* Logo klein in der unteren Ecke - der Spielstand hat Vorrang. */
+/* Herkunftszeichen unten links. Fast doppelt so gross und deutlich weniger
+   durchscheinend als bis 0.1.0-beta.13 ("das logo im player bildschirm von
+   Jan Geiger Networking kannst du groesser machen das sieht man kaum") - der
+   Player-Screen haengt gross und weit weg an der Scheibe, was dort auf einem
+   Entwicklermonitor gut aussieht, verschwindet im Raum. */
 .bug {
   position: absolute;
   bottom: 2vh;
   left: 2vh;
-  height: 3.4vh;
+  height: 6.5vh;
   width: auto;
-  opacity: 0.75;
+  opacity: 0.92;
 }
 
 /* ─── Einstellungen (Startpunktzahl, Modus) ─────────────────────────── */
@@ -518,4 +523,171 @@
 .spielbildschirm-anfang {
   align-items: center;
   justify-content: center;
+}
+
+/* ─── Kurze Einblendungen (Spielerwechsel, 180, Leg, Match) ──────────────
+   Sitzen ueber der Scheibe, nicht ueber den Spielertafeln: Restpunktzahl
+   und Checkout-Weg muessen jederzeit lesbar bleiben, dafuer steht dieser
+   Bildschirm da. Gross genug fuer die Entfernung zur Scheibe, kurz genug,
+   dass beim naechsten Wurf nichts mehr im Weg steht. */
+
+.scheibenfeld {
+  position: relative;
+}
+
+.einblendung {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2em;
+  padding: 2.2vh 3.2vw;
+  border-radius: 1.2vh;
+  border: 0.22vh solid var(--jg-accent-strong);
+  background: rgba(2, 6, 23, 0.86);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 0 6vh 1vh var(--jg-accent-glow);
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.einblendung-oben {
+  font-family: var(--jg-font-display);
+  font-size: 2.4vh;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--jg-muted-strong);
+}
+
+.einblendung-gross {
+  font-family: var(--jg-font-display);
+  font-size: 8vh;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--jg-accent);
+}
+
+.einblendung-unten {
+  font-family: var(--jg-font-display);
+  font-size: 2.2vh;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--jg-muted);
+}
+
+/* Der Spielerwechsel ist der haeufigste Anlass - er bleibt am ruhigsten:
+   kleinere Schrift, kein Schein. Sonst blitzt es zwischen zwei Aufnahmen. */
+.einblendung-playerChange {
+  box-shadow: none;
+  border-color: var(--jg-border-strong);
+}
+
+.einblendung-playerChange .einblendung-gross {
+  font-size: 5.4vh;
+  color: var(--jg-text);
+}
+
+/* 180 und hohes Finish duerfen knallen. */
+.einblendung-bigMoment .einblendung-gross {
+  font-size: 12vh;
+  text-shadow: 0 0 3vh var(--jg-accent-glow);
+}
+
+/* Das gewonnene Match nimmt die ganze Flaeche - danach ist nichts mehr zu
+   treffen, und der Moment gehoert dem Sieger. */
+.einblendung-vollflaeche {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 0;
+  background: rgba(2, 6, 23, 0.94);
+  justify-content: center;
+  transform: none;
+}
+
+.einblendung-vollflaeche .einblendung-gross {
+  font-size: 11vh;
+}
+
+/* Ein- und Ausfahrt. Die Dauer muss zu UEBERGANG_MS in Einblendung.tsx
+   passen - laenger hier hiesse, dass das Element mitten in der Ausfahrt aus
+   dem Baum faellt. */
+.einblendung.ist-sichtbar {
+  animation: einblendung-ein 420ms var(--jg-ease) both;
+}
+
+.einblendung.faehrt-aus {
+  animation: einblendung-aus 420ms var(--jg-ease) both;
+}
+
+.einblendung-vollflaeche.ist-sichtbar {
+  animation: einblendung-flaeche-ein 420ms var(--jg-ease) both;
+}
+
+.einblendung-vollflaeche.faehrt-aus {
+  animation: einblendung-flaeche-aus 420ms var(--jg-ease) both;
+}
+
+@keyframes einblendung-ein {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes einblendung-aus {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.06);
+  }
+}
+
+@keyframes einblendung-flaeche-ein {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes einblendung-flaeche-aus {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Wer Bewegung abgestellt hat, bekommt denselben Inhalt ohne Fahrt - die
+   Information geht nicht verloren, nur die Bewegung. */
+@media (prefers-reduced-motion: reduce) {
+  .einblendung.ist-sichtbar,
+  .einblendung.faehrt-aus,
+  .einblendung-vollflaeche.ist-sichtbar,
+  .einblendung-vollflaeche.faehrt-aus {
+    animation: none;
+  }
+
+  .einblendung.faehrt-aus {
+    opacity: 0;
+  }
 }

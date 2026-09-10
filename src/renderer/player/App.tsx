@@ -17,6 +17,7 @@ import type { LegEntry, MatchState, Player, PlayerScore } from '../../shared/typ
 import logoWeiss from '../../../assets/logo-white.png'
 import { Dartscheibe } from '../shared/Dartscheibe'
 import { Anfangsermittlung } from '../shared/Anfangsermittlung'
+import { Einblendung } from './Einblendung'
 import { spielerAufteilen } from '../spectator/aufteilung'
 import { legStatistik } from '../spectator/statistik'
 import { useVorfuehrung, vorfuehrungAktiv } from '../spectator/vorfuehrung'
@@ -264,6 +265,9 @@ export function App() {
 
         <div className="scheibenfeld">
           <Dartscheibe darts={scheibenDarts} verblasst={scheibeVerblasst} />
+          {/* Ueber der Scheibe, nicht ueber den Tafeln: Restpunktzahl und
+              Checkout-Weg bleiben waehrend jeder Einblendung lesbar. */}
+          <Einblendung zustand={zustand} />
         </div>
 
         <div className="tafelspalte">{rechts.map(tafel)}</div>
