@@ -41,6 +41,7 @@ async function verbindungAufbauen(): Promise<void> {
 
   if (!wiedergabe) {
     if (!(await istAngemeldet())) {
+      void protokollieren('Verbindungsaufbau abgebrochen: keine Anmeldung vorhanden')
       verbindungszustandVerteilen('nichtAngemeldet')
       return
     }
@@ -81,12 +82,22 @@ async function verbindungAufbauen(): Promise<void> {
  * bestehenden entstehen.
  */
 export async function verbindungStarten(): Promise<void> {
-  if (aktiveVerbindung) return
-  if (!laufenderVerbindungsversuch) {
-    laufenderVerbindungsversuch = verbindungAufbauen().finally(() => {
-      laufenderVerbindungsversuch = null
-    })
+  // Beide fruehen Ausstiege werden protokolliert: ohne das ist ein
+  // ausbleibender Verbindungsaufbau im Diagnoseprotokoll nicht von einem nie
+  // erfolgten Aufruf zu unterscheiden - genau daran hing die Suche nach dem
+  // Fehler "nach der Anmeldung passiert nichts".
+  if (aktiveVerbindung) {
+    void protokollieren('Verbindungsaufbau uebersprungen: bereits verbunden')
+    return
   }
+  if (laufenderVerbindungsversuch) {
+    void protokollieren('Verbindungsaufbau uebersprungen: Versuch laeuft bereits')
+    return laufenderVerbindungsversuch
+  }
+  void protokollieren('Verbindungsaufbau angefordert')
+  laufenderVerbindungsversuch = verbindungAufbauen().finally(() => {
+    laufenderVerbindungsversuch = null
+  })
   return laufenderVerbindungsversuch
 }
 
