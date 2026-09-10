@@ -18,6 +18,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import { readFile, writeFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { NichtAngemeldetFehler } from './fehler'
+import { adresseOhneAbfrage, feldUebersicht, protokollieren } from './diagnose'
 
 const AUTORISIERUNG = 'https://api.autodarts.com/auth/v1/oauth/authorize'
 const AUSTAUSCH = 'https://api.autodarts.com/auth/v1/exchange'
@@ -25,6 +26,16 @@ const ERNEUERUNG = 'https://api.autodarts.com/auth/v1/refresh'
 const ABMELDUNG_ENDPUNKT = 'https://api.autodarts.com/auth/v1/logout'
 const CLIENT_ID = 'autodarts-play'
 const UMLEITUNG = 'https://play.autodarts.com/auth/google/callback'
+// Nur fuer die clientseitige Erkennung "ist das die OAuth-Umleitung",
+// bewusst weiter gefasst als UMLEITUNG selbst (Diagnose-Befund: der
+// Herausgeber meldet sich per Passwort an, nicht per Google - trotz "google"
+// im Pfad. Ob der Server bei einer Passwort-Anmeldung auf einen anderen Pfad
+// unter /auth/ umleitet als bei Google, ist ungeklaert. Ein zu enges
+// Abfangen waere hier der teurere Fehler, siehe Diagnose-Report). UMLEITUNG
+// selbst bleibt unveraendert die exakte, beim Server registrierte
+// redirect_uri - die MUSS Zeichen fuer Zeichen uebereinstimmen und wird
+// unten unveraendert an /authorize und /exchange gereicht.
+const UMLEITUNG_PRAEFIX = 'https://play.autodarts.com/auth/'
 const SCOPE = 'openid profile email'
 // Exportiert, damit src/main/datenLoeschen.ts dieselbe Partition raeumen
 // kann wie abmelden() unten, ohne den String ein zweites Mal zu tippen und
@@ -79,7 +90,11 @@ export function tokenNochGueltig(laeuftAbUm: number, jetzt: number, pufferSekund
  * Adresse (Zwischenseite, Google-Login) sinnvoll und ohne Ausnahme antwortet.
  */
 export function codeAusUmleitung(url: string, erwarteterState: string): { code: string } | { fehler: string } {
-  if (!url.startsWith(UMLEITUNG)) {
+  // Prueft gegen UMLEITUNG_PRAEFIX (das gesamte /auth/-Verzeichnis), nicht
+  // gegen den vollen, exakten UMLEITUNG-Pfad - siehe Kommentar dort
+  // (Diagnose-Befund: unklar, ob der Server bei einer Passwort-Anmeldung auf
+  // einen anderen Pfad umleitet als ".../auth/google/callback").
+  if (!url.startsWith(UMLEITUNG_PRAEFIX)) {
     return { fehler: `Unerwartete Adresse: ${url}` }
   }
 
@@ -124,7 +139,9 @@ type TokenAntwort = {
 // unterscheiden koennen: eine echte Ablehnung durch den Server (ungueltiges/
 // widerrufenes/rotiertes Aktualisierungs-Token, Status 400/401) ist etwas
 // anderes als ein Netzwerkausfall oder ein serverseitiger 5xx-Fehler.
-class AutodartsHttpFehler extends Error {
+// Exportiert, damit fehlerZuMeldung() unten und oauth.test.ts per instanceof
+// pruefen koennen, ob ein Fehler eine echte Ablehnung durch den Server war.
+export class AutodartsHttpFehler extends Error {
   readonly status: number
   constructor(status: number, message: string) {
     super(message)
@@ -152,8 +169,26 @@ async function postJson(url: string, rumpf: Record<string, string>): Promise<Res
   return antwort
 }
 
+// Protokolliert Statuscode und Feldnamen/-typen jeder Antwort (Erfolg wie
+// Fehler) - fuer AUSTAUSCH und ERNEUERUNG gleichermassen, der einzige Weg,
+// mit dem beide Endpunkte angefragt werden. Der Fehlerrumpf des Servers
+// (z.B. {"error":{"code":"invalid_code","message":"..."}}) ist keine
+// Geheimnis, sondern die Fehlerklassifizierung selbst - er steckt bereits in
+// AutodartsHttpFehler.message und wird deshalb ungekuerzt protokolliert
+// (geheimnisseFiltern laesst das Feld "code" dort bewusst unangetastet,
+// siehe diagnose.ts).
 async function tokenAnfragen(url: string, rumpf: Record<string, string>): Promise<TokenAntwort> {
-  return (await postJson(url, rumpf)).json() as Promise<TokenAntwort>
+  let antwort: Response
+  try {
+    antwort = await postJson(url, rumpf)
+  } catch (fehler) {
+    const status = fehler instanceof AutodartsHttpFehler ? `Status ${fehler.status}` : 'keine Antwort (z.B. Netzwerkfehler)'
+    void protokollieren(`Anfrage an ${url} fehlgeschlagen (${status}): ${fehler instanceof Error ? fehler.message : String(fehler)}`)
+    throw fehler
+  }
+  const rumpfAntwort = (await antwort.json()) as TokenAntwort
+  void protokollieren(`Anfrage an ${url}: Antwort erhalten (Status ${antwort.status}), Felder: ${feldUebersicht(rumpfAntwort)}`)
+  return rumpfAntwort
 }
 
 type Ablage = { refreshToken: string }
@@ -165,10 +200,19 @@ async function ablagePfad(): Promise<string> {
 
 async function ablageSchreiben(daten: Ablage): Promise<void> {
   const { safeStorage } = await import('electron')
-  if (!safeStorage.isEncryptionAvailable()) {
-    throw new Error('Verschluesselte Ablage steht auf diesem System nicht zur Verfuegung')
+  const verfuegbar = safeStorage.isEncryptionAvailable()
+  void protokollieren(`Verschluesselte Ablage: isEncryptionAvailable=${verfuegbar}`)
+  if (!verfuegbar) {
+    throw new Error(ABLAGE_NICHT_VERFUEGBAR_MELDUNG)
   }
-  await writeFile(await ablagePfad(), safeStorage.encryptString(JSON.stringify(daten)))
+  const pfad = await ablagePfad()
+  try {
+    await writeFile(pfad, safeStorage.encryptString(JSON.stringify(daten)))
+    void protokollieren(`Ablage geschrieben: ${pfad}`)
+  } catch (fehler) {
+    void protokollieren(`Ablage schreiben fehlgeschlagen (${pfad}): ${fehler instanceof Error ? fehler.message : String(fehler)}`)
+    throw fehler
+  }
 }
 
 async function ablageLesen(): Promise<Ablage | null> {
@@ -201,13 +245,15 @@ type UmleitungsEreignis = { url: string; isMainFrame: boolean; preventDefault: (
 
 /**
  * Ergebnis eines Anmeldeversuchs ueber den IPC-Kanal anmeldung:starten
- * (siehe src/main/ipc.ts). Bewusst ohne Fehlertext: kein Token, keine
- * Adresse und kein Code sollen je den Hauptprozess verlassen. `abgebrochen`
- * unterscheidet eine bewusste Nutzerentscheidung (Fenster geschlossen,
- * Zeitlimit erreicht - siehe istAnmeldungAbbruch) von einem echten
- * Fehlerfall, den das Control-Fenster anzeigen soll.
+ * (siehe src/main/ipc.ts). `meldung` ist bei jedem Nicht-Erfolg gesetzt - ein
+ * fuer Menschen gedachter, bewusst zugeordneter Satz (siehe fehlerZuMeldung
+ * unten), nie der rohe Fehlertext: kein Token, keine Adresse und kein Code
+ * sollen je den Hauptprozess verlassen. `abgebrochen` unterscheidet eine
+ * bewusste Nutzerentscheidung (Fenster geschlossen, Zeitlimit erreicht -
+ * siehe istAnmeldungAbbruch) von einem echten Fehlerfall - beide bekommen
+ * trotzdem eine Meldung, die Zeiten stillen Scheiterns sind vorbei.
  */
-export type AnmeldungsErgebnis = { erfolg: true } | { erfolg: false; abgebrochen: boolean }
+export type AnmeldungsErgebnis = { erfolg: true } | { erfolg: false; abgebrochen: boolean; meldung: string }
 
 /**
  * Ob ein von anmelden() geworfener Fehler eine bewusste Nutzerentscheidung
@@ -216,10 +262,68 @@ export type AnmeldungsErgebnis = { erfolg: true } | { erfolg: false; abgebrochen
  * behandeln, nicht als Fehler im Control-Fenster anzeigen. Prueft den
  * Nachrichtentext, weil es dafuer keinen eigenen Fehlertyp gibt (anders als
  * NichtAngemeldetFehler); beide Nachrichten unten beginnen mit demselben
- * Praefix.
+ * Praefix - istAnmeldungZeitlimit grenzt die speziellere der beiden ab.
  */
 export function istAnmeldungAbbruch(fehler: unknown): boolean {
   return fehler instanceof Error && fehler.message.startsWith('Anmeldung abgebrochen')
+}
+
+/** Die speziellere der beiden istAnmeldungAbbruch-Ursachen: das Zeitlimit (siehe ANMELDE_ZEITLIMIT_MS), nicht ein vom Nutzer geschlossenes Fenster. */
+export function istAnmeldungZeitlimit(fehler: unknown): boolean {
+  return fehler instanceof Error && fehler.message.startsWith('Anmeldung abgebrochen: ')
+}
+
+// Eigene Konstanten fuer die beiden folgenden Fehlertexte, statt sie an
+// Wurf- und Pruefstelle je einmal zu tippen und dabei zu riskieren, dass
+// beide Stellen einmal auseinanderlaufen (gleiches Muster wie
+// SITZUNGSPARTITION oben).
+const KEIN_AKTUALISIERUNGS_TOKEN_MELDUNG = 'Autodarts-Antwort auf den Code-Tausch enthielt kein Aktualisierungs-Token'
+const ABLAGE_NICHT_VERFUEGBAR_MELDUNG = 'Verschluesselte Ablage steht auf diesem System nicht zur Verfuegung'
+
+/** Ob die Code-Tausch-Antwort kein Aktualisierungs-Token enthielt (siehe anmeldungDurchfuehren). */
+export function istKeinAktualisierungsToken(fehler: unknown): boolean {
+  return fehler instanceof Error && fehler.message === KEIN_AKTUALISIERUNGS_TOKEN_MELDUNG
+}
+
+/** Ob safeStorage auf diesem Rechner keine Verschluesselung anbietet (siehe ablageSchreiben). */
+export function istAblageNichtVerfuegbar(fehler: unknown): boolean {
+  return fehler instanceof Error && fehler.message === ABLAGE_NICHT_VERFUEGBAR_MELDUNG
+}
+
+/**
+ * Ordnet einen von anmelden() geworfenen Fehler einer fuer Menschen gedachten
+ * deutschen Meldung zu - die einzige Stelle, die entscheidet, was das
+ * Control-Fenster zu sehen bekommt. Bekannte Faelle bekommen einen
+ * verstaendlichen, ruhigen Satz; alles Unbekannte einen allgemeinen Satz mit
+ * Verweis auf das Diagnoseprotokoll (`diagnosePfad` - der Aufrufer holt den
+ * Pfad selbst, diese Funktion bleibt dadurch eine reine, ohne Electron
+ * testbare Funktion). Gibt nie fehler.message direkt zurueck: die koennte im
+ * unwahrscheinlichen Fall einer nicht abgefangenen Adresse (codeAusUmleitung,
+ * "Unerwartete Adresse") sogar eine volle URL mit Code und State enthalten.
+ */
+export function fehlerZuMeldung(fehler: unknown, diagnosePfad: string): string {
+  if (istAnmeldungZeitlimit(fehler)) {
+    return 'Zeitlimit erreicht (5 Minuten ohne Rueckmeldung). Bitte die Anmeldung erneut starten.'
+  }
+  if (istAnmeldungAbbruch(fehler)) {
+    return 'Anmeldung abgebrochen.'
+  }
+  if (fehler instanceof AutodartsHttpFehler && fehler.status >= 400 && fehler.status < 500) {
+    // Ein abgelehnter Code ist verbraucht oder abgelaufen - ein zweiter
+    // Versuch mit demselben Anmeldefenster/Code hilft nie, nur ein ganz
+    // neuer Anmeldeversuch (neuer Code, neuer Verifier).
+    return 'Der Server hat den Anmeldecode abgelehnt (vermutlich abgelaufen oder bereits verwendet). Bitte die Anmeldung ganz neu starten.'
+  }
+  if (istKeinAktualisierungsToken(fehler)) {
+    return `Die Antwort des Servers enthielt kein Aktualisierungs-Token. Bitte erneut versuchen; bleibt es bestehen, Einzelheiten im Diagnoseprotokoll: ${diagnosePfad}`
+  }
+  if (istAblageNichtVerfuegbar(fehler)) {
+    return 'Die verschluesselte Ablage steht auf diesem Rechner nicht zur Verfuegung, die Anmeldung kann nicht gespeichert werden.'
+  }
+  if (fehler instanceof TypeError) {
+    return 'Keine Netzverbindung zu Autodarts. Bitte Internetverbindung pruefen und erneut versuchen.'
+  }
+  return `Anmeldung fehlgeschlagen. Einzelheiten stehen im Diagnoseprotokoll: ${diagnosePfad}`
 }
 
 // Verhindert einen zweiten, gleichzeitigen Anmeldeversuch - ohne diese
@@ -251,6 +355,7 @@ export async function anmelden(): Promise<void> {
 }
 
 async function anmeldungDurchfuehren(): Promise<void> {
+  void protokollieren('Anmeldung gestartet')
   const { verifier, challenge } = pkcePaar()
   const erwarteterState = zufallswert(24)
   const { BrowserWindow, session, shell } = await import('electron')
@@ -269,6 +374,7 @@ async function anmeldungDurchfuehren(): Promise<void> {
       sandbox: true,
     },
   })
+  void protokollieren('Anmeldefenster geoeffnet')
 
   // Echte Drittseiten (Google, Autodarts) koennen Popups oeffnen (z.B.
   // Konto-Auswahl) - die landen im Systembrowser statt in einem neuen
@@ -277,6 +383,26 @@ async function anmeldungDurchfuehren(): Promise<void> {
     if (url.startsWith('https://')) void shell.openExternal(url)
     return { action: 'deny' }
   })
+
+  // Reine Beobachtung, greift nie ein (kein preventDefault) - protokolliert
+  // jede Navigation des Anmeldefensters mit Host und Pfad, nie mit den
+  // Abfrageparametern. Unabhaengig von pruefeUndBeenden unten: falls der
+  // Server nach einer Passwort-Anmeldung auf einen anderen Pfad umleitet als
+  // erwartet, steht die tatsaechliche Zieladresse trotzdem im Protokoll
+  // (Diagnose-Befund, siehe UMLEITUNG_PRAEFIX oben).
+  const navigationProtokollieren = (ereignis: UmleitungsEreignis): void => {
+    void protokollieren(
+      `Anmeldefenster-Navigation (${ereignis.isMainFrame ? 'Hauptrahmen' : 'Unterrahmen'}): ${adresseOhneAbfrage(ereignis.url)}`,
+    )
+  }
+  fenster.webContents.on('will-navigate', navigationProtokollieren)
+  fenster.webContents.on('will-redirect', navigationProtokollieren)
+  // will-navigate/will-redirect feuern nicht fuer den allerersten,
+  // programmatischen loadURL()-Aufruf unten (Electron-Dokumentation) -
+  // did-navigate deckt auch diesen ersten Sprung zur Autorisierungsseite ab.
+  fenster.webContents.on('did-navigate', (_event, url) =>
+    navigationProtokollieren({ url, isMainFrame: true, preventDefault: () => {} }),
+  )
 
   const code = await new Promise<string>((resolve, reject) => {
     let erledigt = false
@@ -299,8 +425,12 @@ async function anmeldungDurchfuehren(): Promise<void> {
     }, ANMELDE_ZEITLIMIT_MS)
 
     const pruefeUndBeenden = (ereignis: UmleitungsEreignis): void => {
-      if (!ereignis.isMainFrame || !ereignis.url.startsWith(UMLEITUNG)) return
+      // Prueft gegen UMLEITUNG_PRAEFIX (das ganze /auth/-Verzeichnis), nicht
+      // gegen den exakten UMLEITUNG-Pfad - ein zu enges Abfangen waere hier
+      // der teurere Fehler (siehe Kommentar bei UMLEITUNG_PRAEFIX oben).
+      if (!ereignis.isMainFrame || !ereignis.url.startsWith(UMLEITUNG_PRAEFIX)) return
       ereignis.preventDefault()
+      void protokollieren(`Umleitung abgefangen: ${adresseOhneAbfrage(ereignis.url)}`)
       abschliessen(() => {
         fenster.close()
         const ergebnis = codeAusUmleitung(ereignis.url, erwarteterState)
@@ -321,6 +451,7 @@ async function anmeldungDurchfuehren(): Promise<void> {
     fenster.loadURL(autorisierungsAdresse(challenge, erwarteterState))
   })
 
+  void protokollieren('Code-Tausch gestartet')
   const antwort = await tokenAnfragen(AUSTAUSCH, {
     code,
     client_id: CLIENT_ID,
@@ -329,7 +460,8 @@ async function anmeldungDurchfuehren(): Promise<void> {
   })
 
   if (!antwort.refresh_token) {
-    throw new Error('Autodarts-Antwort auf den Code-Tausch enthielt kein Aktualisierungs-Token')
+    void protokollieren(`Code-Tausch: ${KEIN_AKTUALISIERUNGS_TOKEN_MELDUNG}`)
+    throw new Error(KEIN_AKTUALISIERUNGS_TOKEN_MELDUNG)
   }
 
   zugriff = { token: antwort.access_token, laeuftAbUm: Date.now() / 1000 + (antwort.expires_in ?? Number.NaN) }

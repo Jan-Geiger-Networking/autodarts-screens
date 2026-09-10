@@ -52,4 +52,9 @@ contextBridge.exposeInMainWorld('app', {
   anmeldungStarten: (): Promise<AnmeldungsErgebnis> => ipcRenderer.invoke('anmeldung:starten'),
   anmeldungBeenden: (): Promise<void> => ipcRenderer.invoke('anmeldung:beenden'),
   anmeldungStatus: (): Promise<boolean> => ipcRenderer.invoke('anmeldung:status'),
+
+  // Nur ein Dateipfad, kein Geheimnis - fuer die Anzeige im Control-Fenster.
+  diagnosePfad: (): Promise<string> => ipcRenderer.invoke('diagnose:pfad'),
+  // Oeffnet den Datei-Explorer mit dem Diagnoseprotokoll markiert.
+  diagnoseOeffnen: (): Promise<void> => ipcRenderer.invoke('diagnose:oeffnen'),
 })

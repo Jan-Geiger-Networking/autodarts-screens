@@ -8,6 +8,7 @@ import { isAbsolute, resolve } from 'node:path'
 import { verbindungszustandVerteilen } from './fenster'
 import { istAngemeldet } from '../autodarts/oauth'
 import { verbinden, type Verbindung } from '../autodarts/websocket'
+import { protokollieren } from '../autodarts/diagnose'
 
 // Die einzige offene Verbindung dieses Prozesses - gehalten, um sie beim
 // Beenden der Anwendung oder nach einer Abmeldung sauber zu schliessen.
@@ -46,6 +47,7 @@ async function verbindungAufbauen(): Promise<void> {
     aufzeichnungspfadNormalisieren()
   }
 
+  void protokollieren('Verbindungsaufbau gestartet')
   try {
     aktiveVerbindung = await verbinden(
       () => {
@@ -55,7 +57,9 @@ async function verbindungAufbauen(): Promise<void> {
       },
       (zustand) => verbindungszustandVerteilen(zustand),
     )
+    void protokollieren('Verbindung aufgebaut')
   } catch (fehler) {
+    void protokollieren(`Verbindungsaufbau fehlgeschlagen: ${fehler instanceof Error ? fehler.message : String(fehler)}`)
     console.error('Autodarts-Verbindung konnte nicht aufgebaut werden, bleibe im Ruhezustand:', fehler)
   }
 }

@@ -25,14 +25,19 @@ export function App() {
   // "nichtAngemeldet" sagt es direkt.
   const [angemeldet, setAngemeldet] = useState<boolean | null>(null)
   const [anmeldungLaeuft, setAnmeldungLaeuft] = useState(false)
-  // Nur fuer einen echten Fehlerfall gesetzt (siehe anmeldenAusloesen) - ein
-  // Abbruch durch den Nutzer selbst bleibt bewusst ohne Meldung.
-  const [anmeldungFehler, setAnmeldungFehler] = useState<string | null>(null)
+  // Bei jedem Nicht-Erfolg gesetzt (siehe anmeldenAusloesen) - auch bei einem
+  // Abbruch durch den Nutzer selbst, seit die Anmeldung eine fuer Menschen
+  // gedachte Meldung liefert (window.app.anmeldungStarten(), Diagnose-Report):
+  // "es passiert nichts" nach einem Klick auf Anmelden war genau das
+  // gemeldete Problem, ein stiller Abbruch bleibt deshalb nicht mehr stumm.
+  const [anmeldungMeldung, setAnmeldungMeldung] = useState<string | null>(null)
+  const [diagnosePfad, setDiagnosePfad] = useState<string | null>(null)
 
   useEffect(() => {
     window.app.konfigurationLesen().then(setKonfiguration)
     window.app.monitore().then(setMonitore)
     window.app.anmeldungStatus().then(setAngemeldet)
+    window.app.diagnosePfad().then(setDiagnosePfad)
     return window.app.beiVerbindungszustand((z) => {
       setVerbindungszustand(z)
       if (z === 'nichtAngemeldet') setAngemeldet(false)
@@ -46,15 +51,14 @@ export function App() {
 
   async function anmeldenAusloesen(): Promise<void> {
     setAnmeldungLaeuft(true)
-    setAnmeldungFehler(null)
+    setAnmeldungMeldung(null)
     try {
       const ergebnis = await window.app.anmeldungStarten()
       if (ergebnis.erfolg) {
         setAngemeldet(true)
-      } else if (!ergebnis.abgebrochen) {
-        setAnmeldungFehler('Anmeldung fehlgeschlagen, bitte erneut versuchen.')
+      } else {
+        setAnmeldungMeldung(ergebnis.meldung)
       }
-      // ergebnis.abgebrochen: Nutzerentscheidung, keine Meldung noetig.
     } finally {
       setAnmeldungLaeuft(false)
     }
@@ -62,7 +66,7 @@ export function App() {
 
   async function abmeldenAusloesen(): Promise<void> {
     setAnmeldungLaeuft(true)
-    setAnmeldungFehler(null)
+    setAnmeldungMeldung(null)
     try {
       await window.app.anmeldungBeenden()
       setAngemeldet(false)
@@ -101,7 +105,15 @@ export function App() {
             Abmelden
           </button>
         </div>
-        {anmeldungFehler && <p className="hinweis">{anmeldungFehler}</p>}
+        {anmeldungMeldung && <p className="hinweis">{anmeldungMeldung}</p>}
+        {diagnosePfad && (
+          <p className="hinweis">
+            Diagnoseprotokoll: {diagnosePfad}{' '}
+            <button type="button" onClick={() => window.app.diagnoseOeffnen()}>
+              Im Explorer öffnen
+            </button>
+          </p>
+        )}
       </fieldset>
 
       <fieldset className="bereich">

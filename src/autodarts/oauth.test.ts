@@ -3,7 +3,19 @@ import { createHash } from 'node:crypto'
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { anmelden, codeAusUmleitung, pkcePaar, tokenNochGueltig, zugriffsToken } from './oauth'
+import {
+  AutodartsHttpFehler,
+  anmelden,
+  codeAusUmleitung,
+  fehlerZuMeldung,
+  istAblageNichtVerfuegbar,
+  istAnmeldungAbbruch,
+  istAnmeldungZeitlimit,
+  istKeinAktualisierungsToken,
+  pkcePaar,
+  tokenNochGueltig,
+  zugriffsToken,
+} from './oauth'
 import { NichtAngemeldetFehler } from './fehler'
 
 // Attrappe fuer das Anmeldefenster, das anmelden() (genauer:
@@ -118,6 +130,18 @@ describe('codeAusUmleitung', () => {
     const ergebnis = codeAusUmleitung(`${UMLEITUNG}?code=abc123&state=anderer-state`, STATE)
     expect('code' in ergebnis).toBe(false)
     expect('fehler' in ergebnis).toBe(true)
+  })
+
+  // Diagnose-Befund: unklar, ob der Server nach einer Passwort-Anmeldung auf
+  // einen anderen Pfad unter /auth/ umleitet als ".../auth/google/callback".
+  // Das Abfangen prueft deshalb gegen das ganze /auth/-Verzeichnis, nicht nur
+  // den einen erwarteten Pfad - dieser Test bildet genau das ab.
+  it('entnimmt den Code auch von einem anderen Pfad unter demselben /auth/-Verzeichnis', () => {
+    const ergebnis = codeAusUmleitung(
+      `https://play.autodarts.com/auth/anderer-pfad?code=abc123&state=${STATE}`,
+      STATE,
+    )
+    expect(ergebnis).toEqual({ code: 'abc123' })
   })
 })
 
@@ -267,5 +291,96 @@ describe('anmelden: Single-Flight fuer gleichzeitige Anmeldeversuche', () => {
     expect(FakeAnmeldeFenster.instanzen).toHaveLength(2)
     FakeAnmeldeFenster.instanzen[1]!.closedZuhoerer?.()
     await expect(zweiterVersuch).rejects.toThrow('Anmeldung abgebrochen')
+  })
+})
+
+describe('istAnmeldungZeitlimit: grenzt die speziellere Zeitlimit-Ursache von einem geschlossenen Fenster ab', () => {
+  it('erkennt das Zeitlimit', () => {
+    expect(istAnmeldungZeitlimit(new Error('Anmeldung abgebrochen: 5 Minuten ohne Rueckmeldung'))).toBe(true)
+  })
+
+  it('erkennt ein vom Nutzer geschlossenes Fenster nicht als Zeitlimit', () => {
+    expect(istAnmeldungZeitlimit(new Error('Anmeldung abgebrochen'))).toBe(false)
+  })
+
+  // Beide Faelle bleiben trotzdem "ein Abbruch" (istAnmeldungAbbruch),
+  // istAnmeldungZeitlimit grenzt nur die speziellere Ursache ab.
+  it('istAnmeldungAbbruch erkennt weiterhin beide Faelle', () => {
+    expect(istAnmeldungAbbruch(new Error('Anmeldung abgebrochen'))).toBe(true)
+    expect(istAnmeldungAbbruch(new Error('Anmeldung abgebrochen: 5 Minuten ohne Rueckmeldung'))).toBe(true)
+  })
+})
+
+describe('istKeinAktualisierungsToken und istAblageNichtVerfuegbar', () => {
+  it('erkennt die fehlende Aktualisierungs-Token-Meldung', () => {
+    expect(
+      istKeinAktualisierungsToken(
+        new Error('Autodarts-Antwort auf den Code-Tausch enthielt kein Aktualisierungs-Token'),
+      ),
+    ).toBe(true)
+    expect(istKeinAktualisierungsToken(new Error('etwas anderes'))).toBe(false)
+  })
+
+  it('erkennt die nicht verfuegbare verschluesselte Ablage', () => {
+    expect(
+      istAblageNichtVerfuegbar(new Error('Verschluesselte Ablage steht auf diesem System nicht zur Verfuegung')),
+    ).toBe(true)
+    expect(istAblageNichtVerfuegbar(new Error('etwas anderes'))).toBe(false)
+  })
+})
+
+describe('fehlerZuMeldung: ordnet jeden bekannten Fall einem ruhigen deutschen Satz zu', () => {
+  const PFAD = 'C:\\fake\\userData\\diagnose.log'
+
+  it('Nutzer hat abgebrochen', () => {
+    expect(fehlerZuMeldung(new Error('Anmeldung abgebrochen'), PFAD)).toBe('Anmeldung abgebrochen.')
+  })
+
+  it('Zeitlimit erreicht', () => {
+    const meldung = fehlerZuMeldung(new Error('Anmeldung abgebrochen: 5 Minuten ohne Rueckmeldung'), PFAD)
+    expect(meldung).toMatch(/Zeitlimit erreicht/)
+  })
+
+  it('der Server hat den Code abgelehnt (4xx von AUSTAUSCH)', () => {
+    const fehler = new AutodartsHttpFehler(400, 'Autodarts-Anfrage an .../exchange fehlgeschlagen (400): ...')
+    const meldung = fehlerZuMeldung(fehler, PFAD)
+    expect(meldung).toMatch(/Anmeldecode abgelehnt/)
+    // Ein zweiter Versuch mit demselben Code hilft nie - die Meldung soll
+    // zu einem ganz neuen Anmeldeversuch auffordern, nicht nur zu "erneut
+    // versuchen" (Diagnose-Befund).
+    expect(meldung).toMatch(/neu starten/)
+  })
+
+  it('ein 5xx-Fehler von AUSTAUSCH faellt NICHT unter "Code abgelehnt" (Serverfehler, kein Client-Fehler)', () => {
+    const fehler = new AutodartsHttpFehler(500, 'Autodarts-Anfrage an .../exchange fehlgeschlagen (500): ...')
+    expect(fehlerZuMeldung(fehler, PFAD)).toContain(PFAD)
+  })
+
+  it('die Antwort enthielt kein Aktualisierungs-Token', () => {
+    const meldung = fehlerZuMeldung(
+      new Error('Autodarts-Antwort auf den Code-Tausch enthielt kein Aktualisierungs-Token'),
+      PFAD,
+    )
+    expect(meldung).toMatch(/kein Aktualisierungs-Token/)
+  })
+
+  it('die verschluesselte Ablage steht nicht zur Verfuegung', () => {
+    const meldung = fehlerZuMeldung(
+      new Error('Verschluesselte Ablage steht auf diesem System nicht zur Verfuegung'),
+      PFAD,
+    )
+    expect(meldung).toMatch(/verschluesselte Ablage/)
+  })
+
+  it('keine Netzverbindung (TypeError, wie es Node fetch bei Netzwerkfehlern wirft)', () => {
+    const meldung = fehlerZuMeldung(new TypeError('fetch failed'), PFAD)
+    expect(meldung).toMatch(/Netzverbindung/)
+  })
+
+  it('ein unbekannter Fehler bekommt eine allgemeine Meldung mit Verweis auf das Diagnoseprotokoll, nie den rohen Text', () => {
+    const fehler = new Error('Unerwartete Adresse: https://irgendwas?code=geheim&state=geheim')
+    const meldung = fehlerZuMeldung(fehler, PFAD)
+    expect(meldung).toContain(PFAD)
+    expect(meldung).not.toContain('geheim')
   })
 })

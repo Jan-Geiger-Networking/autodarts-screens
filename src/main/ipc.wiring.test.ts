@@ -15,10 +15,20 @@ const handleMock = vi.fn((kanal: string, fn: Handler) => {
 const onMock = vi.fn()
 const fromWebContentsMock = vi.fn()
 
+const showItemInFolderMock = vi.fn()
+
 vi.mock('electron', () => ({
-  app: { getVersion: () => '0.0.0-test' },
+  app: { getVersion: () => '0.0.0-test', getPath: () => '/fake/userData' },
   ipcMain: { handle: handleMock, on: onMock },
   BrowserWindow: { fromWebContents: fromWebContentsMock },
+  shell: { showItemInFolder: showItemInFolderMock },
+}))
+
+const protokollierenMock = vi.fn().mockResolvedValue(undefined)
+const diagnosePfadMock = vi.fn().mockResolvedValue('/fake/userData/diagnose.log')
+vi.mock('../autodarts/diagnose', () => ({
+  protokollieren: protokollierenMock,
+  diagnosePfad: diagnosePfadMock,
 }))
 
 const fensterArtVonMock = vi.fn()
@@ -37,11 +47,13 @@ vi.mock('./verbindung', () => ({
 
 const anmeldenMock = vi.fn().mockResolvedValue(undefined)
 const abmeldenMock = vi.fn().mockResolvedValue(undefined)
+const fehlerZuMeldungMock = vi.fn().mockReturnValue('Testmeldung')
 vi.mock('../autodarts/oauth', () => ({
   anmelden: anmeldenMock,
   abmelden: abmeldenMock,
   istAngemeldet: vi.fn().mockResolvedValue(false),
   istAnmeldungAbbruch: (fehler: unknown) => fehler instanceof Error && fehler.message.startsWith('Anmeldung abgebrochen'),
+  fehlerZuMeldung: fehlerZuMeldungMock,
 }))
 
 const konfigurationLesenMock = vi.fn().mockResolvedValue({ boardId: null })
@@ -150,7 +162,7 @@ describe('IPC-Waechter-Verdrahtung: Ereignis -> Fensterart -> Erlauben/Werfen', 
     anmeldenMock.mockRejectedValueOnce(new Error('Anmeldung abgebrochen'))
 
     const handler = handlers.get('anmeldung:starten')!
-    await expect(handler(fakeEvent)).resolves.toEqual({ erfolg: false, abgebrochen: true })
+    await expect(handler(fakeEvent)).resolves.toEqual({ erfolg: false, abgebrochen: true, meldung: 'Testmeldung' })
   })
 
   it('meldet einen echten Fehler als erfolg:false, abgebrochen:false', async () => {
@@ -159,7 +171,7 @@ describe('IPC-Waechter-Verdrahtung: Ereignis -> Fensterart -> Erlauben/Werfen', 
     anmeldenMock.mockRejectedValueOnce(new Error('Netzwerkfehler'))
 
     const handler = handlers.get('anmeldung:starten')!
-    await expect(handler(fakeEvent)).resolves.toEqual({ erfolg: false, abgebrochen: false })
+    await expect(handler(fakeEvent)).resolves.toEqual({ erfolg: false, abgebrochen: false, meldung: 'Testmeldung' })
   })
 
   it('erlaubt dem Control-Fenster anmeldung:beenden und ruft abmelden() auf', async () => {
@@ -169,5 +181,31 @@ describe('IPC-Waechter-Verdrahtung: Ereignis -> Fensterart -> Erlauben/Werfen', 
     const handler = handlers.get('anmeldung:beenden')!
     await handler(fakeEvent)
     expect(abmeldenMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('verweigert dem Player-Fenster diagnose:pfad und diagnose:oeffnen', async () => {
+    fensterArtVonMock.mockReturnValue('player')
+    fromWebContentsMock.mockReturnValue({})
+
+    // diagnose:pfad ist nicht async (gleiches Muster wie konfiguration:lesen) -
+    // kanalPruefen() wirft dort synchron, nicht als abgelehnte Promise.
+    expect(() => handlers.get('diagnose:pfad')!(fakeEvent)).toThrow(/Control-Fenster vorbehalten/)
+    await expect(handlers.get('diagnose:oeffnen')!(fakeEvent)).rejects.toThrow(/Control-Fenster vorbehalten/)
+    expect(showItemInFolderMock).not.toHaveBeenCalled()
+  })
+
+  it('erlaubt dem Control-Fenster diagnose:pfad und liefert den Pfad', async () => {
+    fensterArtVonMock.mockReturnValue('control')
+    fromWebContentsMock.mockReturnValue({})
+
+    await expect(handlers.get('diagnose:pfad')!(fakeEvent)).resolves.toBe('/fake/userData/diagnose.log')
+  })
+
+  it('erlaubt dem Control-Fenster diagnose:oeffnen und ruft shell.showItemInFolder mit dem Pfad auf', async () => {
+    fensterArtVonMock.mockReturnValue('control')
+    fromWebContentsMock.mockReturnValue({})
+
+    await handlers.get('diagnose:oeffnen')!(fakeEvent)
+    expect(showItemInFolderMock).toHaveBeenCalledWith('/fake/userData/diagnose.log')
   })
 })

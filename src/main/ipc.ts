@@ -1,14 +1,15 @@
 // IPC-Kanaele zwischen Main- und Renderer-Prozessen. Enthaelt nur Kanaele,
 // die heute eine echte Implementierung haben.
 
-import { app, BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron'
+import { app, BrowserWindow, ipcMain, shell, type IpcMainInvokeEvent } from 'electron'
 import type { FensterArt } from '../shared/typen'
 import { monitoreAuflisten, monitoreIdentifizieren } from './monitore'
 import { konfigurationLesen, konfigurationSchreiben, zusammenfuehren } from './konfiguration'
 import { fensterArtVon, fensterOeffnen, fensterSchliessen, konfigurationAktualisieren, verbindungszustandVerteilen } from './fenster'
 import { alleDatenLoeschen } from './datenLoeschen'
 import { verbindungBeenden, verbindungStarten } from './verbindung'
-import { abmelden, anmelden, istAngemeldet, istAnmeldungAbbruch, type AnmeldungsErgebnis } from '../autodarts/oauth'
+import { abmelden, anmelden, fehlerZuMeldung, istAngemeldet, istAnmeldungAbbruch, type AnmeldungsErgebnis } from '../autodarts/oauth'
+import { diagnosePfad, protokollieren } from '../autodarts/diagnose'
 
 const GUELTIGE_FENSTER_ARTEN: readonly FensterArt[] = ['control', 'player', 'spectator']
 
@@ -40,6 +41,13 @@ const NUR_CONTROL: ReadonlySet<string> = new Set([
   'anmeldung:starten',
   'anmeldung:beenden',
   'anmeldung:status',
+  // diagnose:pfad gibt nur einen Dateipfad heraus (kein Geheimnis), aber wie
+  // bei monitore:identifizieren gilt: Kontoverwaltung und Diagnose gehoeren
+  // dem Control-Fenster. diagnose:oeffnen HANDELT zusaetzlich (oeffnet den
+  // Datei-Explorer, siehe monitore:identifizieren-Kommentar oben) und
+  // gehoert deshalb erst recht hierher.
+  'diagnose:pfad',
+  'diagnose:oeffnen',
 ])
 
 /**
@@ -129,12 +137,14 @@ export function ipcRegistrieren(): void {
     return alleDatenLoeschen()
   })
 
-  // Nur ob es geklappt hat geht an den Renderer - kein Token, keine Adresse,
-  // kein Code (siehe AnmeldungsErgebnis in oauth.ts). Bricht der Nutzer die
-  // Anmeldung selbst ab (Fenster geschlossen, Zeitlimit), ist das keine
-  // Fehlermeldung wert, sondern eine ruhig zu behandelnde Entscheidung -
-  // istAnmeldungAbbruch() unterscheidet das von einem echten Fehlerfall, der
-  // im Main-Prozess protokolliert (nicht an den Renderer gereicht) wird.
+  // Ob es geklappt hat und - bei Nicht-Erfolg - eine fuer Menschen gedachte
+  // Meldung (fehlerZuMeldung) gehen an den Renderer, nie der rohe Fehler:
+  // kein Token, keine Adresse, kein Code (siehe AnmeldungsErgebnis in
+  // oauth.ts). Der vollstaendige Fehler (auch bei einem Abbruch) landet
+  // ausschliesslich im Diagnoseprotokoll. Bricht der Nutzer die Anmeldung
+  // selbst ab (Fenster geschlossen, Zeitlimit), ist das keine console.error-
+  // Meldung wert, sondern eine ruhig zu behandelnde Entscheidung -
+  // istAnmeldungAbbruch() unterscheidet das von einem echten Fehlerfall.
   // Nach Erfolg wird sofort verbunden, ohne auf einen Neustart zu warten -
   // verbindungStarten() ist selbst dagegen abgesichert, neben einer
   // bestehenden Verbindung eine zweite aufzubauen.
@@ -143,9 +153,13 @@ export function ipcRegistrieren(): void {
     try {
       await anmelden()
     } catch (fehler) {
-      if (istAnmeldungAbbruch(fehler)) return { erfolg: false, abgebrochen: true }
-      console.error('Anmeldung fehlgeschlagen:', fehler)
-      return { erfolg: false, abgebrochen: false }
+      const abgebrochen = istAnmeldungAbbruch(fehler)
+      const pfad = await diagnosePfad()
+      await protokollieren(
+        `Anmeldung fehlgeschlagen (abgebrochen=${abgebrochen}): ${fehler instanceof Error ? fehler.message : String(fehler)}`,
+      )
+      if (!abgebrochen) console.error('Anmeldung fehlgeschlagen:', fehler)
+      return { erfolg: false, abgebrochen, meldung: fehlerZuMeldung(fehler, pfad) }
     }
     void verbindungStarten()
     return { erfolg: true }
@@ -168,5 +182,20 @@ export function ipcRegistrieren(): void {
   ipcMain.handle('anmeldung:status', (event) => {
     kanalPruefen(event, 'anmeldung:status')
     return istAngemeldet()
+  })
+
+  // Nur ein Dateipfad, kein Geheimnis - fuer die Anzeige im Control-Fenster.
+  ipcMain.handle('diagnose:pfad', (event) => {
+    kanalPruefen(event, 'diagnose:pfad')
+    return diagnosePfad()
+  })
+
+  // Oeffnet den Datei-Explorer mit dem Diagnoseprotokoll markiert, damit der
+  // Herausgeber es ohne Pfad-Suche im Dateisystem finden und verschicken
+  // kann. HANDELT (oeffnet ein externes Programmfenster) - deshalb in
+  // NUR_CONTROL, siehe Kommentar dort.
+  ipcMain.handle('diagnose:oeffnen', async (event) => {
+    kanalPruefen(event, 'diagnose:oeffnen')
+    shell.showItemInFolder(await diagnosePfad())
   })
 }

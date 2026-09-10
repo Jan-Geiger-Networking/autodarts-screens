@@ -12,6 +12,8 @@ describe('darfKanalNutzen', () => {
     expect(darfKanalNutzen('control', 'anmeldung:starten')).toBe(true)
     expect(darfKanalNutzen('control', 'anmeldung:beenden')).toBe(true)
     expect(darfKanalNutzen('control', 'anmeldung:status')).toBe(true)
+    expect(darfKanalNutzen('control', 'diagnose:pfad')).toBe(true)
+    expect(darfKanalNutzen('control', 'diagnose:oeffnen')).toBe(true)
   })
 
   it('verweigert dem Player-Fenster die eingeschraenkten Kanaele', () => {
@@ -21,6 +23,8 @@ describe('darfKanalNutzen', () => {
     expect(darfKanalNutzen('player', 'anmeldung:starten')).toBe(false)
     expect(darfKanalNutzen('player', 'anmeldung:beenden')).toBe(false)
     expect(darfKanalNutzen('player', 'anmeldung:status')).toBe(false)
+    expect(darfKanalNutzen('player', 'diagnose:pfad')).toBe(false)
+    expect(darfKanalNutzen('player', 'diagnose:oeffnen')).toBe(false)
   })
 
   it('verweigert dem Spectator-Fenster die eingeschraenkten Kanaele', () => {

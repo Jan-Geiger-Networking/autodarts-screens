@@ -13,6 +13,7 @@
 
 import { holen, NichtAngemeldetFehler, senden } from './rest'
 import { aufzeichnungBeenden, aufzeichnungStarten, wiedergeben } from './aufzeichnung'
+import { protokollieren } from './diagnose'
 
 // Annahme: Verbindungsadresse laut Community-Projekten, nicht selbst bestaetigt.
 const WS_ADRESSE = 'wss://api.autodarts.com/ms/v0/subscribe'
@@ -187,7 +188,16 @@ async function echteVerbindung(
   let wiederverbindungsVersuch = 0
   let wiederverbindungsTimer: ReturnType<typeof setTimeout> | null = null
 
+  // Nur das allererste Ereignis ist fuers Diagnoseprotokoll interessant (ein
+  // Beleg, dass ueberhaupt etwas ankommt) - jedes weitere waere nur Rauschen
+  // in einer Datei, die sich ohnehin selbst begrenzt.
+  let erstesEreignisProtokolliert = false
+
   const ereignisVerarbeiten = (roh: unknown): void => {
+    if (!erstesEreignisProtokolliert) {
+      erstesEreignisProtokolliert = true
+      void protokollieren('Erstes Ereignis empfangen')
+    }
     const matchId = matchIdAusEreignis(roh)
     if (matchId) aktuellerMatchId = matchId
     schreiben?.(roh)
@@ -210,10 +220,12 @@ async function echteVerbindung(
   }
 
   const alleAbonnementsSenden = (socket: WebSocket): void => {
+    if (abonnements.size === 0) return
     for (const a of abonnements.values()) {
       // Annahme: Abonnement-Form laut Community-Projekten, siehe Dateikopf.
       socket.send(JSON.stringify({ channel: a.kanal, type: 'subscribe', topic: a.thema }))
     }
+    void protokollieren(`Abonnements gesendet: ${abonnements.size}`)
   }
 
   const matchZustandNeuLaden = async (): Promise<void> => {
@@ -250,8 +262,10 @@ async function echteVerbindung(
       // einheitlich behandelt, damit eine mitten in der Sitzung ungueltig
       // gewordene Anmeldung nicht nur in console.error verschwindet.
       if (istAuthFehler(fehler)) zustandMelden(zustandsRueckruf, 'nichtAngemeldet')
+      void protokollieren(`Ticket holen fehlgeschlagen: ${fehler instanceof Error ? fehler.message : String(fehler)}`)
       throw fehler
     }
+    void protokollieren('Ticket geholt')
 
     // schliessen() kann waehrend dieses Awaits aufgerufen worden sein (z.B.
     // beim Beenden der Anwendung mitten in einem Wiederverbindungsversuch).
@@ -270,6 +284,7 @@ async function echteVerbindung(
       neuerSocket.onopen = () => {
         geoeffnet = true
         aktiverSocket = neuerSocket
+        void protokollieren('WebSocket offen')
         const warWiederverbindung = wiederverbindungsVersuch > 0
         wiederverbindungsVersuch = 0
         alleAbonnementsSenden(neuerSocket)
@@ -288,12 +303,16 @@ async function echteVerbindung(
         // Vor dem ersten "open" ist das der einzige Hinweis auf einen
         // gescheiterten Verbindungsversuch - "close" folgt danach garantiert
         // und ueberninmt sonst die eigentliche Behandlung.
-        if (!geoeffnet) reject(new Error('Autodarts-WebSocket-Verbindung fehlgeschlagen'))
+        if (!geoeffnet) {
+          void protokollieren('WebSocket-Verbindung fehlgeschlagen (onerror vor dem ersten Oeffnen)')
+          reject(new Error('Autodarts-WebSocket-Verbindung fehlgeschlagen'))
+        }
       }
 
       neuerSocket.onclose = () => {
         aktiverSocket = null
         if (!geoeffnet) {
+          void protokollieren('WebSocket-Verbindung fehlgeschlagen (geschlossen vor dem ersten Oeffnen)')
           reject(new Error('Autodarts-WebSocket-Verbindung fehlgeschlagen'))
           return
         }
@@ -302,6 +321,7 @@ async function echteVerbindung(
         // Abmeldung "Wiederverbindung laeuft automatisch" an, obwohl gar
         // keine geplant ist (geschlossen unterdrueckt sie unten ohnehin).
         if (!geschlossen) {
+          void protokollieren('WebSocket getrennt')
           zustandMelden(zustandsRueckruf, 'getrennt')
           wiederverbindenPlanen()
         }
@@ -325,6 +345,7 @@ async function echteVerbindung(
       if (aktiverSocket && aktiverSocket.readyState === WebSocket.OPEN) {
         // Annahme: Abonnement-Form laut Community-Projekten, siehe Dateikopf.
         aktiverSocket.send(JSON.stringify({ channel: kanal, type: 'subscribe', topic: thema }))
+        void protokollieren(`Abonnement gesendet: ${kanal}/${thema}`)
       }
     },
     schliessen(): Promise<void> {

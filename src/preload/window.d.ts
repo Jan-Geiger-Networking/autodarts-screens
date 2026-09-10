@@ -22,6 +22,8 @@ declare global {
       anmeldungStarten: () => Promise<AnmeldungsErgebnis>
       anmeldungBeenden: () => Promise<void>
       anmeldungStatus: () => Promise<boolean>
+      diagnosePfad: () => Promise<string>
+      diagnoseOeffnen: () => Promise<void>
     }
   }
 }

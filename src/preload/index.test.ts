@@ -36,6 +36,8 @@ const ERWARTETE_SCHLUESSEL = [
   'anmeldungStarten',
   'anmeldungBeenden',
   'anmeldungStatus',
+  'diagnosePfad',
+  'diagnoseOeffnen',
 ].sort()
 
 describe('preload: exponierte window.app-Oberflaeche', () => {
