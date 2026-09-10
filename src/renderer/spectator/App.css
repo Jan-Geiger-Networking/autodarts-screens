@@ -1,0 +1,485 @@
+/* Zuschauer-Screen: soll wie eine Dart-Uebertragung aussehen, nicht wie eine
+   Webseite. Flaechige Farbbloecke mit harten Kanten (hoechstens 2px Rundung,
+   nur bei Fotos), keine Farbverlaeufe, keine weichen Schlagschatten.
+   Uebergaenge sind gerichtete Fahrten (transform), nie reine Ueberblendungen.
+   Alle Masse relativ (vh/vw), damit 1080p und 4K gleich aussehen - siehe
+   Abschnitt 8 und 12 der Spec. prefers-reduced-motion wird bereits global in
+   tokens.css auf 0.01ms verkuerzt, hier ist nichts weiter noetig. */
+
+.bildschirm-zuschauer,
+.bildschirm-zuschauer * {
+  box-sizing: border-box;
+}
+
+.bildschirm-zuschauer {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--jg-bg);
+  color: var(--jg-text);
+  font-family: var(--jg-font-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.ruhezustand {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ruhezustand-logo {
+  width: 22vw;
+  max-width: 30vh;
+}
+
+/* ─── Grundgeruest ────────────────────────────────────────────────── */
+
+.spielstand {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.bug {
+  position: absolute;
+  top: 2.2vh;
+  left: 2.2vh;
+  height: 3.4vh;
+  width: auto;
+  z-index: 5;
+}
+
+/* ─── Zwei-Spieler-Reihe mit Keil-Zuschnitt ──────────────────────────
+   Die innere Kante jeder Karte laeuft schraeg auf die Mitte zu: an der
+   Kopfzeile (Schraubstollen des imaginaeren Scheiben-Mittelpunkts) fast
+   geschlossen, am unteren Rand deutlich geoeffnet - wie ein Dartscheiben-
+   Segment, das nach unten und aussen ausfaechert. */
+
+.spielreihe {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+/* Intro: dieselbe Tafel wie das Scoreboard, faehrt aber einmalig gerichtet
+   von der eigenen Bildschirmkante herein statt einfach dazustehen - die
+   einzige Ausfahrt, die kein CSS-Ereignis wie ein Ueberlagerungswechsel
+   braucht, weil sie schon beim ersten Rendern der Szene ablaeuft. */
+@keyframes einfahren-links {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes einfahren-rechts {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+.spielstand-intro .spielerkarte-links {
+  animation: einfahren-links 700ms var(--jg-ease);
+}
+
+.spielstand-intro .spielerkarte-rechts {
+  animation: einfahren-rechts 700ms var(--jg-ease);
+}
+
+@keyframes eintrueben {
+  from {
+    opacity: 0;
+  }
+}
+
+.spielstand-intro .mittelanzeige {
+  animation: eintrueben 500ms linear 400ms both;
+}
+
+.spielerkarte {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.6vh;
+  background: var(--jg-surface-hi);
+  padding: 4vh 5vw 5vh;
+  position: relative;
+  /* Weicher Schlagschatten ist verboten, aber ohne irgendeine Kante geht die
+     Tafel im fast gleich dunklen Hintergrund unter - ein schmaler, harter
+     Lichtsaum entlang des Keil-Zuschnitts selbst (drop-shadow folgt dem
+     clip-path, anders als box-shadow) hebt sie sichtbar ab. */
+  filter: drop-shadow(0 0 0.5vh rgba(148, 163, 184, 0.3));
+}
+
+.spielerkarte-links {
+  clip-path: polygon(0 0, 95% 0, 88% 100%, 0 100%);
+  padding-right: 8vw;
+}
+
+.spielerkarte-rechts {
+  clip-path: polygon(5% 0, 100% 0, 100% 100%, 12% 100%);
+  padding-left: 8vw;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.spielerkarte-rechts .spielerkarte-kopf {
+  flex-direction: row-reverse;
+}
+
+.spielerkarte.aktiv .spielername {
+  color: var(--jg-accent);
+}
+
+.spielerkarte-kopf {
+  display: flex;
+  align-items: center;
+  gap: 1.6vw;
+}
+
+.spielerfoto {
+  width: 9vh;
+  height: 9vh;
+  flex: 0 0 auto;
+  object-fit: cover;
+  border-radius: 2px;
+  border: 2px solid var(--jg-border-strong);
+  background: var(--jg-surface-hi);
+  transition: border-color 200ms var(--jg-ease);
+}
+
+.spielerkarte.aktiv .spielerfoto {
+  border-color: var(--jg-accent);
+}
+
+.spielerfoto-initialen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3.2vh;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--jg-muted-strong);
+}
+
+.spielerkarte-namensblock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3vh;
+  min-width: 0;
+}
+
+.spielername {
+  font-size: 3.4vh;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 200ms var(--jg-ease);
+}
+
+.spielerland {
+  font-size: 1.7vh;
+  letter-spacing: 0.12em;
+  color: var(--jg-muted);
+}
+
+.spielerkarte-rest {
+  font-size: 24vh;
+  font-weight: 800;
+  line-height: 0.85;
+  color: var(--jg-text);
+  transition: color 150ms var(--jg-ease);
+}
+
+.spielerkarte-rest.checkout {
+  color: var(--jg-accent);
+}
+
+.spielerkarte-rest.bust {
+  color: var(--jg-warning);
+}
+
+.spielerkarte-wurf {
+  display: flex;
+  align-items: baseline;
+  gap: 1vw;
+  font-size: 2.6vh;
+  color: var(--jg-muted-strong);
+}
+
+.spielerkarte-rechts .spielerkarte-wurf {
+  flex-direction: row-reverse;
+}
+
+.wurf-dart {
+  min-width: 2ch;
+}
+
+.wurf-summe {
+  color: var(--jg-muted);
+}
+
+/* Mittelanzeige: Leg- und Satzstand, amber - siehe Abschnitt 12
+   (Farbrolle: Amber ausschliesslich fuer Leg-/Satzstand und 180er). */
+.mittelanzeige {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6vh;
+  background: var(--jg-bg);
+  padding: 1.4vh 1.6vw;
+  border: 1px solid var(--jg-border-strong);
+}
+
+.mittelanzeige-sets {
+  font-size: 2.4vh;
+  font-weight: 700;
+  color: var(--jg-muted-strong);
+}
+
+.mittelanzeige-legs {
+  font-size: 5.4vh;
+  font-weight: 800;
+  color: #f5a623;
+}
+
+.mittelanzeige-trenner {
+  margin: 0 0.35em;
+  color: var(--jg-muted);
+}
+
+/* Die eine bewegte Signalkante: bindet an activePlayerId, faehrt bei jedem
+   Wechsel per transform quer ueber die Mitte, bremst hart ab. Alles andere
+   auf dem Screen bleibt dabei ruhig. */
+.signalkante {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 50%;
+  height: 0.7vh;
+  background: var(--jg-accent);
+  box-shadow: 0 0 1.6vh var(--jg-accent-glow);
+  transition: transform 700ms var(--jg-ease);
+  z-index: 3;
+}
+
+/* ─── Raster ab drei Spielern ─────────────────────────────────────── */
+
+.spielraster {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18vw, 1fr));
+  gap: 2px;
+  background: var(--jg-border);
+  min-height: 0;
+}
+
+.rasterkarte {
+  background: var(--jg-surface);
+  padding: 3vh 2vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.4vh;
+  text-align: center;
+}
+
+.rasterkarte .spielername {
+  font-size: 2.6vh;
+}
+
+.rasterkarte.aktiv .spielername {
+  color: var(--jg-accent);
+}
+
+.rasterkarte.aktiv .spielerfoto {
+  border-color: var(--jg-accent);
+}
+
+.rasterkarte-rest {
+  font-size: 8vh;
+  font-weight: 800;
+  color: var(--jg-text);
+}
+
+.rasterkarte-rest.bust {
+  color: var(--jg-warning);
+}
+
+.rasterkarte-legs {
+  font-size: 1.9vh;
+  color: var(--jg-muted-strong);
+}
+
+.rasterkarte.leg-gewonnen {
+  box-shadow: inset 0 0 0 0.5vh #f5a623;
+}
+
+.spielerkarte.leg-gewonnen {
+  box-shadow: inset 0 0 0 0.5vh #f5a623;
+}
+
+/* ─── Statistikleiste ─────────────────────────────────────────────── */
+
+.statistikleiste {
+  flex: 0 0 auto;
+  min-height: 8vh;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3vw;
+  padding: 0 3vw;
+  border-top: 1px solid var(--jg-border-strong);
+  background: var(--jg-surface);
+  font-size: 2.4vh;
+  color: var(--jg-text);
+}
+
+.statistikleiste-werte {
+  display: flex;
+  gap: 3vw;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.statistik-label {
+  color: var(--jg-muted);
+  font-size: 0.75em;
+  letter-spacing: 0.08em;
+  margin-right: 0.2em;
+}
+
+.statistikleiste-verlauf {
+  display: flex;
+  gap: 1.4vw;
+  overflow-x: auto;
+  min-width: 0;
+  color: var(--jg-muted-strong);
+}
+
+.verlauf-eintrag {
+  flex: 0 0 auto;
+}
+
+.verlauf-eintrag:not(:last-child)::after {
+  content: '·';
+  margin-left: 1.4vw;
+  color: var(--jg-border-strong);
+}
+
+/* ─── Vollbild-Einblendungen ──────────────────────────────────────────
+   Fahren als geschlossene Flaeche von unten herein und wieder hinaus -
+   gerichtete Fahrt, keine Ueberblendung. Legen sich ueber das Scoreboard,
+   ohne es zu ersetzen. */
+
+.vollbild {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2vh;
+  background: var(--jg-bg);
+  transform: translateY(100%);
+  transition: transform 450ms var(--jg-ease);
+}
+
+.vollbild.zeigen {
+  transform: translateY(0);
+}
+
+.big-moment-zahl {
+  font-size: 32vh;
+  font-weight: 800;
+  line-height: 0.85;
+}
+
+.big-moment-oneEighty .big-moment-zahl {
+  color: #f5a623;
+}
+
+.big-moment-highFinish .big-moment-zahl {
+  color: var(--jg-accent);
+}
+
+.big-moment-name {
+  font-size: 4vh;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--jg-text);
+}
+
+.big-moment-weg {
+  display: flex;
+  gap: 2vw;
+  font-size: 3.4vh;
+  color: var(--jg-muted-strong);
+}
+
+.match-win-gewinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.6vh;
+}
+
+.match-win-gewinner .spielerfoto {
+  width: 16vh;
+  height: 16vh;
+  border-color: #f5a623;
+}
+
+.match-win-name {
+  font-size: 7vh;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.match-win-titel {
+  font-size: 2.2vh;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #f5a623;
+}
+
+.match-win-statistik {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2vh;
+  min-width: 44vw;
+  border-top: 1px solid var(--jg-border-strong);
+  padding-top: 2vh;
+}
+
+.match-win-zeile {
+  display: flex;
+  align-items: baseline;
+  gap: 2vw;
+  font-size: 2.2vh;
+}
+
+.match-win-zeile-name {
+  flex: 1;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
