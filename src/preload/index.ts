@@ -4,6 +4,7 @@ import type { Konfiguration } from '../main/konfiguration'
 import type { MonitorEintrag } from '../main/monitore'
 import type { Verbindungszustand } from '../autodarts/websocket'
 import type { AnmeldungsErgebnis } from '../autodarts/oauth'
+import type { AnmeldungsStatus } from '../autodarts/konto'
 
 contextBridge.exposeInMainWorld('app', {
   // Synchron per sendSync statt eines Umgebungsvariablen-Rueckfalls: npm
@@ -51,7 +52,10 @@ contextBridge.exposeInMainWorld('app', {
   // AnmeldungsErgebnis in oauth.ts).
   anmeldungStarten: (): Promise<AnmeldungsErgebnis> => ipcRenderer.invoke('anmeldung:starten'),
   anmeldungBeenden: (): Promise<void> => ipcRenderer.invoke('anmeldung:beenden'),
-  anmeldungStatus: (): Promise<boolean> => ipcRenderer.invoke('anmeldung:status'),
+  // Anmeldezustand und - falls vorhanden - der Kontoname fuer "Angemeldet
+  // als: <Name>" (siehe AnmeldungsStatus in konto.ts). Kein Token, kein
+  // Konto-Ident, keine Adresse - nur ein Anzeigename, kein Geheimnis.
+  anmeldungStatus: (): Promise<AnmeldungsStatus> => ipcRenderer.invoke('anmeldung:status'),
 
   // Nur ein Dateipfad, kein Geheimnis - fuer die Anzeige im Control-Fenster.
   diagnosePfad: (): Promise<string> => ipcRenderer.invoke('diagnose:pfad'),

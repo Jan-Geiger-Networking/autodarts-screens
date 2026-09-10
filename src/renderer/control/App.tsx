@@ -15,6 +15,17 @@ const VERBINDUNGSTEXT: Record<Verbindungszustand, string> = {
   nichtAngemeldet: 'nicht angemeldet — bitte einmal anmelden',
 }
 
+// Beantwortet genau die Frage des Herausgebers ("wo sehe ich, dass ich
+// angemeldet bin?") statt nur einen Zustand zu wiederholen. Erfindet nie
+// einen Namen: liegt keine Anmeldung vor, ist das eine Tatsache ("Nicht
+// angemeldet"); liegt eine vor, aber der Kontoname liess sich nicht ermitteln
+// (siehe nameAusKonto in src/autodarts/konto.ts), steht das ebenso ehrlich da.
+function anmeldeText(angemeldet: boolean | null, kontoName: string | null): string {
+  if (angemeldet === null) return 'Anmeldestatus wird geladen …'
+  if (!angemeldet) return 'Nicht angemeldet'
+  return kontoName ? `Angemeldet als: ${kontoName}` : 'Angemeldet, Kontoname nicht abrufbar'
+}
+
 export function App() {
   const [konfiguration, setKonfiguration] = useState<Konfiguration | null>(null)
   const [monitore, setMonitore] = useState<MonitorEintrag[]>([])
@@ -24,6 +35,11 @@ export function App() {
   // ist nur ueberhaupt moeglich, wenn eine Anmeldung vorliegt, und
   // "nichtAngemeldet" sagt es direkt.
   const [angemeldet, setAngemeldet] = useState<boolean | null>(null)
+  // Nur gesetzt, wenn eine Anmeldung vorliegt UND der Hauptprozess einen
+  // brauchbaren Namen ermitteln konnte (siehe nameAusKonto in
+  // src/autodarts/konto.ts) - sonst null, dann zeigt anmeldeText() ehrlich
+  // "Kontoname nicht abrufbar" statt etwas zu erfinden.
+  const [kontoName, setKontoName] = useState<string | null>(null)
   const [anmeldungLaeuft, setAnmeldungLaeuft] = useState(false)
   // Bei jedem Nicht-Erfolg gesetzt (siehe anmeldenAusloesen) - auch bei einem
   // Abbruch durch den Nutzer selbst, seit die Anmeldung eine fuer Menschen
@@ -36,11 +52,21 @@ export function App() {
   useEffect(() => {
     window.app.konfigurationLesen().then(setKonfiguration)
     window.app.monitore().then(setMonitore)
-    window.app.anmeldungStatus().then(setAngemeldet)
+    // Deckt "beim Start, wenn bereits eine Anmeldung vorliegt" ab (siehe
+    // Task): kontoNameLaden() im Hauptprozess fragt hoechstens einmal pro
+    // Anmeldung wirklich ab, ein weiterer Aufruf hier waere also ohnehin
+    // kostenlos - trotzdem reicht dieser eine Aufruf beim Mounten.
+    window.app.anmeldungStatus().then((status) => {
+      setAngemeldet(status.angemeldet)
+      setKontoName(status.kontoName)
+    })
     window.app.diagnosePfad().then(setDiagnosePfad)
     return window.app.beiVerbindungszustand((z) => {
       setVerbindungszustand(z)
-      if (z === 'nichtAngemeldet') setAngemeldet(false)
+      if (z === 'nichtAngemeldet') {
+        setAngemeldet(false)
+        setKontoName(null)
+      }
       if (z === 'verbunden') setAngemeldet(true)
     })
   }, [])
@@ -56,6 +82,11 @@ export function App() {
       const ergebnis = await window.app.anmeldungStarten()
       if (ergebnis.erfolg) {
         setAngemeldet(true)
+        // Der Hauptprozess hat den Kontonamen fuer eine neue Anmeldung noch
+        // nicht abgefragt (anmeldung:starten meldet nur Erfolg/Misserfolg,
+        // siehe Kanal-Vorgabe in der Aufgabe) - dieser Aufruf holt ihn nach.
+        const status = await window.app.anmeldungStatus()
+        setKontoName(status.kontoName)
       } else {
         setAnmeldungMeldung(ergebnis.meldung)
       }
@@ -70,6 +101,7 @@ export function App() {
     try {
       await window.app.anmeldungBeenden()
       setAngemeldet(false)
+      setKontoName(null)
     } finally {
       setAnmeldungLaeuft(false)
     }
@@ -81,9 +113,7 @@ export function App() {
 
       <fieldset className="bereich">
         <legend>Verbindung</legend>
-        <p className="hinweis">
-          Angemeldet als: {angemeldet === null ? 'unbekannt' : angemeldet ? 'angemeldet' : 'nicht angemeldet'}
-        </p>
+        <p className="hinweis">{anmeldeText(angemeldet, kontoName)}</p>
         <label className="feld">
           Board-ID
           <input

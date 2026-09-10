@@ -9,6 +9,7 @@ import { fensterArtVon, fensterOeffnen, fensterSchliessen, konfigurationAktualis
 import { alleDatenLoeschen } from './datenLoeschen'
 import { verbindungBeenden, verbindungStarten } from './verbindung'
 import { abmelden, anmelden, fehlerZuMeldung, istAngemeldet, istAnmeldungAbbruch, type AnmeldungsErgebnis } from '../autodarts/oauth'
+import { kontoNameLaden, kontoNameVerwerfen, type AnmeldungsStatus } from '../autodarts/konto'
 import { diagnosePfad, protokollieren } from '../autodarts/diagnose'
 
 const GUELTIGE_FENSTER_ARTEN: readonly FensterArt[] = ['control', 'player', 'spectator']
@@ -161,6 +162,11 @@ export function ipcRegistrieren(): void {
       if (!abgebrochen) console.error('Anmeldung fehlgeschlagen:', fehler)
       return { erfolg: false, abgebrochen, meldung: fehlerZuMeldung(fehler, pfad) }
     }
+    // Ein vorheriger Kontoname (falls je einer geladen wurde) gehoert zu
+    // einer moeglicherweise anderen Anmeldung - der naechste
+    // anmeldung:status-Aufruf soll ihn frisch abfragen, nicht den alten
+    // Wert weiterreichen (siehe Kommentar an kontoNameVerwerfen).
+    kontoNameVerwerfen()
     void verbindungStarten()
     return { erfolg: true }
   })
@@ -173,15 +179,22 @@ export function ipcRegistrieren(): void {
   ipcMain.handle('anmeldung:beenden', async (event) => {
     kanalPruefen(event, 'anmeldung:beenden')
     await abmelden()
+    kontoNameVerwerfen()
     await verbindungBeenden()
     verbindungszustandVerteilen('nichtAngemeldet')
   })
 
-  // Reine Statusabfrage, kein Geheimnis - nur ob ueberhaupt eine Anmeldung
-  // vorliegt, nie das Token oder das Konto selbst.
-  ipcMain.handle('anmeldung:status', (event) => {
+  // Ob ueberhaupt eine Anmeldung vorliegt, und - falls ja - der Kontoname
+  // fuer "Angemeldet als: <Name>" im Control-Fenster (siehe kontoNameLaden:
+  // wird nur beim allerersten Aufruf nach einer Anmeldung tatsaechlich
+  // abgefragt, danach zwischengespeichert). Kein Token, kein Konto-Ident,
+  // keine Adresse verlassen ueber diesen Kanal den Hauptprozess - nur ein
+  // Anzeigename, kein Geheimnis.
+  ipcMain.handle('anmeldung:status', async (event): Promise<AnmeldungsStatus> => {
     kanalPruefen(event, 'anmeldung:status')
-    return istAngemeldet()
+    const angemeldet = await istAngemeldet()
+    if (!angemeldet) return { angemeldet, kontoName: null }
+    return { angemeldet, kontoName: await kontoNameLaden() }
   })
 
   // Nur ein Dateipfad, kein Geheimnis - fuer die Anzeige im Control-Fenster.

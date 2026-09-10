@@ -3,6 +3,7 @@ import type { Konfiguration } from '../main/konfiguration'
 import type { MonitorEintrag } from '../main/monitore'
 import type { Verbindungszustand } from '../autodarts/websocket'
 import type { AnmeldungsErgebnis } from '../autodarts/oauth'
+import type { AnmeldungsStatus } from '../autodarts/konto'
 
 export {}
 
@@ -21,7 +22,7 @@ declare global {
       datenLoeschen: () => Promise<string[]>
       anmeldungStarten: () => Promise<AnmeldungsErgebnis>
       anmeldungBeenden: () => Promise<void>
-      anmeldungStatus: () => Promise<boolean>
+      anmeldungStatus: () => Promise<AnmeldungsStatus>
       diagnosePfad: () => Promise<string>
       diagnoseOeffnen: () => Promise<void>
     }

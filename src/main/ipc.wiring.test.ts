@@ -48,12 +48,24 @@ vi.mock('./verbindung', () => ({
 const anmeldenMock = vi.fn().mockResolvedValue(undefined)
 const abmeldenMock = vi.fn().mockResolvedValue(undefined)
 const fehlerZuMeldungMock = vi.fn().mockReturnValue('Testmeldung')
+const istAngemeldetMock = vi.fn().mockResolvedValue(false)
 vi.mock('../autodarts/oauth', () => ({
   anmelden: anmeldenMock,
   abmelden: abmeldenMock,
-  istAngemeldet: vi.fn().mockResolvedValue(false),
+  istAngemeldet: istAngemeldetMock,
   istAnmeldungAbbruch: (fehler: unknown) => fehler instanceof Error && fehler.message.startsWith('Anmeldung abgebrochen'),
   fehlerZuMeldung: fehlerZuMeldungMock,
+}))
+
+// Eigenes Modul (siehe src/autodarts/konto.ts) - gemockt statt echt geladen,
+// damit dieser Test ausschliesslich die Verdrahtung in ipc.ts prueft (welche
+// Funktion bei welchem Kanal/welcher Fensterart aufgerufen wird), nicht die
+// Cache- oder Netzwerklogik von kontoNameLaden() selbst.
+const kontoNameLadenMock = vi.fn().mockResolvedValue(null)
+const kontoNameVerwerfenMock = vi.fn()
+vi.mock('../autodarts/konto', () => ({
+  kontoNameLaden: kontoNameLadenMock,
+  kontoNameVerwerfen: kontoNameVerwerfenMock,
 }))
 
 const konfigurationLesenMock = vi.fn().mockResolvedValue({ boardId: null })
@@ -139,30 +151,39 @@ describe('IPC-Waechter-Verdrahtung: Ereignis -> Fensterart -> Erlauben/Werfen', 
     await expect(handler(fakeEvent)).rejects.toThrow(/Control-Fenster vorbehalten/)
   })
 
-  it('verweigert dem Player-Fenster anmeldung:status', () => {
+  // anmeldung:status ist inzwischen async (der Kontoname wird bei Bedarf
+  // nachgeladen, siehe kontoNameLaden) - ein kanalPruefen()-Wurf darin wird
+  // deshalb zu einer abgelehnten Promise, nicht mehr zu einem synchronen Wurf
+  // (gleiches Muster wie bei anmeldung:starten/anmeldung:beenden oben).
+  it('verweigert dem Player-Fenster anmeldung:status', async () => {
     fensterArtVonMock.mockReturnValue('player')
     fromWebContentsMock.mockReturnValue({})
 
     const handler = handlers.get('anmeldung:status')!
-    expect(() => handler(fakeEvent)).toThrow(/Control-Fenster vorbehalten/)
+    await expect(handler(fakeEvent)).rejects.toThrow(/Control-Fenster vorbehalten/)
   })
 
-  it('erlaubt dem Control-Fenster anmeldung:starten und ruft anmelden() auf', async () => {
+  it('erlaubt dem Control-Fenster anmeldung:starten, ruft anmelden() auf und verwirft einen alten Kontonamen', async () => {
     fensterArtVonMock.mockReturnValue('control')
     fromWebContentsMock.mockReturnValue({})
 
     const handler = handlers.get('anmeldung:starten')!
     await expect(handler(fakeEvent)).resolves.toEqual({ erfolg: true })
     expect(anmeldenMock).toHaveBeenCalledTimes(1)
+    // Ein neuer Anmeldeversuch koennte zu einem anderen Konto gehoeren als
+    // ein zuvor zwischengespeicherter Name - der naechste anmeldung:status-
+    // Aufruf soll frisch abfragen (siehe Kommentar an kontoNameVerwerfen).
+    expect(kontoNameVerwerfenMock).toHaveBeenCalledTimes(1)
   })
 
-  it('meldet einen Abbruch als erfolg:false, abgebrochen:true statt als Fehler', async () => {
+  it('meldet einen Abbruch als erfolg:false, abgebrochen:true statt als Fehler und verwirft keinen Kontonamen', async () => {
     fensterArtVonMock.mockReturnValue('control')
     fromWebContentsMock.mockReturnValue({})
     anmeldenMock.mockRejectedValueOnce(new Error('Anmeldung abgebrochen'))
 
     const handler = handlers.get('anmeldung:starten')!
     await expect(handler(fakeEvent)).resolves.toEqual({ erfolg: false, abgebrochen: true, meldung: 'Testmeldung' })
+    expect(kontoNameVerwerfenMock).not.toHaveBeenCalled()
   })
 
   it('meldet einen echten Fehler als erfolg:false, abgebrochen:false', async () => {
@@ -174,13 +195,36 @@ describe('IPC-Waechter-Verdrahtung: Ereignis -> Fensterart -> Erlauben/Werfen', 
     await expect(handler(fakeEvent)).resolves.toEqual({ erfolg: false, abgebrochen: false, meldung: 'Testmeldung' })
   })
 
-  it('erlaubt dem Control-Fenster anmeldung:beenden und ruft abmelden() auf', async () => {
+  it('erlaubt dem Control-Fenster anmeldung:beenden, ruft abmelden() auf und verwirft den Kontonamen', async () => {
     fensterArtVonMock.mockReturnValue('control')
     fromWebContentsMock.mockReturnValue({})
 
     const handler = handlers.get('anmeldung:beenden')!
     await handler(fakeEvent)
     expect(abmeldenMock).toHaveBeenCalledTimes(1)
+    expect(kontoNameVerwerfenMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('erlaubt dem Control-Fenster anmeldung:status und liefert nichtAngemeldet ohne Kontonamen abzufragen', async () => {
+    fensterArtVonMock.mockReturnValue('control')
+    fromWebContentsMock.mockReturnValue({})
+    istAngemeldetMock.mockResolvedValueOnce(false)
+
+    const handler = handlers.get('anmeldung:status')!
+    await expect(handler(fakeEvent)).resolves.toEqual({ angemeldet: false, kontoName: null })
+    // "Nicht bei jedem Rendern" (Spezifikation): ohne Anmeldung lohnt sich
+    // der Netzaufruf nicht, kontoNameLaden() soll dann gar nicht erst laufen.
+    expect(kontoNameLadenMock).not.toHaveBeenCalled()
+  })
+
+  it('erlaubt dem Control-Fenster anmeldung:status und liefert Anmeldezustand samt Kontoname', async () => {
+    fensterArtVonMock.mockReturnValue('control')
+    fromWebContentsMock.mockReturnValue({})
+    istAngemeldetMock.mockResolvedValueOnce(true)
+    kontoNameLadenMock.mockResolvedValueOnce('Anna')
+
+    const handler = handlers.get('anmeldung:status')!
+    await expect(handler(fakeEvent)).resolves.toEqual({ angemeldet: true, kontoName: 'Anna' })
   })
 
   it('verweigert dem Player-Fenster diagnose:pfad und diagnose:oeffnen', async () => {

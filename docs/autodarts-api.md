@@ -240,3 +240,44 @@ war also vermutlich kein Match-Start, sondern z. B. ein Board-Statusereignis).
 `matchIdAusEreignis()` sucht deshalb zuerst am Ereignis selbst und dann in
 einem etwaigen `data`-Feld — weiterhin nur unter den drei genannten
 Kandidatennamen, nicht geraten.
+
+## Kontoname (Anzeigename), eigener Fund 2026-09-10
+
+Ausgangspunkt: `GET /us/v0/users/@me` existiert (siehe Tabelle oben, 401 ohne
+Token). Für die Anzeige „Angemeldet als: <Name>" im Control-Fenster (Task
+„Kontoname im Control-Fenster") wurde er deshalb mit einem echten, gültigen
+Zugriffstoken aufgerufen — mit einem überraschenden Ergebnis.
+
+| Aufruf | Antwort | Schluss |
+|---|---|---|
+| `GET https://api.autodarts.com/us/v0/users/@me` (gültiger Bearer-Token) | `400 {"statusCode":400,"error":{"status":400,"code":"uuid","message":"invalid UUID length: 3"}}` | `@me` ist **kein** Alias für „aktueller Nutzer" — der Server versucht, das letzte Pfadsegment wörtlich als Nutzer-UUID zu parsen, und `@me` (3 Zeichen) scheitert an dieser Prüfung. Der Endpunkt erwartet offenbar `GET /us/v0/users/{uuid}` mit einer echten, vorher bekannten Nutzer-UUID — ohne sie ist er für „wer bin ich" nutzlos. |
+
+Das ist die **dritte** widerlegte Annahme dieses Projekts zur Autodarts-API
+(nach der veralteten Keycloak-Basis und dem falschen Ticket-Pfad-Singular,
+siehe Abschnitte oben) — wieder nur durch einen eigenen Aufruf aufgedeckt,
+nicht durch Doku oder Vermutung.
+
+Zweiter Fund, der den ersten unwichtig macht: Der **Zugriffstoken selbst**
+ist ein JWT (Keycloak-Form: drei Punkt-getrennte Base64url-Teile) und trägt
+die gesuchten Kontofelder bereits als Claims in der Nutzlast — kein
+Zusatzaufruf nötig. Eigener Test: die Nutzlast des Zugriffstokens (nach
+Anmeldung bzw. nach einer stillen Erneuerung) nach Code-Tausch/Erneuerung
+decodiert und ausschließlich die Feldnamen protokolliert (nie die Werte,
+gleiches Prinzip wie bei `feldUebersicht()` sonst im Projekt):
+
+```
+Zugriffstoken-Nutzlast, Felder: iss:string, sub:string, aud:object, exp:number, iat:number, azp:string, email:string, email_verified:boolean, preferred_username:string, name:string, given_name:string, family_name:string, picture:string, scope:string, realm_access:object
+```
+
+| Feld | Wert | Quelle | Vertrauensgrad |
+|---|---|---|---|
+| Zugriffstoken-Format | JWT (Keycloak-typische Claims: `iss`, `sub`, `aud`, `azp`, `realm_access`) | eigener Test, Feldnamen der dekodierten Nutzlast protokolliert (siehe oben) | selbst abgerufen |
+| Für den Anzeigenamen nutzbare Claims | `name` (voller Anzeigename), `preferred_username`, `email`, `given_name`, `family_name` | wie oben | selbst abgerufen |
+| Umsetzung | `src/autodarts/konto.ts`, `nameAusKonto()`/`kontoNameLaden()` — dekodiert die Nutzlast lokal (keine Signaturprüfung, der Token stammt ohnehin aus der eigenen, gerade erst erfolgreichen Anmeldung), sucht `name` vor `userName`/`displayName`/`email`/`preferred_username` | — | — |
+| Datum der Feststellung | 2026-09-10 | — | — |
+
+Für die Umsetzung heißt das: `GET /us/v0/users/@me` wird von dieser Anwendung
+nicht mehr angefragt. Ob der Endpunkt mit der eigenen Nutzer-UUID (aus dem
+`sub`-Claim) zusätzliche, im Token nicht enthaltene Kontofelder liefern würde
+(z. B. ein Profilfoto in höherer Auflösung), ist ungeklärt und für die
+aktuelle Anzeige auch nicht nötig — der Token deckt sie bereits ab.
