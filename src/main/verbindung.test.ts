@@ -30,9 +30,22 @@ vi.mock('../autodarts/aufzeichnung', () => ({
 }))
 
 const verbindungszustandVerteilenMock = vi.fn()
+const zustandVerteilenMock = vi.fn()
 vi.mock('./fenster', () => ({
   verbindungszustandVerteilen: verbindungszustandVerteilenMock,
+  zustandVerteilen: zustandVerteilenMock,
 }))
+
+// anwenden() bleibt standardmaessig die echte Implementierung (siehe
+// importOriginal unten) - nur der eine Fehler-Resilienz-Test unten ersetzt
+// sie gezielt mit einer werfenden Attrappe. Gleiches Muster wie beim
+// verbinden()-Mock oben.
+const anwendenMock = vi.fn()
+vi.mock('../autodarts/adapter', async (importOriginal) => {
+  const echte = await importOriginal<typeof import('../autodarts/adapter')>()
+  anwendenMock.mockImplementation(echte.anwenden)
+  return { ...echte, anwenden: anwendenMock }
+})
 
 const konfigurationLesenMock = vi.fn()
 vi.mock('./konfiguration', () => ({
@@ -173,5 +186,67 @@ describe('verbindungStarten: Aufzeichnung standardmaessig eingeschaltet', () => 
 
     expect(process.env.AD_AUFZEICHNEN).toBe(resolve(process.cwd(), 'docs/fixtures/match.jsonl'))
     expect(standardAufzeichnungspfadMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('verbindungStarten: Adapter-Anbindung (die Naht, die in Task 5/8/10 niemandem gehoerte)', () => {
+  beforeEach(async () => {
+    await verbindungBeenden()
+    vi.clearAllMocks()
+    delete process.env.AD_WIEDERGABE
+    delete process.env.AD_AUFZEICHNEN
+    istAngemeldetMock.mockResolvedValue(true)
+    konfigurationLesenMock.mockResolvedValue({ boardId: null, playerDisplayId: null, spectatorDisplayId: null })
+    standardAufzeichnungspfadMock.mockResolvedValue('/mock-userdata/mitschnitte/irgendein-zeitstempel.jsonl')
+    verbindenMock.mockResolvedValue({ abonnieren: vi.fn(), abbestellen: vi.fn(), schliessen: vi.fn() })
+  })
+
+  // Holt den beiEreignis-Rueckruf, den verbindungAufbauen() an verbinden()
+  // uebergibt - der einzige Weg, ein Rohereignis in diesem Test "ankommen"
+  // zu lassen, ohne den echten websocket.ts-Mechanismus nachzubauen.
+  const beiEreignisAus = () => verbindenMock.mock.calls[0]![0] as (roh: unknown) => void
+
+  it('wendet ein empfangenes .state-Ereignis ueber anwenden() an und verteilt das Ergebnis ueber zustandVerteilen', async () => {
+    await verbindungStarten()
+
+    beiEreignisAus()({
+      channel: 'autodarts.matches',
+      topic: 'match-1.state',
+      data: {
+        id: 'match-1',
+        type: 'state',
+        variant: 'X01',
+        player: 0,
+        players: { '0': { name: 'Jan' }, '1': { name: 'Markus' } },
+        gameScores: { '0': 501, '1': 501 },
+        turns: {},
+        turnScore: 0,
+        turnBusted: false,
+        finished: false,
+        gameFinished: false,
+        settings: {},
+        stats: {},
+      },
+    })
+
+    expect(anwendenMock).toHaveBeenCalledTimes(1)
+    expect(zustandVerteilenMock).toHaveBeenCalledTimes(1)
+    const verteilterZustand = zustandVerteilenMock.mock.calls[0]![0]
+    expect(verteilterZustand.matchId).toBe('match-1')
+    expect(verteilterZustand.players).toHaveLength(2)
+  })
+
+  // Deckt Spec Abschnitt 14 ("Ein Anzeigefehler darf ein laufendes Match nie
+  // unterbrechen") direkt an der Einhaengestelle ab - unabhaengig davon, dass
+  // anwenden() selbst nach eigenem Anspruch nie wirft.
+  it('ein Fehler im Adapter reisst die Verbindung nicht ab und verteilt keinen kaputten Zustand', async () => {
+    anwendenMock.mockImplementationOnce(() => {
+      throw new Error('kaputt')
+    })
+
+    await verbindungStarten()
+
+    expect(() => beiEreignisAus()({ irgendwas: true })).not.toThrow()
+    expect(zustandVerteilenMock).not.toHaveBeenCalled()
   })
 })

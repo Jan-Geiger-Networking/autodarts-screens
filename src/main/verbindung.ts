@@ -5,12 +5,14 @@
 // noetig ist, und nach dem Abmelden muss sie sich wieder trennen.
 
 import { isAbsolute, resolve } from 'node:path'
-import { verbindungszustandVerteilen } from './fenster'
+import { verbindungszustandVerteilen, zustandVerteilen } from './fenster'
 import { konfigurationLesen } from './konfiguration'
 import { istAngemeldet } from '../autodarts/oauth'
 import { boardThema, KANAL_BOARDS, verbinden, type Verbindung } from '../autodarts/websocket'
 import { standardAufzeichnungspfad } from '../autodarts/aufzeichnung'
 import { protokollieren } from '../autodarts/diagnose'
+import { anwenden, RUHEZUSTAND } from '../autodarts/adapter'
+import type { MatchState } from '../shared/typen'
 
 // Die einzige offene Verbindung dieses Prozesses - gehalten, um sie beim
 // Beenden der Anwendung oder nach einer Abmeldung sauber zu schliessen.
@@ -24,6 +26,13 @@ let aktiveVerbindung: Verbindung | null = null
 // Verbindung neben der ersten aufbaut. Gleiches Single-Flight-Muster wie
 // laufendeAnmeldung in oauth.ts.
 let laufenderVerbindungsversuch: Promise<void> | null = null
+
+// Letzter per anwenden() abgeleiteter MatchState - lebt hier statt in
+// adapter.ts, weil anwenden() rein bleiben soll (Eingabe/Ausgabe, kein
+// eigenes Gedaechtnis). Ueberlebt eine Wiederverbindung bewusst: ein
+// Abbruch mitten im Match soll den Player-/Zuschauer-Screen nicht auf den
+// Ruhezustand zuruecksetzen, solange kein neues Match beginnt.
+let matchZustand: MatchState = RUHEZUSTAND
 
 /**
  * Sorgt dafuer, dass AD_AUFZEICHNEN vor dem Verbindungsaufbau immer einen
@@ -77,13 +86,22 @@ async function verbindungAufbauen(): Promise<void> {
   void protokollieren('Verbindungsaufbau gestartet')
   try {
     aktiveVerbindung = await verbinden(
-      () => {
-        // Adapter fehlt absichtlich (siehe docs/UEBERGABE.md) - das
-        // Rohereignis geht bislang nirgendwo hin, ausser in eine laufende
-        // Aufzeichnung und ins Diagnoseprotokoll (beides schreibt verbinden()
-        // selbst, siehe websocket.ts: jedes Ereignis wird dort mit Kanal,
-        // Thema und Feldnamen protokolliert, und ein erkanntes Match wird
-        // automatisch abonniert).
+      (roh) => {
+        // Ein Fehler im Adapter darf die Verbindung nie abreissen lassen
+        // (Spec Abschnitt 14): fangen, protokollieren, letzten bekannten
+        // Zustand behalten. anwenden() selbst wirft nach eigenem Anspruch
+        // nie (unerwartete Formen fuehren zu Vorgabewerten statt zu
+        // Exceptions) - dieses catch ist trotzdem die letzte Verteidigungs-
+        // linie gegen einen Fehler, den anwenden() nicht vorhergesehen hat.
+        try {
+          matchZustand = anwenden(matchZustand, roh)
+          zustandVerteilen(matchZustand)
+        } catch (fehler) {
+          void protokollieren(
+            `Adapter-Fehler, letzter bekannter Zustand bleibt erhalten: ${fehler instanceof Error ? fehler.message : String(fehler)}`,
+          )
+          console.error('Adapter konnte Rohereignis nicht verarbeiten, behalte letzten Zustand:', fehler)
+        }
       },
       (zustand) => verbindungszustandVerteilen(zustand),
     )
