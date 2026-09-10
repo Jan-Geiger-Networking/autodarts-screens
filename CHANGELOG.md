@@ -4,6 +4,54 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.6] - 2026-09-10
+
+Sechste Beta. Erste Version, die sich selbst aktualisieren kann — ab hier
+entfällt das Herunterladen von Hand.
+
+### Behoben
+- **Nach „Exit" auf der Scheibe kam die Spielpause nicht zurück.** Der
+  Zustandskanal verstummt dabei einfach, ein letztes „beendet" gibt es nicht.
+  Jetzt werten wir das Ende-Ereignis des Board-Kanals aus; unabhängig davon
+  fällt die Anzeige nach fünf Minuten ohne jede Meldung von selbst in die
+  Spielpause zurück
+- **Alle Statistiken standen auf 0.** Autodarts liefert das Statistikobjekt
+  leer aus (belegt im Protokoll eines echten Matches). Average, Checkout-Quote,
+  180er, höchstes Finish und die geworfenen Darts rechnet die Anwendung jetzt
+  selbst mit. Eine Zahl vom Server hat weiterhin Vorrang, falls doch eine kommt
+- **Die Pfeile waren auf der Scheibe nicht zu erkennen.** Die Markierungen sind
+  jetzt größer, nummeriert (1, 2, 3 in Wurfreihenfolge) und mit hellem Rand auf
+  dunklem Hof — auf jedem Feld sichtbar. Zwischen zwei Aufnahmen bleibt die
+  letzte Aufnahme gedämpft stehen, statt die Scheibe leer zu lassen
+
+### Hinzugefügt
+- **Spielerwechsel** ist jetzt eine eigene Einblendung: ein Band fährt von der
+  Seite des Spielers herein, der an die Reihe kommt, mit Name und Restpunkten.
+  Es sitzt unterhalb der Punktzahlen und verdeckt sie nicht
+- Die Statistikleiste **blättert** zwischen zwei Seiten: „Match" mit Average,
+  Checkout-Quote, 180ern, höchstem Finish und geworfenen Darts, und
+  „Dieses Leg" mit Average, Darts, bester Aufnahme, 100+ und 140+
+- Bei jedem Modus außer X01 steht der Modusname oben auf dem Bildschirm
+- Das Diagnoseprotokoll enthält jetzt ein vollständiges Rohereignis **je
+  Bauart** (Modus und Ereignistyp), nicht nur das allererste. Damit landet auch
+  die Ermittlung des Anfangsspielers darin, sobald ein Match damit beginnt
+
+### Geändert
+- Die Dartscheibe ist deutlich größer (34 % der Bildhöhe im Zweikampf, 42 % in
+  der Spaltenaufteilung)
+- Das Logo ist auf beiden Bildschirmen größer
+
+### Bekannte Einschränkungen
+- **Die Ermittlung des Anfangsspielers (Bull-off) wird noch nicht dargestellt.**
+  Dafür fehlen die Feldnamen — sie stehen in keinem bisherigen Protokoll. Diese
+  Version schreibt sie beim nächsten Match mit Bull-off ins Diagnoseprotokoll,
+  danach lässt sich die Anzeige genau bauen statt zu raten
+- Andere Modi als X01 werden mit Namen angezeigt, aber ohne modusgerechte
+  Auswertung: was die Zahlen dort bedeuten, steht erst nach einem Mitschnitt
+  fest
+- Der Satzstand bleibt die schwächste Ableitung: es gibt kein erkanntes Signal
+  für das Ende eines Satzes
+
 ## [0.1.0-beta.5] - 2026-09-10
 
 Fünfte Beta. Selbstaktualisierung, richtiger Legstand, Dartscheibe auf dem

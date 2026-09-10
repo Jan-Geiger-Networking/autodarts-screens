@@ -26,7 +26,7 @@ function sektorPfad(zahl: number, innen: number, aussen: number): string {
   ].join(' ')
 }
 
-export function Dartscheibe({ darts }: { darts: Segment[] }) {
+export function Dartscheibe({ darts, verblasst = false }: { darts: Segment[]; verblasst?: boolean }) {
   return (
     <svg className="dartscheibe" viewBox="-115 -115 230 230" role="img" aria-label="Trefferbild des laufenden Wurfs">
       <circle className="scheibe-rand" cx="0" cy="0" r="108" />
@@ -60,9 +60,22 @@ export function Dartscheibe({ darts }: { darts: Segment[] }) {
       {darts.map((dart, index) => {
         const { x, y } = dartPosition(dart, index)
         return (
-          <g key={`${dart.name}-${index}`} className="treffer" style={{ animationDelay: `${index * 90}ms` }}>
-            <circle className="treffer-hof" cx={x} cy={y} r="7" />
-            <circle className="treffer-kern" cx={x} cy={y} r="3" />
+          <g
+            key={`${dart.name}-${index}`}
+            className={`treffer${verblasst ? ' treffer-vorher' : ''}`}
+            style={{ animationDelay: `${index * 90}ms` }}
+          >
+            {/* Drei Ringe uebereinander: der dunkle Hof hebt den Treffer von
+                jeder Feldfarbe ab (auf dem cremefarbenen Feld ging ein rein
+                gruener Punkt vorher unter), der helle Ring gibt die Kante,
+                der Kern die Signalfarbe. Dazu die Nummer des Darts, damit die
+                Reihenfolge der drei Wuerfe ablesbar ist. */}
+            <circle className="treffer-schatten" cx={x} cy={y} r="11" />
+            <circle className="treffer-hof" cx={x} cy={y} r="8.5" />
+            <circle className="treffer-kern" cx={x} cy={y} r="5" />
+            <text className="treffer-nummer" x={x} y={y}>
+              {index + 1}
+            </text>
           </g>
         )
       })}

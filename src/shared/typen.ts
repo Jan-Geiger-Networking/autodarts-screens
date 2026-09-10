@@ -34,12 +34,28 @@ export type PlayerScore = {
   checkoutHits: number
   count180: number
   highestFinish: number | null
+  /**
+   * Geworfene Darts im ganzen Match. Grundlage des selbst gerechneten
+   * Averages: das Statistikobjekt von Autodarts war in einem echten Match
+   * leer (siehe docs/autodarts-api.md), deshalb rechnet die Anwendung die
+   * Match-Statistik aus dem mit, was sie selbst sieht.
+   */
+  dartsGesamt: number
+  /** Erzielte Punkte im ganzen Match, ohne Bust-Aufnahmen (die zaehlen 0). */
+  punkteGesamt: number
 }
 
 export type MatchState = {
   phase: 'idle' | 'intro' | 'playing' | 'legBreak' | 'finished'
   matchId: string | null
   variant: 'x01' | 'other'
+  /**
+   * Der Modusname, wie Autodarts ihn schickt ("X01", "Cricket", "Bermuda",
+   * ...). variant oben sagt nur, ob die x01-Logik (Checkout, Restpunkte)
+   * greift; fuer die Anzeige braucht es den echten Namen, sonst steht bei
+   * jedem anderen Modus nur "other" oder gar nichts auf dem Bildschirm.
+   */
+  variantName: string
   startScore: number // 501, 301, ...
   players: Player[]
   scores: PlayerScore[]

@@ -31,11 +31,14 @@
   flex-direction: column;
 }
 
+/* Auf Wunsch des Herausgebers vergroessert (2,8vh -> 4,4vh): das Logo soll
+   auch aus einigen Metern Abstand lesbar sein, ohne dem Spielstand die
+   Aufmerksamkeit zu nehmen. */
 .bug {
   position: absolute;
   top: 2vh;
   left: 2vh;
-  height: 2.8vh;
+  height: 4.4vh;
   width: auto;
   z-index: 5;
 }
@@ -374,8 +377,8 @@
    Zweikampf - dort teilt sie sich den schmalen Zwischenraum mit Leg- und
    Satzstand, hier hat sie die ganze Mittelspalte. */
 .spielmitte .dartscheibe {
-  width: 34vh;
-  height: 34vh;
+  width: 42vh;
+  height: 42vh;
   margin-top: 0;
 }
 
@@ -801,7 +804,7 @@
 
 .vorspann-logo img {
   display: block;
-  height: 5vh;
+  height: 7vh;
   width: auto;
 }
 
@@ -912,8 +915,8 @@
   /* Aus fuenf Metern Abstand muss der Sektor erkennbar bleiben - kleiner
      als das traegt die Scheibe keine Information mehr, sondern nur noch
      eine Ahnung. */
-  width: 27vh;
-  height: 27vh;
+  width: 34vh;
+  height: 34vh;
   display: block;
   margin-top: 0.4vh;
 }
@@ -954,12 +957,32 @@
   animation: treffer-setzen 320ms var(--jg-ease) backwards;
 }
 
+/* Die Treffer der VORIGEN Aufnahme, solange die neue noch leer ist: gedaempft,
+   damit die Scheibe zwischen zwei Wuerfen nicht leer dasteht, aber klar von
+   einem frischen Treffer unterscheidbar. */
+.treffer-vorher {
+  opacity: 0.35;
+  animation: none;
+}
+
+.treffer-schatten {
+  fill: rgba(2, 6, 23, 0.85);
+}
+
 .treffer-hof {
-  fill: var(--jg-accent-glow);
+  fill: #ffffff;
 }
 
 .treffer-kern {
   fill: var(--jg-accent);
+}
+
+.treffer-nummer {
+  fill: #04140a;
+  font-size: 7px;
+  font-weight: 800;
+  text-anchor: middle;
+  dominant-baseline: central;
 }
 
 @keyframes treffer-setzen {
@@ -1141,4 +1164,171 @@
     transform: none;
     opacity: 1;
   }
+}
+
+/* ------------------------------------------------------------------
+   Blaetternde Statistik
+   ------------------------------------------------------------------ */
+/* Eigene, schmale Spalte ganz links in der Leiste statt eines schwebenden
+   Titels ueber der Trennlinie: er gehoert zur Leiste und soll auch dort
+   stehen. Senkrecht gesetzt, weil er sonst Breite von den Zahlen nimmt. */
+.statistikleiste-titel {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8vh;
+  padding-right: 1.2vw;
+  border-right: 1px solid var(--jg-border-strong);
+}
+
+.statistikleiste-titel .statistik-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  margin-right: 0;
+  font-size: 1.5vh;
+  letter-spacing: 0.14em;
+}
+
+.statistikleiste-punkte {
+  flex-direction: column;
+}
+
+.statistikleiste-punkte {
+  display: flex;
+  gap: 0.4vh;
+}
+
+.statistikleiste-punkt {
+  width: 0.45vh;
+  height: 0.45vh;
+  border-radius: 50%;
+  background: var(--jg-border-strong);
+}
+
+.statistikleiste-punkt.aktiv {
+  background: var(--jg-accent);
+}
+
+.statistikseite {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 2vw;
+  animation: seite-blaettern 420ms var(--jg-ease);
+}
+
+@keyframes seite-blaettern {
+  from {
+    opacity: 0;
+    transform: translateY(1.2vh);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ------------------------------------------------------------------
+   Spielerwechsel
+   ------------------------------------------------------------------
+   Ein Band, das von der Seite des neuen Spielers hereinfaehrt. Kein
+   Vollbild: der Spielstand bleibt die ganze Zeit lesbar, das Band legt sich
+   nur darueber. */
+.wechsel-schicht {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  /* Unterhalb der Rest-Punktzahlen statt mittig: das Band soll den Wechsel
+     ankuendigen, nicht ausgerechnet die Zahl des angekuendigten Spielers
+     verdecken. */
+  align-items: flex-end;
+  padding-bottom: 18vh;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.wechsel-band {
+  display: flex;
+  align-items: center;
+  gap: 1.6vw;
+  padding: 1.8vh 3vw;
+  background: linear-gradient(90deg, var(--jg-surface-hi) 0%, var(--jg-surface) 100%);
+  border-left: 4px solid var(--jg-accent);
+  box-shadow: 0 1vh 4vh rgba(2, 6, 23, 0.6);
+  transition:
+    transform 420ms var(--jg-ease),
+    opacity 420ms var(--jg-ease);
+  opacity: 0;
+}
+
+.wechsel-links {
+  margin-right: auto;
+  transform: translateX(-110%);
+}
+
+.wechsel-rechts {
+  margin-left: auto;
+  border-left: none;
+  border-right: 4px solid var(--jg-accent);
+  transform: translateX(110%);
+}
+
+.wechsel-schicht.zeigen .wechsel-band {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.wechsel-name {
+  font-size: 5.5vh;
+  font-weight: 800;
+  color: var(--jg-text);
+}
+
+.wechsel-text {
+  font-size: 2.6vh;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--jg-muted-strong);
+}
+
+.wechsel-rest {
+  font-size: 5.5vh;
+  font-weight: 800;
+  color: var(--jg-accent);
+  font-variant-numeric: tabular-nums;
+  margin-left: 1vw;
+}
+
+.wechsel-band .spielerfoto {
+  width: 7vh;
+  height: 7vh;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wechsel-band {
+    transition: opacity 200ms linear;
+    transform: none;
+  }
+  .statistikseite {
+    animation: none;
+  }
+}
+
+/* Modusname bei allem, was nicht X01 ist. Oben mittig, wo sonst nichts steht -
+   ruhig gesetzt, denn er aendert sich waehrend eines Matches nicht. */
+.modusname {
+  position: absolute;
+  top: 2vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  padding: 0.5vh 1.4vw;
+  border: 1px solid var(--jg-border-strong);
+  background: var(--jg-bg);
+  color: var(--jg-muted-strong);
+  font-size: 2vh;
+  font-weight: 700;
+  letter-spacing: 0.1em;
 }

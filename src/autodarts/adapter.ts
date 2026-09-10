@@ -41,6 +41,7 @@ export const RUHEZUSTAND: MatchState = {
   phase: 'idle',
   matchId: null,
   variant: 'x01',
+  variantName: '',
   startScore: 501,
   players: [],
   scores: [],
@@ -205,7 +206,11 @@ function istMatchZustandsForm(o: Record<string, unknown>): boolean {
 
 // Drei eigene Varianten statt art: 'ignoriert' | 'unbekannt' in einer - nur
 // so kann TypeScript den 'state'-Fall unten sauber auf `nutz` verengen.
-type Einordnung = { art: 'state'; nutz: Record<string, unknown> } | { art: 'ignoriert' } | { art: 'unbekannt' }
+type Einordnung =
+  | { art: 'state'; nutz: Record<string, unknown> }
+  | { art: 'board'; nutz: Record<string, unknown> }
+  | { art: 'ignoriert' }
+  | { art: 'unbekannt' }
 
 /**
  * Ordnet ein Rohereignis einem von drei Faellen zu:
@@ -226,6 +231,14 @@ function einordnen(roh: unknown): Einordnung {
   const topic = typeof o.topic === 'string' ? o.topic : null
   if (topic) {
     const zweck = topic.slice(topic.lastIndexOf('.') + 1)
+    if (zweck === 'matches') {
+      // Der Board-Kanal meldet Beginn UND Ende eines Matches. Bis 0.1.0-beta.5
+      // wurde er nur zum Abonnieren benutzt und danach verworfen - deshalb
+      // blieb der Endstand stehen, wenn das Match auf der Scheibe mit "Exit"
+      // beendet wurde: der Zustandskanal verstummt einfach, ohne ein letztes
+      // "finished".
+      return { art: 'board', nutz: objekt(o.data) ?? o }
+    }
     if (zweck !== 'state') {
       return { art: ZWECKE_IGNORIERT.has(zweck) ? 'ignoriert' : 'unbekannt' }
     }
@@ -234,6 +247,31 @@ function einordnen(roh: unknown): Einordnung {
   }
 
   return istMatchZustandsForm(o) ? { art: 'state', nutz: o } : { art: 'unbekannt' }
+}
+
+// Werte des Feldes "event" im Board-Ereignis, die einen BEGINN meinen. Alles
+// andere ("finish", "delete", "exit", ... - der tatsaechliche Wortlaut ist
+// nicht belegt) wird als Ende gewertet. Diese Richtung ist die sichere: ein
+// unbekannter Wert beendet die Anzeige und laesst die Spielpause laufen,
+// statt einen Endstand endlos stehen zu lassen. Beginnt das Match doch
+// weiter, kommt die naechste .state-Momentaufnahme ohnehin sofort und baut
+// die Anzeige wieder auf.
+const BOARD_BEGINN_WERTE = new Set(['start', 'started', 'create', 'created', 'begin', 'new'])
+
+/**
+ * Sagt, ob ein Board-Ereignis das Ende des laufenden Matches meint. Der
+ * tatsaechliche Wortlaut der Werte ist unbelegt (siehe
+ * docs/autodarts-api.md), deshalb wird er beim ersten Mal protokolliert -
+ * danach steht er im Diagnoseprotokoll und laesst sich hier eintragen.
+ */
+export function istMatchEnde(nutz: Record<string, unknown>): boolean {
+  const wert = typeof nutz.event === 'string' ? nutz.event.toLowerCase() : null
+  if (wert === null) return false
+  einmaligProtokollieren(
+    `board-ereignis-${wert}`,
+    `Board-Ereignis "${wert}" gewertet als ${BOARD_BEGINN_WERTE.has(wert) ? 'Beginn' : 'Ende'} eines Matches.`,
+  )
+  return !BOARD_BEGINN_WERTE.has(wert)
 }
 
 function istX01(variant: string): boolean {
@@ -258,6 +296,13 @@ function istX01(variant: string): boolean {
 export function anwenden(zustand: MatchState, roh: unknown): MatchState {
   const eingeordnet = einordnen(roh)
   if (eingeordnet.art === 'ignoriert') return zustand
+  if (eingeordnet.art === 'board') {
+    // Ein Board-Ereignis, das ein Ende meint, beendet die Anzeige sofort -
+    // auch wenn nie ein "finished" im Zustandskanal ankam. Ein Beginn wird
+    // hier nicht ausgewertet: den baut die erste .state-Momentaufnahme auf,
+    // die ohnehin unmittelbar folgt.
+    return istMatchEnde(eingeordnet.nutz) ? RUHEZUSTAND : zustand
+  }
   if (eingeordnet.art === 'unbekannt') {
     const o = objekt(roh)
     einmaligProtokollieren(
@@ -271,6 +316,7 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
   const matchId = typeof nutz.id === 'string' ? nutz.id : zustand.matchId
   const variantRoh = typeof nutz.variant === 'string' ? nutz.variant : ''
   const variant: MatchState['variant'] = istX01(variantRoh) ? 'x01' : 'other'
+  const variantName = variantRoh !== '' ? variantRoh : zustand.variantName
   // Neues Match erkannt: matchId weicht vom vorherigen Zustand ab. Grundlage
   // fuer den Ruecksetz-auf-0-Fall unten (Legs/Sets/legHistory) und fuer die
   // intro-Phase - beides aus dem Vergleich abgeleitet, nicht aus einem
@@ -331,6 +377,23 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
     ? ((typeof nutz.winner === 'number' ? effektivePlayers[nutz.winner]?.id : undefined) ?? activePlayerId)
     : null
 
+  // Ob dieser Zug abgeschlossen ist - frueher berechnet als der Leg-Verlauf
+  // unten, weil auch die Statistik davon abhaengt: gezaehlt wird eine
+  // Aufnahme genau einmal, naemlich wenn sie fertig ist.
+  const zugAbgeschlossen = legBeendet || matchBeendet || bust || currentThrow.length >= 3
+  // Wie viele Darts diese Aufnahme hatte. Ist die Wurfliste leer, weil sich
+  // turns[] nicht lesen liess (Feldform unbestaetigt, siehe dartsAusTurns),
+  // wird von einer vollen Aufnahme ausgegangen - sonst bliebe der Average
+  // dauerhaft leer, obwohl die Punkte (turnScore) bekannt sind.
+  const dartsDesZugs = currentThrow.length > 0 ? currentThrow.length : 3
+  if (zugAbgeschlossen && currentThrow.length === 0) {
+    einmaligProtokollieren(
+      'darts-je-zug-geschaetzt',
+      'Wurfliste leer, fuer die Statistik wird mit drei Darts je Aufnahme gerechnet.',
+    )
+  }
+  const punkteDesZugs = bust ? 0 : currentThrowTotal
+
   // ---- Punktestand je Spieler -----------------------------------------
   const gameScoresRoh = nachIndex(nutz.gameScores)
   const statsRoh = nachIndex(nutz.stats)
@@ -365,16 +428,54 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
     const setsRoh = ersteZahl(punkteRoh[index], ['sets', 'setsWon', 'setCount'], `scores[${index}].sets`)
     const sets = setsRoh ?? vorheriger?.sets ?? 0
 
+    // Die Statistik rechnet die Anwendung selbst mit. Grund: im Protokoll
+    // eines echten Matches war stats[i] ein LEERES Objekt (siehe
+    // docs/autodarts-api.md) - alle Werte standen deshalb dauerhaft auf 0.
+    // Eine Zahl vom Server hat weiter Vorrang, falls sie doch einmal kommt.
     const statsEintrag = statsRoh[index]
-    const average3 = ersteZahl(statsEintrag, ['average', 'avg', 'threeDartAverage', 'average3'], `stats[${index}].average`) ?? vorheriger?.average3 ?? null
-    const checkoutAttempts =
-      ersteZahl(statsEintrag, ['checkoutAttempts', 'coAttempts'], `stats[${index}].checkoutAttempts`) ?? vorheriger?.checkoutAttempts ?? 0
-    const checkoutHits = ersteZahl(statsEintrag, ['checkoutHits', 'coHits', 'checkouts'], `stats[${index}].checkoutHits`) ?? vorheriger?.checkoutHits ?? 0
-    const count180 = ersteZahl(statsEintrag, ['count180', 'oneEighties', 'oneEightys'], `stats[${index}].count180`) ?? vorheriger?.count180 ?? 0
-    const highestFinish =
-      ersteZahl(statsEintrag, ['highestFinish', 'highFinish', 'bestFinish'], `stats[${index}].highestFinish`) ?? vorheriger?.highestFinish ?? null
+    // Nur fuer den Spieler am Wurf und nur, wenn seine Aufnahme fertig ist.
+    const zaehlt = spieler.id === activePlayerId && zugAbgeschlossen
 
-    return { playerId: spieler.id, remaining, legs, sets, average3, checkoutAttempts, checkoutHits, count180, highestFinish }
+    const dartsGesamt = (vorheriger?.dartsGesamt ?? 0) + (zaehlt ? dartsDesZugs : 0)
+    const punkteGesamt = (vorheriger?.punkteGesamt ?? 0) + (zaehlt ? punkteDesZugs : 0)
+
+    const average3 =
+      ersteZahl(statsEintrag, ['average', 'avg', 'threeDartAverage', 'average3'], `stats[${index}].average`) ??
+      (dartsGesamt > 0 ? (punkteGesamt / dartsGesamt) * 3 : null)
+
+    // Ein Finishversuch: die Aufnahme begann mit einem Rest, der sich mit drei
+    // Darts ausmachen laesst. 170 ist der hoechste solche Rest, unter 2 ist
+    // keiner mehr moeglich.
+    const restVorZug = vorheriger?.remaining ?? startScore
+    const versuch = zaehlt && restVorZug >= 2 && restVorZug <= 170
+    const checkoutAttempts =
+      ersteZahl(statsEintrag, ['checkoutAttempts', 'coAttempts'], `stats[${index}].checkoutAttempts`) ??
+      (vorheriger?.checkoutAttempts ?? 0) + (versuch ? 1 : 0)
+    const checkoutHits =
+      ersteZahl(statsEintrag, ['checkoutHits', 'coHits', 'checkouts'], `stats[${index}].checkoutHits`) ??
+      (vorheriger?.checkoutHits ?? 0) + (zaehlt && remaining === 0 ? 1 : 0)
+    const count180 =
+      ersteZahl(statsEintrag, ['count180', 'oneEighties', 'oneEightys'], `stats[${index}].count180`) ??
+      (vorheriger?.count180 ?? 0) + (zaehlt && punkteDesZugs === 180 ? 1 : 0)
+
+    const finishJetzt = zaehlt && remaining === 0 ? punkteDesZugs : 0
+    const highestFinish =
+      ersteZahl(statsEintrag, ['highestFinish', 'highFinish', 'bestFinish'], `stats[${index}].highestFinish`) ??
+      (finishJetzt > (vorheriger?.highestFinish ?? 0) ? finishJetzt : (vorheriger?.highestFinish ?? null))
+
+    return {
+      playerId: spieler.id,
+      remaining,
+      legs,
+      sets,
+      average3,
+      checkoutAttempts,
+      checkoutHits,
+      count180,
+      highestFinish,
+      dartsGesamt,
+      punkteGesamt,
+    }
   })
 
   const restAktiv = scores.find((s) => s.playerId === activePlayerId)?.remaining ?? startScore
@@ -385,7 +486,6 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
   // Ohne diese Bedingung wuerde ein Ereignis-je-Dart-Betrieb (siehe
   // Dateikopf, .game-events feuert einzeln) denselben Zug mehrfach als
   // separate Eintraege fuehren.
-  const zugAbgeschlossen = legBeendet || matchBeendet || bust || currentThrow.length >= 3
   const legGeradeVorbei = zustand.phase === 'legBreak' || zustand.phase === 'finished'
   const legHistoryBasis = istNeuesMatch || legGeradeVorbei ? [] : zustand.legHistory
   const legHistory: LegEntry[] =
@@ -434,6 +534,7 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
     phase,
     matchId,
     variant,
+    variantName,
     startScore,
     players: effektivePlayers,
     scores,

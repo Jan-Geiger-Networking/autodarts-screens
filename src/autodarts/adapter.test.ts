@@ -382,3 +382,115 @@ describe('anwenden: abgeleitete Ereignisse (kein Feld im Rohereignis, nur Vergle
     expect(ergebnis.lastEvent).toMatchObject({ kind: 'matchWon', playerId: ergebnis.players[0]!.id })
   })
 })
+
+// ---------------------------------------------------------------------
+// Match-Ende ueber den Board-Kanal und selbst gefuehrte Statistik
+// ---------------------------------------------------------------------
+
+describe('anwenden: Match-Ende ueber den Board-Kanal', () => {
+  it('geht in den Ruhezustand, wenn das Board ein Ende meldet', () => {
+    // Gemeldeter Fall: auf der Scheibe "Exit" geklickt. Der Zustandskanal
+    // verstummt dann einfach - ohne dieses Ereignis bliebe der Endstand bis
+    // zum naechsten Match stehen.
+    const laufend = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    const ergebnis = anwenden(laufend, {
+      channel: 'autodarts.boards',
+      topic: 'board-1.matches',
+      data: { event: 'finish', id: 'match-1' },
+    })
+
+    expect(ergebnis).toBe(RUHEZUSTAND)
+  })
+
+  it('wertet einen unbekannten Ereignisnamen als Ende', () => {
+    // Sichere Richtung: lieber die Spielpause zeigen als einen Endstand
+    // endlos stehen lassen. Ein weiterlaufendes Match baut sich mit der
+    // naechsten Momentaufnahme sofort wieder auf.
+    const laufend = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    expect(anwenden(laufend, { channel: 'autodarts.boards', topic: 'b.matches', data: { event: 'irgendwas' } })).toBe(
+      RUHEZUSTAND,
+    )
+  })
+
+  it('laesst den Zustand bei einem Beginn unangetastet', () => {
+    const laufend = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    expect(anwenden(laufend, { channel: 'autodarts.boards', topic: 'b.matches', data: { event: 'start', id: 'm' } })).toBe(
+      laufend,
+    )
+  })
+
+  it('laesst den Zustand unangetastet, wenn das Ereignis gar kein event-Feld hat', () => {
+    const laufend = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    expect(anwenden(laufend, { channel: 'autodarts.boards', topic: 'b.matches', data: { id: 'match-2' } })).toBe(laufend)
+  })
+})
+
+describe('anwenden: selbst gefuehrte Statistik', () => {
+  // Grund: stats[i] war im Protokoll eines echten Matches ein LEERES Objekt,
+  // alle Werte standen deshalb dauerhaft auf 0.
+  const dreiDarts = { '0': [{ name: 'T20' }, { name: 'T20' }, { name: 'T20' }], '1': [] }
+
+  it('rechnet den Average aus Punkten und Darts, wenn der Server keinen liefert', () => {
+    const start = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    const nachWurf = anwenden(
+      start,
+      stateEreignis('match-1', { player: 0, turnScore: 180, turns: dreiDarts, gameScores: { '0': 321, '1': 501 } }),
+    )
+
+    expect(nachWurf.scores[0]!.dartsGesamt).toBe(3)
+    expect(nachWurf.scores[0]!.punkteGesamt).toBe(180)
+    expect(nachWurf.scores[0]!.average3).toBe(180)
+  })
+
+  it('zaehlt einen 180er mit', () => {
+    const start = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    const nachWurf = anwenden(
+      start,
+      stateEreignis('match-1', { player: 0, turnScore: 180, turns: dreiDarts, gameScores: { '0': 321, '1': 501 } }),
+    )
+
+    expect(nachWurf.scores[0]!.count180).toBe(1)
+  })
+
+  it('zaehlt eine Bust-Aufnahme mit Darts, aber ohne Punkte', () => {
+    const start = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    const nachBust = anwenden(
+      start,
+      stateEreignis('match-1', { player: 0, turnScore: 60, turnBusted: true, turns: dreiDarts }),
+    )
+
+    expect(nachBust.scores[0]!.dartsGesamt).toBe(3)
+    expect(nachBust.scores[0]!.punkteGesamt).toBe(0)
+  })
+
+  it('rechnet mit drei Darts, wenn sich die Wurfliste nicht lesen liess', () => {
+    // Sonst bliebe der Average dauerhaft leer, obwohl turnScore bekannt ist.
+    const start = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    const nachWurf = anwenden(start, stateEreignis('match-1', { player: 0, turnScore: 60, turnBusted: true, turns: {} }))
+
+    expect(nachWurf.scores[0]!.dartsGesamt).toBe(3)
+  })
+
+  it('zaehlt Finishversuch und Treffer, wenn ein Leg ausgemacht wird', () => {
+    const start = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    const beiRest40 = anwenden(
+      start,
+      stateEreignis('match-1', { player: 0, turnScore: 461, turns: dreiDarts, gameScores: { '0': 40, '1': 501 } }),
+    )
+    const ausgemacht = anwenden(
+      beiRest40,
+      stateEreignis('match-1', {
+        player: 0,
+        turnScore: 40,
+        turns: { '0': [{ name: 'D20' }], '1': [] },
+        gameScores: { '0': 0, '1': 501 },
+        gameFinished: true,
+        gameWinner: 0,
+      }),
+    )
+
+    expect(ausgemacht.scores[0]!.checkoutAttempts).toBe(1)
+    expect(ausgemacht.scores[0]!.checkoutHits).toBe(1)
+    expect(ausgemacht.scores[0]!.highestFinish).toBe(40)
+  })
+})

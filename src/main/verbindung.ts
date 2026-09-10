@@ -46,21 +46,54 @@ let ruhezustandTimer: ReturnType<typeof setTimeout> | null = null
  * und sich fragt, ob die Anwendung haengt. */
 const ENDSTAND_STEHEN_LASSEN_MS = 30_000
 
-// Nur einmal je Programmlauf: das vollstaendige Rohereignis eines Matches im
-// Diagnoseprotokoll. Ohne Mitschnitt ist das die einzige Quelle fuer die
-// tatsaechlichen Feldnamen INNERHALB des Zustands (players, turns, stats,
-// scores) - die aeussere Feldliste allein reicht dafuer nicht.
-let rohbeispielProtokolliert = false
-/** Obergrenze fuer dieses eine Beispiel, damit das Protokoll lesbar bleibt. */
+// Wachhund gegen ein Match, das einfach verstummt: wird es auf der Scheibe
+// mit "Exit" beendet oder bricht der Kanal weg, kommt kein letztes
+// "finished" mehr. Der Board-Kanal meldet das Ende zwar meistens (siehe
+// istMatchEnde in adapter.ts), aber dessen Ereignisnamen sind unbelegt -
+// dieser Wachhund haengt an gar keiner Annahme und greift immer.
+let stilleTimer: ReturnType<typeof setTimeout> | null = null
+
+/** Wie lange ohne jede Zustandsmeldung gewartet wird, bevor die Anzeige in
+ * die Spielpause zurueckfaellt. Grosszuegig: eine echte Aufnahme dauert
+ * Sekunden, fuenf Minuten Stille bedeuten, dass nichts mehr kommt. */
+const STILLE_BIS_RUHEZUSTAND_MS = 5 * 60_000
+
+// Vollstaendige Rohereignisse im Diagnoseprotokoll - je EINES pro Bauart.
+// Ohne Mitschnitt ist das die einzige Quelle fuer die tatsaechlichen
+// Feldnamen INNERHALB des Zustands (players, turns, stats, scores, state).
+//
+// Die Bauart ist "type|variant": ein Match im Bull-off, ein Cricket-Match und
+// ein normales X01-Match unterscheiden sich genau dort. Ein einziges Beispiel
+// je Programmlauf haette immer nur die erste Bauart erwischt - und damit nie
+// die Ermittlung des Anfangsspielers, nach der der Herausgeber gefragt hat.
+const rohbeispieleProtokolliert = new Set<string>()
+/** Obergrenze fuer die Zahl der Beispiele, damit das Protokoll lesbar bleibt. */
+const ROHBEISPIELE_HOECHSTENS = 6
+/** Obergrenze je Beispiel. */
 const ROHBEISPIEL_MAX_ZEICHEN = 12_000
 
+/** Bauart eines Rohereignisses: "type|variant" der Nutzlast, sonst "unbekannt". */
+function bauart(roh: unknown): string {
+  if (typeof roh !== 'object' || roh === null) return 'unbekannt'
+  const umschlag = roh as Record<string, unknown>
+  const nutz = (typeof umschlag.data === 'object' && umschlag.data !== null ? umschlag.data : umschlag) as Record<
+    string,
+    unknown
+  >
+  const typ = typeof nutz.type === 'string' ? nutz.type : 'ohne-type'
+  const variante = typeof nutz.variant === 'string' ? nutz.variant : 'ohne-variant'
+  return `${typ}|${variante}`
+}
+
 function rohbeispielProtokollieren(roh: unknown): void {
-  if (rohbeispielProtokolliert) return
-  rohbeispielProtokolliert = true
+  if (rohbeispieleProtokolliert.size >= ROHBEISPIELE_HOECHSTENS) return
+  const art = bauart(roh)
+  if (rohbeispieleProtokolliert.has(art)) return
+  rohbeispieleProtokolliert.add(art)
   try {
     const text = JSON.stringify(roh)
     void protokollieren(
-      `Rohereignis (einmalig, gekuerzt auf ${ROHBEISPIEL_MAX_ZEICHEN} Zeichen): ${text.slice(0, ROHBEISPIEL_MAX_ZEICHEN)}`,
+      `Rohereignis [${art}] (einmalig je Bauart, gekuerzt auf ${ROHBEISPIEL_MAX_ZEICHEN} Zeichen): ${text.slice(0, ROHBEISPIEL_MAX_ZEICHEN)}`,
     )
   } catch (fehler) {
     void protokollieren(`Rohereignis liess sich nicht serialisieren: ${fehler instanceof Error ? fehler.message : String(fehler)}`)
@@ -76,6 +109,7 @@ function rohbeispielProtokollieren(roh: unknown): void {
 function zustandUebernehmen(neu: MatchState): void {
   matchZustand = neu
   zustandVerteilen(neu)
+  stilleUeberwachen(neu)
 
   if (neu.phase === 'finished') {
     if (ruhezustandTimer === null) {
@@ -94,6 +128,28 @@ function zustandUebernehmen(neu: MatchState): void {
     clearTimeout(ruhezustandTimer)
     ruhezustandTimer = null
   }
+}
+
+/**
+ * Startet den Wachhund neu, solange ein Match angezeigt wird, und schaltet
+ * ihn im Ruhezustand ab - dort gibt es nichts zu ueberwachen.
+ */
+function stilleUeberwachen(neu: MatchState): void {
+  if (stilleTimer !== null) {
+    clearTimeout(stilleTimer)
+    stilleTimer = null
+  }
+  if (neu.phase === 'idle') return
+
+  stilleTimer = setTimeout(() => {
+    stilleTimer = null
+    void protokollieren(
+      `Seit ${STILLE_BIS_RUHEZUSTAND_MS / 60_000} Minuten keine Zustandsmeldung mehr - zurueck in den Ruhezustand (Spielpause)`,
+    )
+    matchZustand = RUHEZUSTAND
+    zustandVerteilen(RUHEZUSTAND)
+  }, STILLE_BIS_RUHEZUSTAND_MS)
+  stilleTimer.unref?.()
 }
 
 /**
