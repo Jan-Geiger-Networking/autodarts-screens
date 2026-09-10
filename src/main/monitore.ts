@@ -1,4 +1,5 @@
 import { BrowserWindow, screen } from 'electron'
+import { passendenMonitorWaehlen, type MonitorBeschreibung, type MonitorKennung } from './monitorAuswahl'
 
 // Diese Datei laeuft nur im Electron-Main-Prozess, daher ist der Import auf
 // Modulebene hier unproblematisch (anders als in konfiguration.ts).
@@ -85,4 +86,53 @@ export function monitoreIdentifizieren(): void {
 export function monitorFuer(id: number | null): Electron.Display {
   const gefunden = id === null ? undefined : screen.getAllDisplays().find((d) => d.id === id)
   return gefunden ?? screen.getPrimaryDisplay()
+}
+
+/** Steckbrief eines angeschlossenen Monitors (siehe monitorAuswahl.ts). */
+export function kennungFuer(display: Electron.Display): MonitorKennung {
+  return {
+    id: display.id,
+    // label gibt es erst ab neueren Electron-Fassungen und ist auf manchen
+    // Systemen leer - dann traegt der Steckbrief eben nur Groesse und Kennung.
+    label: typeof display.label === 'string' ? display.label : '',
+    breite: display.size.width,
+    hoehe: display.size.height,
+    skalierung: display.scaleFactor,
+  }
+}
+
+/** Alle angeschlossenen Monitore als Steckbriefe. */
+export function monitorBeschreibungen(): MonitorBeschreibung[] {
+  return screen.getAllDisplays().map(kennungFuer)
+}
+
+/**
+ * Der Monitor zu einem gespeicherten Steckbrief, oder null, wenn er gerade
+ * nicht angeschlossen (oder ausgeschaltet) ist. NICHT auf den primaeren
+ * Monitor zurueckfallen: der Aufrufer soll warten koennen, statt den Screen
+ * auf dem falschen Bildschirm zu oeffnen.
+ */
+export function monitorFuerKennung(kennung: MonitorKennung | null): Electron.Display | null {
+  const treffer = passendenMonitorWaehlen(kennung, monitorBeschreibungen())
+  if (!treffer) return null
+  return screen.getAllDisplays().find((d) => d.id === treffer.id) ?? null
+}
+
+/**
+ * Meldet jede Aenderung an der Monitorlandschaft: ein Bildschirm geht an,
+ * geht aus, oder aendert Aufloesung/Skalierung. Genau die drei Faelle, in
+ * denen ein wartender Screen es noch einmal versuchen soll.
+ *
+ * Liefert eine Funktion zum Abmelden.
+ */
+export function beiMonitoraenderung(rueckruf: () => void): () => void {
+  const melden = (): void => rueckruf()
+  screen.on('display-added', melden)
+  screen.on('display-removed', melden)
+  screen.on('display-metrics-changed', melden)
+  return () => {
+    screen.removeListener('display-added', melden)
+    screen.removeListener('display-removed', melden)
+    screen.removeListener('display-metrics-changed', melden)
+  }
 }

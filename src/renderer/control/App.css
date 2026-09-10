@@ -178,3 +178,17 @@ button:disabled {
 .gefahr:hover {
   background: var(--jg-warning-dim);
 }
+
+/* Ankreuzfeld in einer Zeile mit seiner Beschriftung - .feld stellt sonst
+   untereinander, was fuer Eingabefelder richtig, fuer ein Haekchen aber
+   falsch ist. */
+.feld-kasten {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.feld-kasten input {
+  width: auto;
+  margin: 0;
+}

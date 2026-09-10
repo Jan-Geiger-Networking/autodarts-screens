@@ -10,8 +10,9 @@ import type { Verbindungszustand } from '../autodarts/websocket'
 // Verteilen aus dieser Datei. Ein Typimport verschwindet beim Uebersetzen,
 // zur Laufzeit entsteht dadurch kein Kreis.
 import type { Aktualisierungszustand } from './aktualisierung'
-import { monitorFuer } from './monitore'
-import { standardKonfiguration, type Konfiguration } from './konfiguration'
+import { beiMonitoraenderung, monitorFuer, monitorFuerKennung } from './monitore'
+import { konfigurationLesen, konfigurationSchreiben, standardKonfiguration, type Konfiguration } from './konfiguration'
+import { protokollieren } from '../autodarts/diagnose'
 
 // Hoechstens ein Fenster je Art. 'closed' entfernt den Eintrag wieder (siehe
 // unten), damit ein spaeterer fensterOeffnen()-Aufruf nie auf ein bereits
@@ -74,6 +75,131 @@ function escapeVerlaesstVollbild(fensterInstanz: BrowserWindow): void {
   })
 }
 
+/** Der gespeicherte Steckbrief des Monitors fuer diesen Screen. */
+function kennungFuerArt(art: FensterArt): Konfiguration['playerMonitor'] {
+  if (art === 'player') return aktuelleKonfiguration.playerMonitor
+  if (art === 'spectator') return aktuelleKonfiguration.spectatorMonitor
+  return null
+}
+
+/**
+ * Der Monitor, auf dem dieser Screen liegen soll. Zuerst ueber den
+ * Steckbrief (ueberlebt einen Neustart), dann ueber die gespeicherte
+ * Display-Kennung, zuletzt der primaere Monitor.
+ */
+function zielMonitor(art: FensterArt): Electron.Display {
+  const ueberKennung = monitorFuerKennung(kennungFuerArt(art))
+  if (ueberKennung) return ueberKennung
+  const displayId = art === 'player' ? aktuelleKonfiguration.playerDisplayId : aktuelleKonfiguration.spectatorDisplayId
+  return monitorFuer(displayId)
+}
+
+// Screens, deren Monitor gerade fehlt. Sie werden geoeffnet, sobald er
+// auftaucht - "wenn ein monitor aus ist der einen der screens angezeigt hat
+// soll er warten darauf bis der an geht".
+const wartend = new Set<FensterArt>()
+
+/** Ob dieser Screen gerade auf seinen Monitor wartet. */
+export function wartetAufMonitor(art: FensterArt): boolean {
+  return wartend.has(art)
+}
+
+/**
+ * Oeffnet einen Screen - aber nur, wenn sein Monitor da ist.
+ *
+ * Ist fuer den Screen ein Monitor hinterlegt und dieser gerade nicht
+ * angeschlossen (Fernseher aus, Rechner frisch gestartet), wird NICHT
+ * ersatzweise der primaere Monitor genommen: dann laege der Zuschauer-Screen
+ * ueber dem Control-Fenster. Stattdessen merkt sich die Anwendung den Wunsch
+ * und oeffnet, sobald der Monitor sich meldet.
+ */
+export function screenAnfordern(art: FensterArt): BrowserWindow | null {
+  const kennung = kennungFuerArt(art)
+  if (kennung && !monitorFuerKennung(kennung)) {
+    if (!wartend.has(art)) {
+      wartend.add(art)
+      void protokollieren(
+        `${art}-Screen wartet auf seinen Monitor (${kennung.breite}x${kennung.hoehe}, ${kennung.label || 'ohne Beschriftung'}) - wird geoeffnet, sobald er sich meldet`,
+      )
+    }
+    return null
+  }
+  wartend.delete(art)
+  return fensterOeffnen(art)
+}
+
+/**
+ * Nach jeder Aenderung an den Monitoren: wartende Screens oeffnen und offene
+ * Screens wieder auf ihren Monitor legen.
+ *
+ * Das zweite ist genauso wichtig wie das erste: schaltet ein Fernseher ab,
+ * schiebt Windows das Fenster auf einen anderen Bildschirm - kommt er
+ * zurueck, bleibt es dort liegen, bis es jemand zurueckzieht.
+ */
+function monitorlagePruefen(): void {
+  for (const art of [...wartend]) {
+    if (!monitorFuerKennung(kennungFuerArt(art))) continue
+    wartend.delete(art)
+    void protokollieren(`Monitor fuer den ${art}-Screen ist da - Screen wird geoeffnet`)
+    fensterOeffnen(art)
+  }
+
+  for (const art of ['player', 'spectator'] as const) {
+    const fensterInstanz = fenster.get(art)
+    if (!fensterInstanz || fensterInstanz.isDestroyed()) continue
+    const ziel = monitorFuerKennung(kennungFuerArt(art))
+    if (!ziel) continue
+    const lage = fensterInstanz.getBounds()
+    if (lage.x === ziel.bounds.x && lage.y === ziel.bounds.y) continue
+    // Vollbild muss kurz weichen: ein Vollbildfenster laesst sich auf keinen
+    // anderen Monitor verschieben.
+    void protokollieren(`${art}-Screen liegt auf dem falschen Monitor - wird zurueckgelegt`)
+    fensterInstanz.setFullScreen(false)
+    fensterInstanz.setBounds(ziel.bounds)
+    fensterInstanz.setFullScreen(true)
+  }
+}
+
+/**
+ * Haengt sich an die Monitormeldungen des Systems. Einmal beim Start
+ * aufrufen; liefert eine Funktion zum Abmelden.
+ */
+export function monitoreUeberwachen(): () => void {
+  // Kleine Verzoegerung: ein Fernseher meldet sich beim Einschalten oft
+  // zweimal (erst mit Notaufloesung, dann richtig). Ohne Wartezeit wuerde
+  // das Fenster auf die erste, falsche Groesse gelegt.
+  let timer: ReturnType<typeof setTimeout> | null = null
+  return beiMonitoraenderung(() => {
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(() => {
+      timer = null
+      monitorlagePruefen()
+    }, 1500)
+    timer.unref?.()
+  })
+}
+
+/**
+ * Merkt sich, ob ein Screen offen ist - beim naechsten Start wird er dann
+ * wieder geoeffnet ("ich mache den PC an und alles ist wie vorher eingestellt
+ * und bereit"). Das Control-Fenster oeffnet ohnehin immer.
+ */
+async function offenstandMerken(art: FensterArt, offen: boolean): Promise<void> {
+  if (art === 'control') return
+  try {
+    const bisher = await konfigurationLesen()
+    const feld = art === 'player' ? 'playerOffen' : 'spectatorOffen'
+    if (bisher[feld] === offen) return
+    const neu = { ...bisher, [feld]: offen }
+    await konfigurationSchreiben(neu)
+    konfigurationAktualisieren(neu)
+  } catch (fehler) {
+    void protokollieren(
+      `Offenstand des ${art}-Screens liess sich nicht speichern: ${fehler instanceof Error ? fehler.message : String(fehler)}`,
+    )
+  }
+}
+
 /** Oeffnet das Fenster der gewuenschten Art, oder holt ein vorhandenes nach vorn. */
 export function fensterOeffnen(art: FensterArt): BrowserWindow {
   const vorhandenes = fenster.get(art)
@@ -98,9 +224,7 @@ export function fensterOeffnen(art: FensterArt): BrowserWindow {
   } else {
     // Player und Spectator: rahmenlos, auf dem konfigurierten Monitor
     // plaziert und anschliessend in den Vollbildmodus geschaltet.
-    const displayId =
-      art === 'player' ? aktuelleKonfiguration.playerDisplayId : aktuelleKonfiguration.spectatorDisplayId
-    const { x, y, width, height } = monitorFuer(displayId).bounds
+    const { x, y, width, height } = zielMonitor(art).bounds
     neues = new BrowserWindow({
       ...gemeinsam,
       x,
@@ -120,6 +244,7 @@ export function fensterOeffnen(art: FensterArt): BrowserWindow {
   // fuer dieselbe Art wuerde auf isDestroyed()/focus() eines toten Objekts treffen.
   neues.on('closed', () => fenster.delete(art))
   fenster.set(art, neues)
+  void offenstandMerken(art, true)
 
   // Sobald der Inhalt geladen ist (React ist gemountet, beiZustand() bereits
   // registriert), den letzten bekannten Zustand einmalig nachliefern - ein
@@ -140,9 +265,14 @@ export function fensterOeffnen(art: FensterArt): BrowserWindow {
 }
 
 export function fensterSchliessen(art: FensterArt): void {
+  // Ein bewusst geschlossener Screen soll auch nicht mehr auf seinen Monitor
+  // warten - sonst ginge er beim naechsten Einschalten des Fernsehers von
+  // allein wieder auf.
+  wartend.delete(art)
   const vorhandenes = fenster.get(art)
   if (vorhandenes && !vorhandenes.isDestroyed()) vorhandenes.close()
   fenster.delete(art)
+  void offenstandMerken(art, false)
 }
 
 /**

@@ -1,6 +1,6 @@
 {
   "name": "autodarts-screens",
-  "version": "0.1.0-beta.13",
+  "version": "0.1.0-beta.14",
   "description": "Zwei Vollbildschirme fuer Autodarts-Matches: Spielerinfo neben der Scheibe, Broadcast-Ansicht fuer Zuschauer",
   "author": "Jan Geiger Networking <hey@bsbnet.eu>",
   "license": "MIT",

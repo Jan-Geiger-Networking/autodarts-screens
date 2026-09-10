@@ -36,9 +36,11 @@ describe('alleDatenLoeschen', () => {
     expect(fromPartition).not.toHaveBeenCalled()
   })
 
-  it('loescht config.json, anmeldung.bin, recordings/ und die Sitzungspartition, wenn sie vorhanden sind (Befund 2)', async () => {
+  it('loescht config.json, anmeldung.bin, matchtag.json, recordings/ und die Sitzungspartition, wenn sie vorhanden sind (Befund 2)', async () => {
     writeFileSync(join(userDataDir, 'config.json'), '{}')
     writeFileSync(join(userDataDir, 'anmeldung.bin'), 'geheim')
+    // Der Matchtag traegt Spielernamen - er gehoert zu "alle lokalen Daten".
+    writeFileSync(join(userDataDir, 'matchtag.json'), '{"version":1}')
     mkdirSync(join(userDataDir, 'recordings'))
     writeFileSync(join(userDataDir, 'recordings', 'match.jsonl'), '{}')
     // Electron legt Sitzungspartitionen unter Partitions/<name ohne
@@ -48,10 +50,11 @@ describe('alleDatenLoeschen', () => {
     const geloescht = await alleDatenLoeschen()
 
     expect([...geloescht].sort()).toEqual(
-      ['Partitions/autodarts-anmeldung/', 'anmeldung.bin', 'config.json', 'recordings/'].sort(),
+      ['Partitions/autodarts-anmeldung/', 'anmeldung.bin', 'config.json', 'matchtag.json', 'recordings/'].sort(),
     )
     expect(existsSync(join(userDataDir, 'config.json'))).toBe(false)
     expect(existsSync(join(userDataDir, 'anmeldung.bin'))).toBe(false)
+    expect(existsSync(join(userDataDir, 'matchtag.json'))).toBe(false)
     expect(existsSync(join(userDataDir, 'recordings'))).toBe(false)
     expect(fromPartition).toHaveBeenCalledWith('persist:autodarts-anmeldung')
     expect(clearStorageData).toHaveBeenCalledTimes(1)

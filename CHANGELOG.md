@@ -4,6 +4,50 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.14] - 2026-09-11
+
+Vierzehnte Beta. Turnierabend, Einblendungen auf dem Player-Screen und ein
+Autostart, nach dem alles wieder so steht wie vorher.
+
+### Neu
+- **Matchtag.** Ein Turnierabend, an dem mehrere Leute jeder gegen jeden im
+  Einzel spielen. Gestartet wird er im Control-Fenster; das nächste Match mit
+  allen Teilnehmern zählt als Aufwärmrunde und legt Spielerliste und
+  Spielplan fest — der Average daraus setzt die Reihenfolge. Jede gespielte
+  Partie trägt sich danach von allein ein, ein Sieg gibt einen Punkt.
+  Zugeordnet wird über die Spielernamen, weil Autodarts für jedes Match neue
+  Spielerkennungen vergibt
+- **Stechen bei Punktgleichheit.** Stehen am Ende mehrere an der Spitze,
+  spielen genau diese es untereinander aus. Über den Turniersieg entscheidet
+  kein Rechentrick, sondern die Scheibe
+- **Matchtag-Pausenbildschirm.** Statt des Vorspanns laufen vier Folien: die
+  Partie, die als nächstes einzurichten ist (zuerst und am längsten), die
+  Tabelle, der Spielplan mit gespielten und offenen Partien, und die Zahlen
+  des Abends — bestes Average, meiste 180er, höchstes Finish, Schnitt je
+  Spieler. Kacheln ohne Grundlage fallen weg, statt eine Null zu zeigen
+- **Kurze Einblendungen auf dem Player-Screen** für Spielerwechsel, 180,
+  hohes Finish, gewonnenes Leg und gewonnenes Match. Sie sitzen über der
+  Scheibe, nicht über den Spielertafeln: Restpunktzahl und Checkout-Weg
+  bleiben lesbar. Deutlich kürzer als auf dem Zuschauer-Screen
+- **Autostart.** Die Anwendung kann beim Anmelden am Rechner mitstarten und
+  öffnet dann die Screens wieder, die beim letzten Beenden offen waren — auf
+  denselben Monitoren
+- **Monitore werden wiedererkannt.** Windows vergibt Monitorkennungen neu,
+  sobald ein Bildschirm aus- und wieder eingeschaltet oder der Rechner neu
+  gestartet wird. Gespeichert wird deshalb ein Steckbrief aus Anschluss,
+  Auflösung und Skalierung. Ist ein Monitor noch aus, wartet die Anwendung
+  und legt den Screen darauf, sobald er sich meldet; verrutscht ein Fenster,
+  weil ein Fernseher zwischendurch ausging, wird es zurückgelegt
+
+### Geändert
+- Das Logo auf dem Player-Screen ist fast doppelt so groß und deutlich
+  weniger durchscheinend — auf dem großen Bildschirm an der Scheibe war es
+  kaum zu sehen
+- `matchtag.json` wird von „Alle lokalen Daten löschen" mit entfernt.
+  Datenschutzerklärung und README sind entsprechend ergänzt; beide nannten
+  außerdem noch den alten Installernamen und behaupteten, es gebe keine
+  Selbstaktualisierung
+
 ## [0.1.0-beta.13] - 2026-09-10
 
 Dreizehnte Beta. Sie sucht die Daten für den Spielstart.

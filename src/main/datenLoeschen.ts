@@ -2,7 +2,8 @@
 // und Design-Spec Abschnitt 18.3/18.4). Entfernt alles, was die Anwendung
 // selbst unter app.getPath('userData') ablegt: die Konfiguration, die
 // verschluesselte Anmelde-Ablage (src/autodarts/oauth.ts, ablagePfad()), den
-// Aufzeichnungsordner und die OAuth-Sitzungspartition (Befund 2 - liegt unter
+// gespeicherten Matchtag, den Aufzeichnungsordner und die
+// OAuth-Sitzungspartition (Befund 2 - liegt unter
 // Partitions/ und blieb bisher liegen, wodurch ueberlebende Cookies den
 // Nutzer nach "alle Daten geloescht" beim naechsten Anmeldeversuch still
 // wieder angemeldet haetten). Kein Import von 'electron' auf Modulebene,
@@ -16,6 +17,9 @@ import { SITZUNGSPARTITION } from '../autodarts/oauth'
 
 const KONFIGURATIONS_DATEI = 'config.json'
 const ANMELDE_ABLAGE = 'anmeldung.bin'
+// Der Matchtag traegt Spielernamen und Ergebnisse eines Abends - die
+// gehoeren zu "alle lokalen Daten" und muessen mit weg.
+const MATCHTAG_DATEI = 'matchtag.json'
 const AUFZEICHNUNGS_ORDNER = 'recordings'
 const PARTITIONS_ORDNER = 'Partitions'
 // Electron legt Sitzungspartitionen unter <userData>/Partitions/<name ohne
@@ -33,7 +37,7 @@ export async function alleDatenLoeschen(): Promise<string[]> {
   const basis = app.getPath('userData')
   const geloescht: string[] = []
 
-  for (const datei of [KONFIGURATIONS_DATEI, ANMELDE_ABLAGE]) {
+  for (const datei of [KONFIGURATIONS_DATEI, ANMELDE_ABLAGE, MATCHTAG_DATEI]) {
     const pfad = join(basis, datei)
     if (existsSync(pfad)) {
       await rm(pfad, { force: true })

@@ -250,6 +250,18 @@ export function App() {
             Spectator-Screen schließen
           </button>
         </div>
+        <label className="feld feld-kasten">
+          <input
+            type="checkbox"
+            checked={konfiguration?.autostart ?? false}
+            onChange={(e) => konfigurationAendern({ autostart: e.target.checked })}
+          />
+          Beim Anmelden am Rechner automatisch starten
+        </label>
+        <p className="hinweis">
+          Beim Start gehen die Screens wieder auf, die beim letzten Beenden offen waren — auf denselben Monitoren. Ist
+          ein Monitor noch aus, wartet die Anwendung und legt den Screen darauf, sobald er sich meldet.
+        </p>
       </fieldset>
 
       <fieldset className="bereich">

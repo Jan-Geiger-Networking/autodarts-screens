@@ -2,9 +2,11 @@ import { app } from "electron";
 import {
   fensterOeffnen,
   konfigurationAktualisieren,
+  monitoreUeberwachen,
+  screenAnfordern,
   zustandVerteilen,
 } from "./fenster";
-import { ipcRegistrieren } from "./ipc";
+import { autostartAnwenden, ipcRegistrieren } from "./ipc";
 import { konfigurationLesen } from "./konfiguration";
 import { verbindungBeenden, verbindungStarten } from "./verbindung";
 import { matchtagLaden } from "./matchtagDienst";
@@ -112,6 +114,21 @@ app.whenReady().then(async () => {
   // naechsten Aenderung zu sehen.
   await matchtagLaden();
   const controlFenster = fensterOeffnen("control");
+
+  // Autostart-Eintrag am gespeicherten Wunsch ausrichten: er koennte durch
+  // eine Neuinstallation oder von Hand verlorengegangen sein.
+  const einstellungen = await konfigurationLesen();
+  autostartAnwenden(einstellungen.autostart);
+
+  // Auf Monitore horchen, bevor die Screens angefordert werden: schaltet
+  // gerade jemand den Fernseher ein, ist die Meldung sonst schon durch.
+  monitoreUeberwachen();
+
+  // Die Screens wieder oeffnen, die beim letzten Beenden offen waren - und
+  // zwar nur, wenn ihr Monitor da ist. Fehlt er, wartet die Anwendung
+  // (siehe screenAnfordern in fenster.ts).
+  if (einstellungen.playerOffen) screenAnfordern("player");
+  if (einstellungen.spectatorOffen) screenAnfordern("spectator");
 
   if (process.env.AD_TESTZUSTAND === "1") {
     fensterOeffnen("player");

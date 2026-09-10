@@ -1,5 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { kennungEinlesen, type MonitorKennung } from './monitorAuswahl'
 
 // Kein Import von 'electron' auf Modulebene: konfiguration.test.ts laedt diese
 // Datei unter Vitest ohne laufende Electron-Runtime. standardKonfiguration und
@@ -25,6 +26,24 @@ export type Konfiguration = {
    * einmalig an (Spec Abschnitt 13).
    */
   zuletztGeseheneVersion: string | null
+  /**
+   * Steckbrief des Monitors, auf dem der jeweilige Screen liegen soll. Die
+   * Display-Kennungen oben reichen dafuer NICHT: Windows vergibt sie neu,
+   * sobald ein Bildschirm aus- und wieder eingeschaltet oder der Rechner neu
+   * gestartet wird (siehe monitorAuswahl.ts). Sie bleiben trotzdem erhalten -
+   * sie sind das, was die Auswahlliste im Control-Fenster anzeigt.
+   */
+  playerMonitor: MonitorKennung | null
+  spectatorMonitor: MonitorKennung | null
+  /** Ob die Anwendung beim Anmelden am Rechner von selbst startet. */
+  autostart: boolean
+  /**
+   * Ob der jeweilige Screen beim letzten Beenden offen war. Beim naechsten
+   * Start wird er wieder geoeffnet - "ich mache den PC an und alles ist wie
+   * vorher eingestellt und bereit".
+   */
+  playerOffen: boolean
+  spectatorOffen: boolean
 }
 
 export const standardKonfiguration: Konfiguration = {
@@ -33,6 +52,11 @@ export const standardKonfiguration: Konfiguration = {
   spectatorDisplayId: null,
   betaKanal: null,
   zuletztGeseheneVersion: null,
+  playerMonitor: null,
+  spectatorMonitor: null,
+  autostart: false,
+  playerOffen: false,
+  spectatorOffen: false,
 }
 
 // roh kommt aus einer Datei und ist deshalb ungeprueft. Unbekannte Felder
@@ -62,6 +86,13 @@ export function zusammenfuehren(roh: unknown): Konfiguration {
       typeof quelle.zuletztGeseheneVersion === 'string'
         ? quelle.zuletztGeseheneVersion
         : standardKonfiguration.zuletztGeseheneVersion,
+    // Eine halbe Kennung waere schlimmer als keine (siehe kennungEinlesen).
+    playerMonitor: kennungEinlesen(quelle.playerMonitor),
+    spectatorMonitor: kennungEinlesen(quelle.spectatorMonitor),
+    autostart: typeof quelle.autostart === 'boolean' ? quelle.autostart : standardKonfiguration.autostart,
+    playerOffen: typeof quelle.playerOffen === 'boolean' ? quelle.playerOffen : standardKonfiguration.playerOffen,
+    spectatorOffen:
+      typeof quelle.spectatorOffen === 'boolean' ? quelle.spectatorOffen : standardKonfiguration.spectatorOffen,
   }
 }
 

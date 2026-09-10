@@ -12,8 +12,9 @@ import {
   changelogAbschnitt,
   type Aktualisierungszustand,
 } from './aktualisierung'
-import { monitoreAuflisten, monitoreIdentifizieren } from './monitore'
-import { konfigurationLesen, konfigurationSchreiben, zusammenfuehren } from './konfiguration'
+import { kennungFuer, monitoreAuflisten, monitoreIdentifizieren } from './monitore'
+import { screen } from 'electron'
+import { konfigurationLesen, konfigurationSchreiben, zusammenfuehren, type Konfiguration } from './konfiguration'
 import { fensterArtVon, fensterOeffnen, fensterSchliessen, konfigurationAktualisieren, verbindungszustandVerteilen } from './fenster'
 import { alleDatenLoeschen } from './datenLoeschen'
 import { verbindungBeenden, verbindungStarten } from './verbindung'
@@ -143,9 +144,10 @@ export function ipcRegistrieren(): void {
     kanalPruefen(event, 'konfiguration:setzen')
     const bisherige = await konfigurationLesen()
     const roh = typeof teil === 'object' && teil !== null ? teil : {}
-    const neue = zusammenfuehren({ ...bisherige, ...roh })
+    const neue = steckbriefeNachfuehren(zusammenfuehren({ ...bisherige, ...roh }))
     await konfigurationSchreiben(neue)
     konfigurationAktualisieren(neue)
+    autostartAnwenden(neue.autostart)
     return neue
   })
 
@@ -322,4 +324,44 @@ export function matchtagBefehlPruefen(roh: unknown): MatchtagBefehl {
   if (b.art === 'starten') return { art: 'starten', titel: typeof b.titel === 'string' ? b.titel : '' }
   if (b.art === 'zuruecknehmen') return { art: 'zuruecknehmen' }
   return { art: 'beenden' }
+}
+
+/**
+ * Schreibt zu jeder gewaehlten Display-Kennung den vollen Steckbrief mit.
+ *
+ * Das Control-Fenster schickt nur eine Kennung - mehr sieht die Auswahlliste
+ * nicht. Die Kennung allein ueberlebt aber keinen Neustart (siehe
+ * monitorAuswahl.ts), deshalb wird hier, wo die Monitore bekannt sind, der
+ * Steckbrief dazugelegt. Wird die Auswahl geleert, faellt auch er weg.
+ */
+export function steckbriefeNachfuehren(k: Konfiguration): Konfiguration {
+  const displays = screen.getAllDisplays()
+  const steckbrief = (id: number | null) => {
+    if (id === null) return null
+    const display = displays.find((d) => d.id === id)
+    return display ? kennungFuer(display) : null
+  }
+  return {
+    ...k,
+    playerMonitor: k.playerDisplayId === null ? null : (steckbrief(k.playerDisplayId) ?? k.playerMonitor),
+    spectatorMonitor: k.spectatorDisplayId === null ? null : (steckbrief(k.spectatorDisplayId) ?? k.spectatorMonitor),
+  }
+}
+
+/**
+ * Traegt die Anwendung in den Autostart des Benutzers ein oder wieder aus.
+ *
+ * Nur im gepackten Programm: in der Entwicklung zeigte der Eintrag sonst auf
+ * die electron.exe des Projektverzeichnisses und wuerde beim naechsten
+ * Anmelden eine leere Electron-Huelle starten.
+ */
+export function autostartAnwenden(an: boolean): void {
+  if (!app.isPackaged) return
+  try {
+    app.setLoginItemSettings({ openAtLogin: an, path: process.execPath, args: [] })
+  } catch (fehler) {
+    void protokollieren(
+      `Autostart liess sich nicht setzen: ${fehler instanceof Error ? fehler.message : String(fehler)}`,
+    )
+  }
 }

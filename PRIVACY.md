@@ -20,6 +20,12 @@ soweit sie selbst eingetragen wurden.
 Match-Ereignisse werden während des Spiels verarbeitet und nur bei
 eingeschalteter Aufzeichnung gespeichert.
 
+Wird ein **Matchtag** gestartet, speichert die Anwendung die Namen der
+Teilnehmer sowie deren Ergebnisse und Spielwerte (Legs, Average, 180er,
+höchstes Finish) lokal in `matchtag.json`. Die Namen stammen aus den
+gespielten Autodarts-Matches. Der Stand bleibt liegen, bis der Matchtag
+beendet oder „Alle lokalen Daten löschen" ausgeführt wird.
+
 ## 3. Wo die Daten liegen
 
 Die Daten liegen standardmäßig ausschließlich lokal unter
@@ -32,9 +38,13 @@ weiterhin ausschließlich lokal, nirgends im Netz.
 ## 4. Übermittlung an Dritte
 
 An Autodarts gehen die zur Anmeldung und zum Abruf nötigen Anfragen. Darüber
-hinaus findet keine Übermittlung statt, es gibt keine Telemetrie. Eine
-automatische Prüfung auf neue Versionen ist noch nicht eingebaut; sobald sie
-es ist, wird sie hier ergänzt.
+hinaus findet keine Übermittlung statt, es gibt keine Telemetrie.
+
+Für die Selbstaktualisierung fragt die Anwendung die Releases dieses
+Repositories bei GitHub ab und lädt von dort die Installationsdatei. Dabei
+werden gegenüber GitHub die technisch unvermeidbaren Verbindungsdaten
+sichtbar (IP-Adresse, Zeitpunkt, angefragte Datei). Es werden keine Daten
+über den Nutzer oder über gespielte Matches übertragen.
 
 ## 5. Rechte
 
