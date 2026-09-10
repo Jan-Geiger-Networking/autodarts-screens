@@ -30,6 +30,7 @@ import {
   type Paarung,
 } from '../../shared/matchtag'
 import { folienFuer } from './matchtagFolien'
+import { matchtagFolieParam, vorfuehrMatchtag, vorfuehrMatchtagAktiv } from './vorfuehrung'
 import logoWeiss from '../../../assets/logo-white.png'
 
 /** Standzeit einer Folie. Laenger als beim Vorspann: hier stehen Zahlen, die
@@ -44,13 +45,20 @@ const UEBERGANG_MS = 1400
 
 /** Der Matchtag-Stand aus dem Hauptprozess. */
 export function useMatchtag(): MatchtagStand | null {
+  const vorfuehrung = vorfuehrMatchtagAktiv()
   const [stand, setStand] = useState<MatchtagStand | null>(null)
   useEffect(() => {
-    // Im Vorfuehrmodus gibt es kein window.app - dann bleibt es bei null und
-    // der normale Vorspann laeuft weiter.
+    // Mit ?matchtag oder ?mtfolie=N kommt ein Beispiel-Matchtag zum Einsatz,
+    // damit dieser Bildschirm auch ohne Scheibe und ohne Turnier
+    // begutachtet werden kann. Ohne die Parameter bleibt es beim normalen
+    // Vorspann - sonst liesse der sich nicht mehr ansehen.
+    if (vorfuehrung) {
+      setStand(vorfuehrMatchtag())
+      return
+    }
     if (typeof window === 'undefined' || !window.app?.beiMatchtag) return
     return window.app.beiMatchtag(setStand)
-  }, [])
+  }, [vorfuehrung])
   return stand
 }
 
@@ -227,6 +235,9 @@ function FolieSieger({ matchtag }: { matchtag: MatchtagStand }) {
 
 export function Matchtag({ matchtag }: { matchtag: MatchtagStand }) {
   const folien = folienFuer(matchtag)
+  // ?mtfolie=N haelt eine Folie fest - fuer Bildschirmfotos, gleiche Idee
+  // wie ?folie=N beim Vorspann.
+  const festgehalten = matchtagFolieParam()
   const [index, setIndex] = useState(0)
   const [faehrt, setFaehrt] = useState(false)
 
@@ -237,6 +248,7 @@ export function Matchtag({ matchtag }: { matchtag: MatchtagStand }) {
   useEffect(() => setIndex(0), [schluessel])
 
   useEffect(() => {
+    if (festgehalten !== null) return
     if (folien.length <= 1) return
     const art = folien[index % folien.length]
     const standzeit = art === 'jetzt' ? TAKT_JETZT_MS : TAKT_MS
@@ -249,10 +261,10 @@ export function Matchtag({ matchtag }: { matchtag: MatchtagStand }) {
       window.clearTimeout(fahrt)
       window.clearTimeout(weiter)
     }
-  }, [index, schluessel, folien])
+  }, [index, schluessel, folien, festgehalten])
 
   if (folien.length === 0) return null
-  const art = folien[index % folien.length]!
+  const art = folien[(festgehalten ?? index) % folien.length]!
 
   return (
     <div className="bildschirm-matchtag">

@@ -1409,7 +1409,12 @@
   color: var(--jg-text);
 }
 
-.mt-vs-name.ist-sieger {
+/* Der Sieger bleibt hell - auch in einer gespielten Partie, deren Namen
+   sonst zurueckgenommen sind. Die Auswahl muss dieselbe Spezifitaet wie
+   ".mt-vs.ist-gespielt .mt-vs-name" haben, sonst gewinnt die das Duell und
+   der Sieger stuende grau wie der Verlierer. */
+.mt-vs-name.ist-sieger,
+.mt-vs.ist-gespielt .mt-vs-name.ist-sieger {
   color: var(--jg-accent);
 }
 
@@ -1526,7 +1531,10 @@
 
 .mt-kacheln {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18vw, 1fr));
+  /* 15vw statt 18vw: bei 16:9 passen damit alle vier Kacheln in eine Zeile.
+     Mit 18vw brachen sie zu 3 + 1 um, und die einzelne Kachel darunter sah
+     aus wie ein Fehler. */
+  grid-template-columns: repeat(auto-fit, minmax(15vw, 1fr));
   gap: 2vh 2vw;
   width: 100%;
 }
@@ -1646,4 +1654,13 @@
     animation: none;
     opacity: 1;
   }
+}
+
+/* Herkunftszeichen auf dem Matchtag-Bildschirm. Groesser als das kleine
+   Zeichen im Scoreboard: dort steht es neben einem vollen Spielstand und
+   soll nicht stoeren, hier ist die Flaeche frei und der Fernseher weit weg. */
+.bildschirm-matchtag .bug {
+  top: 3vh;
+  left: 3vh;
+  height: 6vh;
 }

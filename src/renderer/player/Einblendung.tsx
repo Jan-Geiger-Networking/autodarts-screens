@@ -18,6 +18,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MatchState } from '../../shared/typen'
 import { szeneAusZustand, type Ueberlagerung } from '../spectator/szene'
+import { vorfuehrungEingefroren } from '../spectator/vorfuehrung'
 
 /**
  * Standzeit je Anlass. Kurz genug, dass sie beim naechsten Wurf weg ist -
@@ -83,6 +84,10 @@ export function Einblendung({ zustand }: { zustand: MatchState }) {
   // zweiten bliebe ein unsichtbares Element ueber der Scheibe liegen.
   useEffect(() => {
     if (!anzeige || !sichtbar) return
+    // Im auf einen Schritt eingefrorenen Vorfuehrmodus ist das Anhalten
+    // dieses Moments der Zweck (Bildschirmfoto) - dann nicht verbergen.
+    // Gleiches Verhalten wie im Zuschauer-Screen (App.tsx).
+    if (vorfuehrungEingefroren()) return
     const dauer = DAUER_MS[anzeige.ueberlagerung.art]
     const aus = window.setTimeout(() => setSichtbar(false), dauer)
     return () => window.clearTimeout(aus)

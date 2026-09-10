@@ -8,6 +8,13 @@
 
 import { useEffect, useState } from "react";
 import type { LegEntry, MatchState, Player, Segment } from "../../shared/typen";
+import {
+  ergebnisUebernehmen,
+  matchtagStarten,
+  spielerSchluessel,
+  type MatchErgebnis,
+  type Matchtag,
+} from "../../shared/matchtag";
 import { checkoutWeg, setupWurf } from "../../shared/checkout";
 
 function segmentAusName(name: string): Segment {
@@ -492,4 +499,91 @@ export function useVorfuehrung(): MatchState | null {
   const anzuzeigenderIndex =
     zielIndex !== null ? Math.min(index, zielIndex) : index % SCHRITTE.length;
   return SCHRITTE[anzuzeigenderIndex]!.zustand;
+}
+
+/**
+ * Ein Beispiel-Matchtag fuer den Vorfuehrmodus.
+ *
+ * Ohne ihn faellt der Zuschauer-Screen im Browser auf den Vorspann zurueck
+ * (window.app gibt es dort nicht), und der Matchtag-Pausenbildschirm liesse
+ * sich nur mit echter Scheibe und echtem Turnier begutachten.
+ *
+ * Gebaut ueber dieselben Funktionen wie im Betrieb - kein von Hand
+ * zusammengestellter Zustand, der sich von einem echten unterscheiden
+ * koennte.
+ */
+export function vorfuehrMatchtag(): Matchtag {
+  const namen = ['Jan', 'Mareike', 'Tobi', 'Sven', 'Kevin']
+  const aufwaermen: MatchErgebnis = {
+    matchId: 'vorfuehrung-warmup',
+    spieler: namen.map((name, i) => ({
+      id: spielerSchluessel(name),
+      name,
+      legs: 0,
+      average: [71.4, 64.8, 59.2, 55.1, 48.6][i] ?? 50,
+      count180: 0,
+      highestFinish: null,
+    })),
+    siegerId: null,
+  }
+
+  let matchtag = ergebnisUebernehmen(matchtagStarten('Hüttenabend', '2026-09-11T19:00:00.000Z'), aufwaermen, '2026-09-11T19:00:00.000Z')
+
+  // Die ersten Partien ausspielen, damit Tabelle und Statistik etwas zeigen.
+  const ergebnisse: [string, string, number, number, number, number | null][] = [
+    ['Jan', 'Kevin', 3, 1, 2, 121],
+    ['Mareike', 'Sven', 3, 2, 1, 64],
+    ['Tobi', 'Kevin', 3, 0, 0, null],
+    ['Jan', 'Sven', 3, 2, 1, 80],
+  ]
+  ergebnisse.forEach(([sieger, verlierer, legsS, legsV, hunderte, finish], i) => {
+    matchtag = ergebnisUebernehmen(
+      matchtag,
+      {
+        matchId: `vorfuehrung-${i}`,
+        spieler: [
+          {
+            id: spielerSchluessel(sieger),
+            name: sieger,
+            legs: legsS,
+            average: 62 + i * 3,
+            count180: hunderte,
+            highestFinish: finish,
+          },
+          {
+            id: spielerSchluessel(verlierer),
+            name: verlierer,
+            legs: legsV,
+            average: 51 + i,
+            count180: 0,
+            highestFinish: null,
+          },
+        ],
+        siegerId: spielerSchluessel(sieger),
+      },
+      `2026-09-11T20:0${i}:00.000Z`,
+    )
+  })
+  return matchtag
+}
+
+/**
+ * Ob im Vorfuehrmodus ein Beispiel-Matchtag gezeigt werden soll: nur mit
+ * ?matchtag oder ?mtfolie=N. Ohne diese Parameter bleibt der normale
+ * Vorspann sichtbar - sonst liesse er sich gar nicht mehr begutachten.
+ */
+export function vorfuehrMatchtagAktiv(): boolean {
+  return vorfuehrungAktiv() && (parameter().has('matchtag') || parameter().has('mtfolie'))
+}
+
+/**
+ * ?mtfolie=N haelt den Matchtag-Pausenbildschirm auf einer Folie fest -
+ * gleicher Zweck wie ?folie=N beim Vorspann. Liefert null ausserhalb des
+ * Vorfuehrmodus oder ohne den Parameter.
+ */
+export function matchtagFolieParam(): number | null {
+  const wert = parameter().get('mtfolie')
+  if (!vorfuehrungAktiv() || wert === null) return null
+  const zahl = Number(wert)
+  return Number.isFinite(zahl) ? zahl : null
 }

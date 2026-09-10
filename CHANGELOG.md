@@ -4,6 +4,32 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.16] - 2026-09-11
+
+Sechzehnte Beta. Ergebnis einer Sichtprüfung: alle neuen Bildschirme wurden
+aufgemacht, abfotografiert und durchgesehen.
+
+### Behoben
+- **Der Sieger stand im Spielplan grau wie der Verlierer.** Die Regel, die
+  gespielte Partien zurücknimmt, hatte die höhere Spezifität und überschrieb
+  die Hervorhebung
+- **Die vier Statistik-Kacheln brachen zu 3 + 1 um.** Die einzelne Kachel in
+  der zweiten Zeile sah aus wie ein Fehler; jetzt passen alle vier
+  nebeneinander
+- **Das Logo auf dem Matchtag-Bildschirm war zu klein.** Auf der freien
+  Fläche eines Fernsehers darf es größer stehen als neben einem vollen
+  Spielstand
+
+### Geändert
+- Der Vorführmodus zeigt mit `?matchtag` oder `?mtfolie=N` einen
+  Beispiel-Matchtag — so lässt sich der Pausenbildschirm ohne Scheibe und
+  ohne Turnier begutachten. Ohne diese Parameter bleibt der normale Vorspann
+  sichtbar
+- Die Einblendungen auf dem Player-Screen bleiben im eingefrorenen
+  Vorführmodus stehen, statt nach ihrer Standzeit zu verschwinden — dasselbe
+  Verhalten, das der Zuschauer-Screen schon hatte. Ohne das ließ sich von
+  ihnen kein Bildschirmfoto machen
+
 ## [0.1.0-beta.15] - 2026-09-11
 
 Fünfzehnte Beta.
