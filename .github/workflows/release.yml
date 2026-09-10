@@ -75,3 +75,21 @@ jobs:
             release/*.exe
             release/*.cdx.json
           fail_on_unmatched_files: true
+          # Jede Version mit Bindestrich ist nach Semantic Versioning eine
+          # Vorabversion - 0.1.0-beta.1 ja, 0.1.0 nein. Ohne diese
+          # Kennzeichnung zeigt GitHub eine Beta als "Latest release" an, und
+          # Werkzeuge behandeln sie wie eine stabile Fassung.
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          body: |
+            Windows-Installer, **unsigniert**. Beim ersten Start meldet sich
+            SmartScreen mit "Der Computer wurde durch Windows geschuetzt" -
+            auf "Weitere Informationen" und dann "Trotzdem ausfuehren"
+            klicken. Das kommt nur beim ersten Mal.
+
+            Installiert pro Nutzer, ohne Administratorrecht.
+
+            Was diese Version kann und was ihr fehlt, steht im Changelog.
+
+            Die beigelegte Datei mit der Endung `.cdx.json` ist die
+            Stueckliste aller enthaltenen Komponenten im CycloneDX-Format.
