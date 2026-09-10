@@ -219,6 +219,50 @@ trägt (`matchId`, `id` oder `match` sind die geprüften Kandidaten, siehe
 `matchIdAusEreignis()` in `src/autodarts/websocket.ts`). Das braucht einen
 echten Mitschnitt (siehe `docs/UEBERGABE.md`).
 
+### Welche Match-Themen der offizielle Client tatsächlich abonniert, eigener Fund 2026-09-10
+
+Befund aus der Aufgabe „Wurf-Ereignisse ankommen lassen": `.state` allein
+reicht nicht — im Diagnoseprotokoll kam nach dem Abonnieren von
+`autodarts.matches/<matchId>.state` kein einziges weiteres Ereignis mehr an,
+obwohl eine Runde gespielt wurde. Um zu klären, was der offizielle Web-Client
+für die Live-Ansicht eines Matches tatsächlich abonniert, wurde zusätzlich zu
+`clients-B_BDSwju.js` (das nur das SDK selbst enthält, keine Aufrufstellen)
+der Chunk `use-game-*.js` von `https://play.autodarts.com/` geladen und nach
+Aufrufen der `MessageBroker.on*`-Methoden durchsucht.
+
+| Thema (Zweck) | In der Live-Ansicht tatsächlich abonniert? | Quelle |
+|---|---|---|
+| `.state` | Ja (`onMatchState`) — liefert den vollständigen Match-/Spielzustand bei jeder Änderung; der allererste Zustand kommt aber per REST (`getState()`), nicht per WebSocket | `use-game-*.js` |
+| `.game-events` | Ja (`onMatchGameEvent`) — **hier stecken die einzelnen Wurf-/Zug-Ereignisse**: Nutzlast-Form `{event, body}`, `event` einer von `GameEvent` = `game_on`, `game_shot`, `turn_start`, `turn_end`, `throw`, `killer_became_killer`, `killer_killed` (Werte aus `clients-B_BDSwju.js`) | `use-game-*.js` |
+| `.corrections` | Ja (`onMatchCorrection`) — Nutzlast-Form `{activated, changes}` | `use-game-*.js` |
+| `.referee` | Ja, aber nur bei Matches mit Schiedsrichter (`onRefereeState`) — Nutzlast `{event, body}`, `event` einer von `RefereeStatus` = `started`, `corrected`, `finished` | `use-game-*.js` |
+| `.challenge` | Ja, aber nur bei aktiver Anfechtung (`onChallengeState`) — `event` einer von `ChallengeStatus` = `correcting`, `approving`, `approved`, `declined`, `declined-timeout`, `aborted`, `aborted-timeout` | `use-game-*.js` |
+| `.events` (generisches Match-Ereignis, `onMatchEvent`) | **Nein** — im gesamten `use-game-*.js`-Chunk kein einziger Aufruf, obwohl im SDK definiert | `use-game-*.js` (Abwesenheit geprüft) |
+| `.viewers` (`onMatchViewerCountUpdate`) | Nein, nicht in der Spielansicht selbst | `use-game-*.js` (Abwesenheit geprüft) |
+
+Zusätzlich aus `WinType` (in `GameEvent.GameShot`-Nutzlast, Feld `type`):
+`leg`, `set`, `match`.
+
+**Muss nach dem Abonnieren noch etwas gesendet werden, damit der Server zu
+senden beginnt?** Nein. Aus der `MessageBroker`-Klasse in
+`clients-B_BDSwju.js`: `subscribe()` merkt sich Kanal/Thema lokal und sendet
+einmalig `{type:"subscribe", channel, topic}`; der eingehende
+`onmessage`-Handler verteilt jede Nachricht anhand von `channel`+`topic` an
+die registrierten Callbacks (`{type, channel, topic, data}`, `data` ist die
+Nutzlast, `type:"error"`-Nachrichten werden herausgefiltert). Keine weitere
+Bestätigung, kein Heartbeat, kein zweiter Aufruf nötig — der Server beginnt
+zu senden, sobald das `subscribe`-Rahmenwerk beim Server angekommen ist. Nach
+einer Wiederverbindung wird automatisch jedes vorher abonnierte
+Kanal/Thema-Paar erneut gesendet (`for (let e in this.subscribers) ...`) —
+genau das Muster, das `alleAbonnementsSenden()` in `src/autodarts/websocket.ts`
+bereits nachbildet.
+
+**Umsetzung:** `MATCH_ABO_ZWECKE` in `src/autodarts/websocket.ts` enthält
+`state`, `events`, `game-events`, `corrections`, `referee`, `challenge` — auch
+`events`, obwohl nachweislich ungenutzt: ein zusätzliches, nie feuerndes
+Abonnement kostet nur eine Protokollzeile, ein fehlendes ein ganzes Match.
+`matchThemen(matchId)` baut daraus alle Themen für ein erkanntes Match.
+
 ### Ereignis-Umschlag, eigener Live-Fund 2026-09-10
 
 Während der Umsetzung dieser Aufgabe lief die Anwendung des Herausgebers
@@ -240,6 +284,35 @@ war also vermutlich kein Match-Start, sondern z. B. ein Board-Statusereignis).
 `matchIdAusEreignis()` sucht deshalb zuerst am Ereignis selbst und dann in
 einem etwaigen `data`-Feld — weiterhin nur unter den drei genannten
 Kandidatennamen, nicht geraten.
+
+### Board-Ereignis bestätigt: Felder `event` und `id`, echter Befund aus dem Protokoll des Herausgebers 2026-09-10
+
+Nachdem `feldUebersicht()` in der Ereignis-Protokollzeile das `data`-Feld
+entpackt (siehe Abschnitt oben), zeigte das echte Diagnoseprotokoll des
+Herausgebers während eines laufenden Matches:
+
+```
+Ereignis empfangen: Kanal=autodarts.boards Thema=<boardId>.matches Felder=[event:string, id:string]
+Abonnement gesendet: autodarts.matches/01a08c6c-d0b4-7b58-b019-18f5fd5a0835.state
+Match erkannt, ... abonniert
+```
+
+Das bestätigt zwei Punkte, die vorher nur Kandidaten waren:
+
+1. Die Nutzlast (`data`) eines Board-`.matches`-Ereignisses hat genau zwei
+   Felder: `event` (vermutlich eine Statusangabe wie „gestartet"/„beendet" -
+   der Wert selbst wird laut Protokollregel nie geloggt) und `id`.
+2. **Die Match-Kennung steht im Feld `id`** — der direkt folgende
+   Log-Eintrag „Abonnement gesendet: autodarts.matches/<id>.state" zeigt
+   dieselbe Kennung, die `matchIdAusEreignis()` unter dem Kandidaten `id`
+   gefunden hat (`matchId` und `match` griffen hier nicht, `id` schon - genau
+   die in `MATCH_KENNUNG_KANDIDATEN` hinterlegte Reihenfolge).
+
+Trotzdem bleibt `MATCH_KENNUNG_KANDIDATEN` unverändert (`matchId`, `id`,
+`match`): dieser eine Fund bestätigt `id` als (mindestens einen) echten
+Treffer, widerlegt aber nicht, dass ein anderes Board-Ereignis die Kennung
+stattdessen unter `matchId` trägt - ohne weiteren Mitschnitt gibt es keinen
+Grund, die Kandidatenliste zu kürzen.
 
 ## Kontoname (Anzeigename), eigener Fund 2026-09-10
 

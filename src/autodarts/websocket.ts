@@ -7,7 +7,10 @@
 // "ticket" (siehe subscribeAdresse), das Abonnement-Rahmenwerk
 // {channel,type,topic} sowie die Kanal- und Themennamen KANAL_BOARDS/
 // KANAL_MATCHES/boardThema/matchThema - alle am 2026-09-10 aus dem
-// offiziellen Web-Client belegt (siehe docs/autodarts-api.md). Unbestaetigt
+// offiziellen Web-Client belegt (siehe docs/autodarts-api.md). Ebenfalls
+// belegt (2026-09-10, siehe MATCH_ABO_ZWECKE unten): .state allein liefert
+// keine laufenden Wurf-Ereignisse - der offizielle Web-Client abonniert fuer
+// die Live-Ansicht eines Matches mehrere Themen gleichzeitig. Unbestaetigt
 // bleibt weiterhin, welches Feld eines Ereignisses die Match-Kennung traegt
 // (siehe matchIdAusEreignis) - dafuer fehlt bislang ein echter Mitschnitt.
 // Kein zusaetzliches Paket - Electron liefert im Hauptprozess eine
@@ -23,9 +26,9 @@ const WS_ADRESSE = 'wss://api.autodarts.com/ms/v0/subscribe'
 // Kanal- und Themennamen, bestaetigt am 2026-09-10 aus dem offiziellen
 // Web-Client (https://play.autodarts.com/assets/clients-B_BDSwju.js - der
 // Dateiname enthaelt einen Hash und aendert sich bei jedem Deploy, siehe
-// docs/autodarts-api.md). Ein Thema hat die Form "<kennung>.<zweck>"; von den
-// bestaetigten Zwecken (.matches, .state, .events, .game-events, .stream,
-// .corrections) sind hier nur die beiden bislang gebrauchten abgebildet.
+// docs/autodarts-api.md). Ein Thema hat die Form "<kennung>.<zweck>"; die
+// fuer ein Match tatsaechlich gebrauchten Zwecke stehen in MATCH_ABO_ZWECKE
+// unten.
 export const KANAL_BOARDS = 'autodarts.boards'
 export const KANAL_MATCHES = 'autodarts.matches'
 
@@ -34,9 +37,33 @@ export function boardThema(boardId: string): string {
   return `${boardId}.matches`
 }
 
+// Zwecke, die beim Erkennen eines Matches automatisch mitabonniert werden -
+// eine Stelle, an der sich die Liste aendern laesst (siehe matchThemen()).
+// .state allein reicht nicht: laut eigenem Fund im offiziellen Web-Client
+// (https://play.autodarts.com/assets/use-game-*.js, 2026-09-10) abonniert die
+// Live-Match-Ansicht fuer ein Match zusaetzlich .game-events (dort stecken
+// die eigentlichen Wurf-/Zug-Ereignisse, siehe GameEvent-Werte
+// turn_start/throw/turn_end/game_shot in clients-B_BDSwju.js) und
+// .corrections; bei Matches mit Schiedsrichter- bzw. Anfechtungsfunktion
+// zusaetzlich .referee/.challenge. .events ist im selben Client-SDK
+// definiert, wird von der Live-Match-Ansicht selbst aber nachweislich NICHT
+// abonniert - trotzdem mit aufgenommen: ein zusaetzliches, nie feuerndes
+// Abonnement kostet nur eine Zeile im Diagnoseprotokoll, ein fehlendes ein
+// ganzes Match (siehe docs/autodarts-api.md, Abschnitt "WebSocket-
+// Abonnements").
+export const MATCH_ABO_ZWECKE = ['state', 'events', 'game-events', 'corrections', 'referee', 'challenge'] as const
+
 /** Thema, um den Zustand eines einzelnen Matches zu abonnieren. */
 export function matchThema(matchId: string): string {
-  return `${matchId}.state`
+  return `${matchId}.${MATCH_ABO_ZWECKE[0]}`
+}
+
+/**
+ * Alle Themen, die fuer ein erkanntes Match abonniert werden sollen (siehe
+ * MATCH_ABO_ZWECKE) - eine pro Zweck, in derselben Reihenfolge.
+ */
+export function matchThemen(matchId: string): string[] {
+  return MATCH_ABO_ZWECKE.map((zweck) => `${matchId}.${zweck}`)
 }
 
 export type Verbindung = {
@@ -189,10 +216,47 @@ function nutzlast(roh: unknown): unknown {
 }
 
 /**
+ * Liefert das verschachtelte "data"-Feld eines Objekts, falls vorhanden und
+ * selbst ein Objekt - sonst null. Anders als nutzlast() oben (die bei
+ * Fehlen auf das Ausgangsobjekt zurueckfaellt, weil sie fuer die
+ * Kandidatensuche in matchIdAusEreignis gedacht ist) muss hier eindeutig
+ * zwischen "kein verschachteltes data-Feld" und "das data-Feld selbst"
+ * unterschieden werden - fuer die zweite Feldnamen-Ebene im
+ * Diagnoseprotokoll (siehe ereignisZeileFuerProtokoll).
+ */
+function verschachteltesDatenfeld(objekt: unknown): Record<string, unknown> | null {
+  if (typeof objekt !== 'object' || objekt === null) return null
+  const wert = (objekt as Record<string, unknown>).data
+  return typeof wert === 'object' && wert !== null ? (wert as Record<string, unknown>) : null
+}
+
+/**
+ * Baut die Protokollzeile fuer ein empfangenes Ereignis: Kanal und Thema aus
+ * dem Umschlag, plus Feldnamen der Nutzlast (nutzlast() oben entpackt ein
+ * etwaiges "data"-Feld) - und, falls diese Nutzlast selbst wieder ein
+ * verschachteltes "data"-Feld traegt, zusaetzlich dessen eigene Feldnamen,
+ * eine Ebene tiefer. Nie Werte, nur Feldnamen und JS-Typ (siehe
+ * feldUebersicht()) - das ist die einzige Quelle, aus der sich das
+ * Ereignis-Schema ohne Mitschnitt erahnen liesse, und darf deshalb nichts
+ * Geheimes preisgeben. Modulweite, exportierte Funktion statt Closure in
+ * echteVerbindung(): sie braucht keinen internen Zustand und laesst sich so
+ * ohne WebSocket-Attrappe testen.
+ */
+export function ereignisZeileFuerProtokoll(roh: unknown): string {
+  const objekt = typeof roh === 'object' && roh !== null ? (roh as Record<string, unknown>) : null
+  const kanal = objekt && typeof objekt.channel === 'string' ? objekt.channel : '?'
+  const thema = objekt && typeof objekt.topic === 'string' ? objekt.topic : '?'
+  const nutzlastObjekt = nutzlast(roh)
+  const zeile = `Ereignis empfangen: Kanal=${kanal} Thema=${thema} Felder=[${feldUebersicht(nutzlastObjekt)}]`
+  const verschachtelt = verschachteltesDatenfeld(nutzlastObjekt)
+  return verschachtelt ? `${zeile} Verschachtelte-data-Felder=[${feldUebersicht(verschachtelt)}]` : zeile
+}
+
+/**
  * Heuristische Extraktion einer Match-Kennung aus einem Rohereignis - sowohl
  * um nach einer Wiederverbindung zu wissen, welches Match per GET
  * /gs/v0/matches/{matchId}/state neu geladen werden muss, als auch um den
- * Match-Kanal (KANAL_MATCHES/matchThema) automatisch zu abonnieren. Prueft
+ * Match-Kanal (KANAL_MATCHES/matchThemen) automatisch zu abonnieren. Prueft
  * MATCH_KENNUNG_KANDIDATEN der Reihe nach, zuerst am Objekt selbst und dann -
  * falls dort nichts passt - in einem verschachtelten "data"-Feld (siehe
  * nutzlast oben), und liefert den ersten Treffer, der eine nichtleere
@@ -280,22 +344,10 @@ async function echteVerbindung(
   // Nur einmal protokolliert, nicht bei jedem Ereignis ohne Match-Kennung -
   // sonst waere das eine Zeile pro Ereignis, solange noch kein Match laeuft
   // (z.B. Board-Heartbeats). Der Herausgeber sieht die Feldnamen ohnehin bei
-  // jedem Ereignis (siehe ereignisProtokollZeile) - dieser Hinweis ist nur
-  // die deutliche Zusatzmeldung, falls MATCH_KENNUNG_KANDIDATEN nie greift.
+  // jedem Ereignis (siehe ereignisZeileFuerProtokoll oben) - dieser Hinweis
+  // ist nur die deutliche Zusatzmeldung, falls MATCH_KENNUNG_KANDIDATEN nie
+  // greift.
   let matchKennungFehltProtokolliert = false
-
-  // Fasst ein Ereignis fuers Diagnoseprotokoll zusammen: Kanal und Thema aus
-  // dem Umschlag, plus die Feldnamen der eigentlichen Nutzlast (nutzlast()
-  // oben entpackt ein etwaiges "data"-Feld) ueber feldUebersicht() - nie die
-  // Werte. Jedes Ereignis wird protokolliert (nicht nur das erste): das
-  // Diagnoseprotokoll begrenzt sich selbst (siehe diagnose.ts, MAX_BYTES),
-  // und genau diese Feldnamen sind es, die spaeter den Adapter ermoeglichen.
-  const ereignisProtokollZeile = (roh: unknown): string => {
-    const objekt = typeof roh === 'object' && roh !== null ? (roh as Record<string, unknown>) : null
-    const kanal = objekt && typeof objekt.channel === 'string' ? objekt.channel : '?'
-    const thema = objekt && typeof objekt.topic === 'string' ? objekt.topic : '?'
-    return `Ereignis empfangen: Kanal=${kanal} Thema=${thema} Felder=[${feldUebersicht(nutzlast(roh))}]`
-  }
 
   // Kernlogik von abonnieren()/abbestellen() - auch von der automatischen
   // Match-Erkennung unten genutzt, nicht nur vom zurueckgegebenen
@@ -330,24 +382,28 @@ async function echteVerbindung(
     }
   }
 
-  // Sobald ein Ereignis eine (neue) Match-Kennung traegt: das Match-Thema
-  // abonnieren und - falls zuvor ein anderes Match lief - dessen Thema
-  // abbestellen. Eine neue Match-Kennung heisst zwangslaeufig, dass ein
-  // vorheriges Match vorbei ist (es gibt immer nur ein laufendes Match je
-  // Board) - eine eigene "Match zu Ende"-Kennung waere eine weitere Annahme
-  // ueber ein unbekanntes Ereignisfeld, die sich ohne Mitschnitt nicht
-  // pruefen liesse.
+  // Sobald ein Ereignis eine (neue) Match-Kennung traegt: alle Match-Themen
+  // (siehe matchThemen()/MATCH_ABO_ZWECKE) abonnieren und - falls zuvor ein
+  // anderes Match lief - dessen Themen abbestellen. Eine neue Match-Kennung
+  // heisst zwangslaeufig, dass ein vorheriges Match vorbei ist (es gibt
+  // immer nur ein laufendes Match je Board) - eine eigene "Match zu
+  // Ende"-Kennung waere eine weitere Annahme ueber ein unbekanntes
+  // Ereignisfeld, die sich ohne Mitschnitt nicht pruefen liesse.
   const matchAbonnementAktualisieren = (matchId: string): void => {
     if (matchId === aktuellerMatchId) return
     const vorherigeMatchId = aktuellerMatchId
     aktuellerMatchId = matchId
-    if (vorherigeMatchId) abbestellenIntern(KANAL_MATCHES, matchThema(vorherigeMatchId))
-    abonnierenIntern(KANAL_MATCHES, matchThema(matchId))
-    void protokollieren(`Match erkannt, ${KANAL_MATCHES}/${matchThema(matchId)} abonniert`)
+    if (vorherigeMatchId) {
+      for (const thema of matchThemen(vorherigeMatchId)) abbestellenIntern(KANAL_MATCHES, thema)
+    }
+    for (const thema of matchThemen(matchId)) abonnierenIntern(KANAL_MATCHES, thema)
+    void protokollieren(
+      `Match erkannt, ${MATCH_ABO_ZWECKE.length} Themen fuer ${KANAL_MATCHES}/${matchId} abonniert (${MATCH_ABO_ZWECKE.join(', ')})`,
+    )
   }
 
   const ereignisVerarbeiten = (roh: unknown): void => {
-    void protokollieren(ereignisProtokollZeile(roh))
+    void protokollieren(ereignisZeileFuerProtokoll(roh))
 
     const matchId = matchIdAusEreignis(roh)
     if (matchId) {

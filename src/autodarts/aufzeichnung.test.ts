@@ -1,10 +1,17 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import * as fs from 'node:fs'
 import { PassThrough } from 'node:stream'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { aufzeichnungBeenden, aufzeichnungStarten, wiedergeben } from './aufzeichnung'
+import {
+  alteMitschnitteAusrangieren,
+  aufzeichnungBeenden,
+  aufzeichnungStarten,
+  MITSCHNITTE_BEHALTEN,
+  standardAufzeichnungspfad,
+  wiedergeben,
+} from './aufzeichnung'
 
 // Nur createWriteStream wird ersetzt (Attrappe fuer den Stream-Fehler-Test
 // unten), alle anderen fs-Funktionen bleiben echt - normale Aufzeichnung und
@@ -12,6 +19,17 @@ import { aufzeichnungBeenden, aufzeichnungStarten, wiedergeben } from './aufzeic
 vi.mock('node:fs', async () => {
   const echt = await vi.importActual<typeof import('node:fs')>('node:fs')
   return { ...echt, createWriteStream: vi.fn(echt.createWriteStream) }
+})
+
+// standardAufzeichnungspfad() braucht app.getPath('userData') - 'electron'
+// existiert unter Vitest nicht als echte Laufzeit (gleiches Muster wie in
+// diagnose.test.ts). vi.mock wird von Vitest an den Dateianfang gehoben, die
+// Platzierung hier aendert daran nichts.
+const userDataDir = mkdtempSync(join(tmpdir(), 'ad-userdata-'))
+vi.mock('electron', () => ({ app: { getPath: () => userDataDir } }))
+
+afterAll(() => {
+  rmSync(userDataDir, { recursive: true, force: true })
 })
 
 const neuerPfad = () => join(mkdtempSync(join(tmpdir(), 'ad-')), 'mitschnitt.jsonl')
@@ -133,5 +151,53 @@ describe('Aufzeichnung und Wiedergabe', () => {
     await expect(aufzeichnungBeenden()).resolves.toBeUndefined()
 
     warnSpy.mockRestore()
+  })
+})
+
+describe('alteMitschnitteAusrangieren', () => {
+  it('waehlt nichts aus, wenn nicht mehr Dateien vorhanden sind als behalten werden sollen', () => {
+    expect(alteMitschnitteAusrangieren(['a', 'b', 'c'], 3)).toEqual([])
+    expect(alteMitschnitteAusrangieren(['a', 'b'], 3)).toEqual([])
+    expect(alteMitschnitteAusrangieren([], 3)).toEqual([])
+  })
+
+  it('waehlt die aeltesten (zuerst sortierten) Dateien aus, wenn mehr vorhanden sind als behalten werden sollen', () => {
+    // Absichtlich unsortiert uebergeben - Dateinamen sind Zeitstempel und
+    // sortieren als Zeichenketten bereits chronologisch (siehe
+    // standardAufzeichnungspfad), die Funktion muss also selbst sortieren.
+    expect(alteMitschnitteAusrangieren(['2026-3', '2026-1', '2026-2'], 2)).toEqual(['2026-1'])
+    expect(alteMitschnitteAusrangieren(['2026-3', '2026-1', '2026-2', '2026-4'], 1)).toEqual([
+      '2026-1',
+      '2026-2',
+      '2026-3',
+    ])
+  })
+
+  it('benutzt MITSCHNITTE_BEHALTEN als Standardwert, wenn keine Anzahl uebergeben wird', () => {
+    const viele = Array.from({ length: MITSCHNITTE_BEHALTEN + 5 }, (_, i) => String(i).padStart(4, '0'))
+    expect(alteMitschnitteAusrangieren(viele)).toHaveLength(5)
+  })
+})
+
+describe('standardAufzeichnungspfad', () => {
+  it('liefert einen Pfad unter userData/mitschnitte mit .jsonl-Endung', async () => {
+    const pfad = await standardAufzeichnungspfad()
+    expect(pfad.startsWith(join(userDataDir, 'mitschnitte'))).toBe(true)
+    expect(pfad.endsWith('.jsonl')).toBe(true)
+  })
+
+  it('raeumt vor dem naechsten Pfad ueberzaehlige aeltere Mitschnitte auf', async () => {
+    const verzeichnis = join(userDataDir, 'mitschnitte')
+    mkdirSync(verzeichnis, { recursive: true })
+    const alteDateien = Array.from({ length: MITSCHNITTE_BEHALTEN + 3 }, (_, i) => `1999-01-01T00-00-${String(i).padStart(2, '0')}-000Z.jsonl`)
+    for (const datei of alteDateien) writeFileSync(join(verzeichnis, datei), '')
+
+    await standardAufzeichnungspfad()
+
+    // Nur die juengsten MITSCHNITTE_BEHALTEN der ALTEN Dateien duerfen
+    // uebrig sein - die drei aeltesten wurden aufgeraeumt. Der frisch
+    // zurueckgelieferte Pfad selbst existiert noch nicht als Datei (das
+    // macht erst aufzeichnungStarten()), zaehlt hier also nicht mit.
+    expect(readdirSync(verzeichnis)).toHaveLength(MITSCHNITTE_BEHALTEN)
   })
 })

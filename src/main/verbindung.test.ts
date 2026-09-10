@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { resolve } from 'node:path'
 
 // verbindung.ts importiert './fenster' (top-level 'electron'-Import) und
 // '../autodarts/websocket'/'../autodarts/oauth' - alle drei gemockt, damit
@@ -18,6 +19,15 @@ vi.mock('../autodarts/websocket', async (importOriginal) => {
   const echte = await importOriginal<typeof import('../autodarts/websocket')>()
   return { ...echte, verbinden: verbindenMock }
 })
+
+// standardAufzeichnungspfad() braucht app.getPath('userData') (dynamischer
+// import('electron') in aufzeichnung.ts) - komplett gemockt, damit dieser
+// Test unter einer normalen Node-Runtime laeuft, ohne selbst 'electron' zu
+// mocken.
+const standardAufzeichnungspfadMock = vi.fn()
+vi.mock('../autodarts/aufzeichnung', () => ({
+  standardAufzeichnungspfad: standardAufzeichnungspfadMock,
+}))
 
 const verbindungszustandVerteilenMock = vi.fn()
 vi.mock('./fenster', () => ({
@@ -101,6 +111,7 @@ describe('verbindungStarten: Board-Abonnement nach erfolgreichem Verbindungsaufb
     delete process.env.AD_AUFZEICHNEN
     istAngemeldetMock.mockResolvedValue(true)
     verbindenMock.mockResolvedValue({ abonnieren: abonnierenMock, abbestellen: vi.fn(), schliessen: vi.fn() })
+    standardAufzeichnungspfadMock.mockResolvedValue('/mock-userdata/mitschnitte/irgendein-zeitstempel.jsonl')
   })
 
   it('abonniert autodarts.boards/<boardId>.matches, wenn die Konfiguration eine Board-Kennung hat', async () => {
@@ -117,5 +128,50 @@ describe('verbindungStarten: Board-Abonnement nach erfolgreichem Verbindungsaufb
     await verbindungStarten()
 
     expect(abonnierenMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('verbindungStarten: Aufzeichnung standardmaessig eingeschaltet', () => {
+  beforeEach(async () => {
+    await verbindungBeenden()
+    vi.clearAllMocks()
+    delete process.env.AD_WIEDERGABE
+    delete process.env.AD_AUFZEICHNEN
+    istAngemeldetMock.mockResolvedValue(true)
+    konfigurationLesenMock.mockResolvedValue({ boardId: null, playerDisplayId: null, spectatorDisplayId: null })
+    verbindenMock.mockResolvedValue({ abonnieren: vi.fn(), abbestellen: vi.fn(), schliessen: vi.fn() })
+  })
+
+  // Der Herausgeber startet ueber die Verknuepfung, ohne Umgebungsvariablen -
+  // ohne diesen Fallback bliebe AD_AUFZEICHNEN dann fuer immer leer und es
+  // entstuende nie ein Mitschnitt.
+  it('belegt AD_AUFZEICHNEN mit dem Standardpfad, wenn der Herausgeber nichts gesetzt hat', async () => {
+    standardAufzeichnungspfadMock.mockResolvedValue('/userdata/mitschnitte/2026-09-10T12-00-00-000Z.jsonl')
+
+    await verbindungStarten()
+
+    expect(process.env.AD_AUFZEICHNEN).toBe('/userdata/mitschnitte/2026-09-10T12-00-00-000Z.jsonl')
+    expect(standardAufzeichnungspfadMock).toHaveBeenCalledTimes(1)
+  })
+
+  // AD_AUFZEICHNEN bleibt eine ausdrueckliche Wahl mit Vorrang - eine schon
+  // gesetzte, absolute Variable darf nicht durch den Standardpfad ersetzt
+  // werden.
+  it('laesst eine ausdruecklich gesetzte, absolute AD_AUFZEICHNEN unangetastet', async () => {
+    process.env.AD_AUFZEICHNEN = '/schon/gesetzt/mitschnitt.jsonl'
+
+    await verbindungStarten()
+
+    expect(process.env.AD_AUFZEICHNEN).toBe('/schon/gesetzt/mitschnitt.jsonl')
+    expect(standardAufzeichnungspfadMock).not.toHaveBeenCalled()
+  })
+
+  it('normalisiert eine ausdruecklich gesetzte, relative AD_AUFZEICHNEN weiterhin gegen das Arbeitsverzeichnis', async () => {
+    process.env.AD_AUFZEICHNEN = 'docs/fixtures/match.jsonl'
+
+    await verbindungStarten()
+
+    expect(process.env.AD_AUFZEICHNEN).toBe(resolve(process.cwd(), 'docs/fixtures/match.jsonl'))
+    expect(standardAufzeichnungspfadMock).not.toHaveBeenCalled()
   })
 })

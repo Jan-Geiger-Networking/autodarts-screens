@@ -9,6 +9,7 @@ import { verbindungszustandVerteilen } from './fenster'
 import { konfigurationLesen } from './konfiguration'
 import { istAngemeldet } from '../autodarts/oauth'
 import { boardThema, KANAL_BOARDS, verbinden, type Verbindung } from '../autodarts/websocket'
+import { standardAufzeichnungspfad } from '../autodarts/aufzeichnung'
 import { protokollieren } from '../autodarts/diagnose'
 
 // Die einzige offene Verbindung dieses Prozesses - gehalten, um sie beim
@@ -25,16 +26,30 @@ let aktiveVerbindung: Verbindung | null = null
 let laufenderVerbindungsversuch: Promise<void> | null = null
 
 /**
- * Macht einen relativen AD_AUFZEICHNEN-Pfad relativ zum tatsaechlichen
- * Arbeitsverzeichnis des Prozesses statt implizit irgendwo anders zu landen.
- * Der Herausgeber gibt in docs/UEBERGABE.md einen relativen Pfad an
- * (`docs\fixtures\match.jsonl`) und erwartet ihn dort im Projektverzeichnis.
+ * Sorgt dafuer, dass AD_AUFZEICHNEN vor dem Verbindungsaufbau immer einen
+ * nutzbaren, absoluten Pfad enthaelt - egal ob der Herausgeber ihn selbst
+ * gesetzt hat oder nicht. websocket.ts liest die Variable danach unveraendert
+ * wie bisher (siehe echteVerbindung() dort).
+ *
+ * - Ist sie gesetzt (ausdrueckliche Wahl, hat Vorrang), wird nur ein
+ *   relativer Pfad gegen das tatsaechliche Arbeitsverzeichnis des Prozesses
+ *   aufgeloest statt implizit irgendwo anders zu landen (siehe
+ *   docs/UEBERGABE.md, relativer Pfad `docs\fixtures\match.jsonl`).
+ * - Ist sie NICHT gesetzt - der Normalfall, wenn die Anwendung ueber die
+ *   Verknuepfung ohne Umgebungsvariablen startet - wird sie hier mit einem
+ *   Standardpfad unter app.getPath('userData')/mitschnitte/ belegt (siehe
+ *   standardAufzeichnungspfad() in aufzeichnung.ts). Ohne einen echten
+ *   Mitschnitt kennt niemand das tatsaechliche Ereignis-Schema (siehe
+ *   docs/UEBERGABE.md) - und der Herausgeber startet nie mit gesetzten
+ *   Umgebungsvariablen, ein rein optionales Aufzeichnen waere also nie aktiv.
  */
-function aufzeichnungspfadNormalisieren(): void {
+async function aufzeichnungspfadSicherstellen(): Promise<void> {
   const pfad = process.env.AD_AUFZEICHNEN
-  if (pfad && !isAbsolute(pfad)) {
-    process.env.AD_AUFZEICHNEN = resolve(process.cwd(), pfad)
+  if (pfad) {
+    if (!isAbsolute(pfad)) process.env.AD_AUFZEICHNEN = resolve(process.cwd(), pfad)
+    return
   }
+  process.env.AD_AUFZEICHNEN = await standardAufzeichnungspfad()
 }
 
 async function verbindungAufbauen(): Promise<void> {
@@ -46,7 +61,17 @@ async function verbindungAufbauen(): Promise<void> {
       verbindungszustandVerteilen('nichtAngemeldet')
       return
     }
-    aufzeichnungspfadNormalisieren()
+    try {
+      await aufzeichnungspfadSicherstellen()
+    } catch (fehler) {
+      // Die Anzeige des Matches ist wichtiger als die Aufzeichnung (gleiche
+      // Haltung wie in aufzeichnung.ts bei einem Stream-Fehler): schlaegt
+      // schon die Pfadermittlung fehl, bleibt AD_AUFZEICHNEN diesmal einfach
+      // unbelegt statt den Verbindungsaufbau abzubrechen.
+      void protokollieren(
+        `Aufzeichnungspfad liess sich nicht ermitteln, Aufzeichnung bleibt diesmal aus: ${fehler instanceof Error ? fehler.message : String(fehler)}`,
+      )
+    }
   }
 
   void protokollieren('Verbindungsaufbau gestartet')

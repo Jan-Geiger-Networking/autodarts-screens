@@ -2,8 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NichtAngemeldetFehler, senden } from './rest'
 import {
   boardThema,
+  ereignisZeileFuerProtokoll,
+  MATCH_ABO_ZWECKE,
   matchIdAusEreignis,
   matchThema,
+  matchThemen,
   subscribeAdresse,
   ticketAusAntwort,
   verbinden,
@@ -131,6 +134,22 @@ describe('matchThema', () => {
   })
 })
 
+describe('matchThemen', () => {
+  // Die Themenliste steht an einer einzigen Stelle (MATCH_ABO_ZWECKE in
+  // websocket.ts) - dieser Test sichert genau das ab: matchThemen() ist
+  // nichts anderes als diese Liste, ein Thema pro Zweck.
+  it('liefert ein Thema je Eintrag aus MATCH_ABO_ZWECKE', () => {
+    expect(matchThemen('match-1')).toEqual(MATCH_ABO_ZWECKE.map((zweck) => `match-1.${zweck}`))
+  })
+
+  // .state allein liefert keine laufenden Wurf-Ereignisse (siehe
+  // docs/autodarts-api.md) - state, events und game-events muessen deshalb
+  // alle drei dabei sein, nicht nur state.
+  it('enthaelt state, events und game-events', () => {
+    expect(matchThemen('m')).toEqual(expect.arrayContaining(['m.state', 'm.events', 'm.game-events']))
+  })
+})
+
 describe('matchIdAusEreignis', () => {
   // Kandidaten in Pruefreihenfolge: matchId, id, match - vom Herausgeber
   // genannt, nicht geraten (siehe websocket.ts).
@@ -186,6 +205,44 @@ describe('matchIdAusEreignis', () => {
 
   it('liefert null, wenn weder das Objekt noch ein verschachteltes data-Feld eine Kennung traegt', () => {
     expect(matchIdAusEreignis({ channel: 'autodarts.boards', topic: 'b1.matches', data: { irgendwas: 1 } })).toBeNull()
+  })
+})
+
+describe('ereignisZeileFuerProtokoll', () => {
+  // Der echte Fund aus dem Protokoll des Herausgebers (2026-09-10): das
+  // Board-Ereignis kommt als {channel, topic, data:{event, id}} an -
+  // Felder=[...] zeigt die Feldnamen der entpackten Nutzlast, nie Werte.
+  it('zeigt Kanal, Thema und Feldnamen der entpackten Nutzlast', () => {
+    const zeile = ereignisZeileFuerProtokoll({
+      channel: 'autodarts.boards',
+      topic: 'b1.matches',
+      data: { event: 'started', id: 'm1' },
+    })
+    expect(zeile).toBe('Ereignis empfangen: Kanal=autodarts.boards Thema=b1.matches Felder=[event:string, id:string]')
+  })
+
+  it('funktioniert auch ohne Kanal/Thema-Umschlag', () => {
+    expect(ereignisZeileFuerProtokoll({ irgendwas: 1 })).toBe(
+      'Ereignis empfangen: Kanal=? Thema=? Felder=[irgendwas:number]',
+    )
+  })
+
+  // Anforderung dieser Aufgabe: eine Ebene tiefer als bisher - traegt die
+  // bereits entpackte Nutzlast selbst wieder ein "data"-Feld, werden auch
+  // dessen Feldnamen gezeigt (weiterhin nie Werte).
+  it('haengt Feldnamen eines verschachtelten data-Felds eine Ebene tiefer an', () => {
+    const zeile = ereignisZeileFuerProtokoll({
+      channel: 'autodarts.matches',
+      topic: 'm1.game-events',
+      data: { event: 'throw', data: { segment: 'T20', punkte: 60 } },
+    })
+    expect(zeile).toContain('Felder=[event:string, data:object]')
+    expect(zeile).toContain('Verschachtelte-data-Felder=[segment:string, punkte:number]')
+  })
+
+  it('haengt nichts an, wenn kein verschachteltes data-Feld existiert', () => {
+    const zeile = ereignisZeileFuerProtokoll({ channel: 'c', topic: 't', data: { event: 'x' } })
+    expect(zeile).not.toContain('Verschachtelte-data-Felder')
   })
 })
 
@@ -346,22 +403,30 @@ describe('verbinden: Zustandsmeldungen und Abonnement-Dedublizierung', () => {
     verbindung.schliessen()
   })
 
-  it('abonniert automatisch den Match-Kanal, sobald ein Ereignis eine Match-Kennung traegt, und bestellt das vorherige Match ab', async () => {
+  it('abonniert automatisch alle Match-Themen, sobald ein Ereignis eine Match-Kennung traegt, und bestellt das vorherige Match komplett ab', async () => {
     vi.mocked(senden).mockResolvedValueOnce('ticket-1')
     const verbindung = await verbinden(() => {})
     const socket = AttrappeWebSocket.instanzen[0]!
 
+    const subscribeFuer = (thema: string) =>
+      socket.gesendet.filter(
+        (s) => s.includes('"channel":"autodarts.matches"') && s.includes('"type":"subscribe"') && s.includes(`"topic":"${thema}"`),
+      )
+    const unsubscribeFuer = (thema: string) =>
+      socket.gesendet.filter((s) => s.includes('"type":"unsubscribe"') && s.includes(`"topic":"${thema}"`))
+
     socket.onmessage?.({ data: JSON.stringify({ matchId: 'm-1' }) })
-    const ersteAnfrage = socket.gesendet.filter((s) => s.includes('"channel":"autodarts.matches"') && s.includes('"type":"subscribe"'))
-    expect(ersteAnfrage.length).toBe(1)
-    expect(ersteAnfrage[0]).toContain('"topic":"m-1.state"')
+    for (const thema of matchThemen('m-1')) {
+      expect(subscribeFuer(thema).length).toBe(1)
+    }
 
     socket.onmessage?.({ data: JSON.stringify({ matchId: 'm-2' }) })
-    const abbestellt = socket.gesendet.filter((s) => s.includes('"type":"unsubscribe"'))
-    expect(abbestellt.length).toBe(1)
-    expect(abbestellt[0]).toContain('"topic":"m-1.state"')
-    const zweiteAnfrage = socket.gesendet.filter((s) => s.includes('"topic":"m-2.state"') && s.includes('"type":"subscribe"'))
-    expect(zweiteAnfrage.length).toBe(1)
+    for (const thema of matchThemen('m-1')) {
+      expect(unsubscribeFuer(thema).length).toBe(1)
+    }
+    for (const thema of matchThemen('m-2')) {
+      expect(subscribeFuer(thema).length).toBe(1)
+    }
 
     verbindung.schliessen()
   })
