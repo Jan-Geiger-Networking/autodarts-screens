@@ -22,19 +22,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.ruhezustand {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.ruhezustand-logo {
-  width: 22vw;
-  max-width: 30vh;
-}
-
 /* ─── Grundgeruest ────────────────────────────────────────────────── */
 
 .spielstand {
@@ -560,4 +547,230 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-weight: 700;
+}
+
+/* ─── Vorspann ────────────────────────────────────────────────────────
+   Laeuft, solange kein Match aktiv ist (siehe Vorspann.tsx). Optik einer
+   Sportuebertragung kurz vor Anpfiff statt einer Firmenpraesentation: harte
+   Schnitte im festen Takt (Vorspann.tsx, TAKT_MS), gerichtete Fahrten per
+   Transform statt Ueberblendung - dieselbe Sprache wie beim Rest des
+   Screens (siehe Kommentar ganz oben in dieser Datei). Keine abgerundeten
+   Karten, keine Farbverlaeufe als Deko: die dunkle Flaeche hinter dem Wort
+   ist ein flacher Farbblock mit harter Amber-Kante, genau wie .vollbild und
+   .mittelanzeige das schon vormachen. */
+
+.vorspann {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--jg-bg);
+}
+
+.vorspann-folie {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+@keyframes vorspann-bild-ein {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes vorspann-bild-aus {
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+.vorspann-folie--ankommend {
+  z-index: 2;
+  animation: vorspann-bild-ein 700ms var(--jg-ease) both;
+}
+
+.vorspann-folie--verlassend {
+  z-index: 1;
+  animation: vorspann-bild-aus 700ms var(--jg-ease) both;
+}
+
+.vorspann-foto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Einmaliger Zoom beim Einfahren, der bei scale(1) stehen bleibt - kein
+   dauerhaft laufender Ken-Burns-Effekt, der die ganze Standzeit Bildwechsel-
+   Kosten verursachen wuerde (siehe Performance-Vorgabe). */
+@keyframes vorspann-foto-einrasten {
+  from {
+    transform: scale(1.08);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.vorspann-folie--ankommend .vorspann-foto {
+  animation: vorspann-foto-einrasten 700ms var(--jg-ease) both;
+}
+
+@keyframes vorspann-text-ein {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+.vorspann-text {
+  position: absolute;
+  inset: 0 auto 0 0;
+  /* Kein px-Deckel: bei 4K muss die Spalte genauso breit wirken wie bei
+     1080p, siehe Kommentar bei .vorspann-wort--riesig. */
+  width: 46.9vw;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 1.6vh;
+  padding: 0 5vw;
+  background: rgba(2, 6, 23, 0.86);
+  border-right: 3px solid #f5a623;
+}
+
+.vorspann-folie--ankommend .vorspann-text {
+  animation: vorspann-text-ein 550ms var(--jg-ease) 150ms both;
+}
+
+.vorspann-wort {
+  font-family: var(--jg-font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 0.92;
+  color: var(--jg-text);
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+/* Drei Groessenstufen statt einer einzigen Schriftgroesse fuer alle Woerter -
+   die Spaltenbreite ist fest (siehe .vorspann-text), Woerter sind es nicht.
+   Zuordnung je Folie in Vorspann.tsx (Feld "groesse"), von Hand nach der
+   laengsten Zeile vergeben statt zur Laufzeit ausgemessen. Reines vw statt
+   eines rem-Maximums: ein rem-Deckel bezieht sich auf die Root-Schriftgroesse
+   in Pixeln und waechst bei 4K nicht mit - das Wort wirkte dort verloren
+   klein, siehe docs/screenshots. Wie der Rest des Screens (Kommentar ganz
+   oben in dieser Datei) bleiben Massangaben deshalb rein vh/vw. */
+.vorspann-wort--riesig {
+  font-size: 8.3vw;
+}
+
+.vorspann-wort--gross {
+  font-size: 5.8vw;
+}
+
+.vorspann-wort--kompakt {
+  font-size: 4.2vw;
+}
+
+.vorspann-unterzeile {
+  font-family: var(--jg-font-display);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--jg-muted-strong);
+  font-size: 1.3vw;
+}
+
+/* Dauerhaftes Signal: sagt in jeder Folie, dass es gleich losgeht - Gruen
+   bleibt dabei ausschliesslich dieses Signal, keine Dekoration sonst (siehe
+   Abschnitt 12/Farbrollen). */
+.vorspann-signal {
+  position: absolute;
+  top: 2vh;
+  right: 2vh;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.8vh;
+  /* Flacher Untergrund noetig: die Fotos sind an dieser Stelle nicht immer
+     dunkel genug fuer verlaessliche Lesbarkeit (z.B. helle Kabel im Bild). */
+  background: rgba(2, 6, 23, 0.55);
+  padding: 0.7vh 1.2vh;
+  font-family: var(--jg-font-display);
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  font-size: 0.9vw;
+  color: var(--jg-accent);
+}
+
+.vorspann-signal-punkt {
+  flex: 0 0 auto;
+  width: 1.1vh;
+  height: 1.1vh;
+  border-radius: 50%;
+  background: var(--jg-accent);
+  animation: vorspann-puls 1.6s ease-in-out infinite;
+}
+
+@keyframes vorspann-puls {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.7);
+  }
+}
+
+/* Eigene Abschaltung noetig: die globale Kuerzung auf 0.01ms in tokens.css
+   wuerde eine "infinite"-Animation nicht anhalten, sondern nur dazu bringen,
+   tausendfach pro Sekunde neu zu starten - unnoetige Rechenlast statt
+   Ruhe. Ein einzelner Umlauf haette ohnehin kein sichtbares Pulsieren mehr. */
+@media (prefers-reduced-motion: reduce) {
+  .vorspann-signal-punkt {
+    animation: none;
+  }
+}
+
+/* Kontakt und Herstellerzeichen: dauerhaft, dezent, an fester Stelle -
+   gehoeren zum Rahmen, nicht zu einer einzelnen Folie. */
+.vorspann-fuss {
+  position: absolute;
+  left: 2vh;
+  right: 2vh;
+  bottom: 2vh;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3vw;
+}
+
+.vorspann-partner {
+  display: flex;
+  align-items: center;
+  gap: 2.4vw;
+  opacity: 0.55;
+}
+
+.vorspann-partner img {
+  height: 2.2vh;
+  width: auto;
+  /* Herstellerzeichen einfarbig hell erzwingen, unabhaengig von ihrer
+     Ausgangsfarbe: erst auf Schwarz reduzieren, dann invertieren. */
+  filter: brightness(0) invert(1);
+}
+
+.vorspann-kontakt {
+  font-family: var(--jg-font-mono);
+  font-size: 1.5vh;
+  letter-spacing: 0.02em;
+  color: var(--jg-muted);
+  white-space: nowrap;
 }

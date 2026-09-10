@@ -244,6 +244,21 @@ export function vorfuehrungEingefroren(): boolean {
 }
 
 /**
+ * ?folie=N haelt den Vorspann (Vorspann.tsx) auf einer bestimmten Folie fest,
+ * unabhaengig vom schritt-Parameter fuer den MatchState oben: der Vorspann
+ * braucht keinen MatchState und laeuft in seinem eigenen Takt weiter, auch
+ * wenn schritt=0 (idle) den MatchState einfriert. So laesst sich jede Folie
+ * gezielt fuer ein Bildschirmfoto ansteuern, z.B. ?vorfuehrung&schritt=0&folie=3.
+ * Liefert null ausserhalb des Vorfuehrmodus oder ohne den Parameter.
+ */
+export function vorspannFolieParam(): number | null {
+  const wert = parameter().get('folie')
+  if (wert === null) return null
+  const zahl = Number(wert)
+  return Number.isFinite(zahl) ? zahl : null
+}
+
+/**
  * Liefert null, wenn der Vorfuehrmodus nicht aktiviert ist (normaler Betrieb
  * ueber window.app). Sonst den jeweils aktuellen synthetischen MatchState:
  * ohne ?schritt automatisch fortschreitend durch alle sieben Szenen, mit

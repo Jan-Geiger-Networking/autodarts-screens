@@ -4,6 +4,7 @@ import logoWeiss from '../../../assets/logo-white.png'
 import { ermittleBasis, szeneAusZustand, UEBERLAGERUNG_DAUER_MS, type Ueberlagerung } from './szene'
 import { useAusblenden } from './useAusblenden'
 import { useVorfuehrung, vorfuehrungAktiv, vorfuehrungEingefroren } from './vorfuehrung'
+import { Vorspann } from './Vorspann'
 import { averageAnzeige, checkoutQuote, finishAnzeige, initialen } from './formatierung'
 import '../shared/tokens.css'
 import './App.css'
@@ -87,11 +88,7 @@ export function App() {
 
   return (
     <div className="bildschirm-zuschauer">
-      {anzeige === 'idle' && (
-        <div className="ruhezustand">
-          <img className="ruhezustand-logo" src={logoWeiss} alt="JGNet" />
-        </div>
-      )}
+      {anzeige === 'idle' && <Vorspann />}
 
       {anzeige !== 'idle' && zustand && (
         <Spielstand

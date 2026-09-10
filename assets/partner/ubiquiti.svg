@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" role="img" aria-label="Ubiquiti (Platzhalter)">
+  <rect x="1" y="1" width="198" height="58" fill="none" stroke="#888" stroke-width="1" stroke-dasharray="4 3" rx="4"></rect>
+  <text x="100" y="38" font-family="ui-monospace, monospace" font-size="18" font-weight="600" fill="#bbb" text-anchor="middle" letter-spacing="1">UBIQUITI</text>
+</svg>
