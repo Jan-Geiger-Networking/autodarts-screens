@@ -4,6 +4,37 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.7] - 2026-09-10
+
+Siebte Beta. Der Player-Screen ist nach dem Vorbild der Autodarts-Spielansicht
+neu gebaut.
+
+### Geändert
+- **Player-Screen komplett neu**: links und rechts je eine Spielertafel,
+  dazwischen die Dartscheibe mit den Treffern des laufenden Wurfs, darüber die
+  drei Darts der Aufnahme mit ihrer Summe. Unter jeder Tafel steht der Verlauf
+  des laufenden Legs (geworfene Punkte und Rest danach), daneben Leg- und
+  Match-Average sowie die geworfenen Darts
+- Der Checkout-Weg steht groß unter der Punktzahl des Spielers am Wurf. Er ist
+  der Grund, warum dieser Bildschirm neben der Scheibe hängt, und bekommt
+  deshalb mehr Platz als im Vorbild. Ein Setup-Wurf wird ruhiger gesetzt als
+  ein echter Finish-Weg, damit beides nicht verwechselt wird
+- Die aktive Tafel trägt die Signalfarbe dieses Projekts statt des
+  Autodarts-Magenta — beide Screens sprechen dieselbe Farbsprache
+- Ab drei Spielern verteilen sich die Tafeln wie auf dem Zuschauer-Screen auf
+  beide Seiten, die Scheibe bleibt in der Mitte
+
+### Hinzugefügt
+- Der Player-Screen hat jetzt denselben Vorführmodus wie der
+  Zuschauer-Screen: mit `?vorfuehrung` in der Adresse läuft er ohne Match
+  durch, mit `?schritt=N` hält er auf einer Szene an
+
+### Behoben
+- Der Release-Lauf zu 0.1.0-beta.6 scheiterte zweimal, obwohl alle Tests
+  bestanden: einmal an einer Protokollmeldung, die erst nach dem Testende
+  eintraf und den Lauf mitriss, einmal an einer verschobenen Datei, deren
+  Importzeile nicht nachgezogen war. Beides behoben
+
 ## [0.1.0-beta.6] - 2026-09-10
 
 Sechste Beta. Erste Version, die sich selbst aktualisieren kann — ab hier

@@ -1,10 +1,14 @@
-/* Player-Screen: steht direkt neben der Dartscheibe. Fast schwarzer Grund,
-   keine Muster, keine Bewegung ausser einer kurzen Ueberblendung beim
-   Zahlenwechsel (siehe transition auf .rest), kein Blinken, keine Popups.
-   Masse durchgehend relativ (vh/vw), damit die Darstellung auf jeder
-   Aufloesung und jedem Monitor traegt. */
+/* Player-Screen: steht direkt neben der Dartscheibe. Aufbau nach dem
+   Autodarts-Vorbild (Bildschirmfoto des Herausgebers): zwei Spielertafeln
+   aussen, die Scheibe in der Mitte, die laufende Aufnahme oben.
 
-.bildschirm {
+   Ruhig gehalten, weil dieser Bildschirm im Blickfeld des Werfenden haengt:
+   fast schwarzer Grund, keine Muster, keine Bewegung ausser einer kurzen
+   Ueberblendung beim Zahlenwechsel. Masse durchgehend relativ (vh/vw), damit
+   die Darstellung jede Aufloesung traegt. */
+
+.spielbildschirm {
+  position: relative;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
@@ -12,6 +16,7 @@
   flex-direction: column;
   background: var(--jg-bg);
   color: var(--jg-text);
+  font-family: var(--jg-font-display);
   font-variant-numeric: tabular-nums;
 }
 
@@ -29,99 +34,365 @@
   max-width: 40vh;
 }
 
-.kopfzeile {
-  display: flex;
-  align-items: baseline;
-  gap: 1.5vw;
-  padding: 2.2vh 3vw 0;
-  font-family: var(--jg-font-display);
-  font-size: 3vh;
-  letter-spacing: 0.03em;
-  color: var(--jg-muted);
+/* Logo klein in der unteren Ecke - der Spielstand hat Vorrang. */
+.bug {
+  position: absolute;
+  bottom: 2vh;
+  left: 2vh;
+  height: 3.4vh;
+  width: auto;
+  opacity: 0.75;
 }
 
-.kopfzeile-name {
+/* ─── Einstellungen (Startpunktzahl, Modus) ─────────────────────────── */
+
+.einstellungen {
+  display: flex;
+  gap: 0.8vw;
+  padding: 2vh 2vw 0;
+}
+
+.einstellung {
+  padding: 0.5vh 1.1vw;
+  border-radius: 999px;
+  background: var(--jg-surface);
+  color: var(--jg-muted-strong);
+  font-size: 1.9vh;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+/* ─── Laufende Aufnahme ─────────────────────────────────────────────── */
+
+.wurfleiste {
+  align-self: center;
+  margin-top: -3.5vh;
+  display: flex;
+  align-items: center;
+  gap: 1.6vw;
+  padding: 1vh 1.6vw;
+  border-radius: 1.4vh;
+  background: var(--jg-surface);
+  border: 1px solid var(--jg-border-strong);
+}
+
+.wurfplatz {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4vh;
+  min-width: 5.5vw;
+}
+
+.wurfplatz-name {
+  font-size: 2vh;
+  font-weight: 700;
+  color: var(--jg-text);
+  min-height: 2.4vh;
+}
+
+.dartsymbol {
+  width: 4vw;
+  max-width: 5.5vh;
+  height: auto;
+  fill: none;
+  stroke: var(--jg-border-strong);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.wurfplatz.belegt .dartsymbol,
+.dartsymbol.gefuellt {
+  stroke: var(--jg-text);
+}
+
+.wurfsumme {
+  padding-left: 1.4vw;
+  border-left: 1px solid var(--jg-border-strong);
+  font-size: 4.4vh;
+  font-weight: 800;
+  min-width: 4.5vw;
+  text-align: center;
+}
+
+.wurfsumme.bust {
+  color: var(--jg-warning);
+  font-size: 3vh;
+}
+
+/* ─── Spielflaeche: Tafel | Scheibe | Tafel ─────────────────────────── */
+
+.spielflaeche {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2vw;
+  padding: 1.5vh 2vw 3vh;
+}
+
+/* Beide Spalten gleich breit und oben buendig: die Tafeln sollen auf
+   gleicher Hoehe stehen, egal wie viel in ihnen steht. */
+.tafelspalte {
+  flex: 0 1 26vw;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  gap: 1.5vh;
+}
+
+/* Die Scheibe bekommt so viel Platz, wie nach den Tafeln uebrig bleibt, und
+   bleibt dabei immer quadratisch. */
+.scheibenfeld {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scheibenfeld .dartscheibe {
+  width: min(72vh, 40vw);
+  height: min(72vh, 40vw);
+  /* Der gruene Schein wie im Vorbild - er zeigt an, dass die Scheibe
+     verbunden ist und mitliest. */
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 0.35vh var(--jg-accent-strong),
+    0 0 4vh 1vh var(--jg-accent-glow);
+}
+
+/* ─── Spielertafel ──────────────────────────────────────────────────── */
+
+.tafel {
+  border-radius: 1.6vh;
+  overflow: hidden;
+  background: var(--jg-surface);
+  border: 1px solid var(--jg-border-strong);
+  padding: 1.4vh 1.4vw 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8vh;
+  transition:
+    border-color 200ms var(--jg-ease),
+    background 200ms var(--jg-ease);
+}
+
+/* Der Spieler am Wurf: heller Grund mit der Signalfarbe an der Kante. Kein
+   Farbverlauf ueber die ganze Tafel - die Rest-Punktzahl muss die hellste
+   Stelle bleiben. */
+.tafel.aktiv {
+  background: linear-gradient(160deg, var(--jg-surface-hi) 0%, var(--jg-surface) 70%);
+  border-color: var(--jg-accent);
+}
+
+.tafel-kopf {
+  display: flex;
+  align-items: center;
+  gap: 0.7vw;
+  min-width: 0;
+}
+
+.tafel-punkt {
+  width: 1vh;
+  height: 1vh;
+  border-radius: 50%;
+  background: var(--jg-accent);
+  flex: 0 0 auto;
+}
+
+.tafel-punkt.unsichtbar {
+  visibility: hidden;
+}
+
+.tafel-avatar {
+  flex: 0 0 auto;
+  width: 4vh;
+  height: 4vh;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--jg-bg);
+  border: 1px solid var(--jg-border-strong);
+  font-size: 1.6vh;
+  font-weight: 700;
+  color: var(--jg-muted-strong);
+}
+
+.tafel-name {
+  font-size: 2.4vh;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--jg-muted-strong);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.kopfzeile-stand {
-  flex: 0 0 auto;
+.tafel.aktiv .tafel-name {
+  color: var(--jg-text);
 }
 
-.kopfzeile-leg {
-  margin-left: auto;
+.tafel-land {
+  font-size: 1.5vh;
+  color: var(--jg-muted);
 }
 
-.rest-bereich {
-  flex: 1;
+.tafel-rest-zeile {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  min-height: 0;
+  gap: 0.6vw;
 }
 
-.rest {
-  font-family: var(--jg-font-display);
-  font-size: 40vh;
+/* Die Rest-Punktzahl ist die wichtigste Zahl auf diesem Bildschirm und
+   deshalb immer die hellste - bei aktivem wie inaktivem Spieler. */
+.tafel-rest {
+  font-size: 11vh;
   font-weight: 800;
   line-height: 0.9;
   color: var(--jg-text);
-  font-variant-numeric: tabular-nums;
-  transition: color 120ms var(--jg-ease);
+  transition: color 150ms var(--jg-ease);
 }
 
-.rest.bust {
-  color: var(--jg-warning);
-}
-
-.checkout {
-  font-family: var(--jg-font-display);
-  font-size: 9vh;
-  letter-spacing: 0.08em;
-  color: var(--jg-accent);
-  min-height: 1.2em;
-  text-align: center;
-}
-
-.checkout.setup {
-  color: var(--jg-muted);
-}
-
-.trennlinie {
-  height: 1px;
-  margin: 0 4vw;
-  background: var(--jg-border-strong);
-}
-
-.wurf-zeile {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 2.5vh 4vw 3.5vh;
-  font-family: var(--jg-font-display);
-  font-size: 6vh;
-  color: var(--jg-text);
-}
-
-.wurf-darts {
-  display: flex;
-  gap: 3.5vw;
-}
-
-.wurf-dart {
-  min-width: 2.5ch;
-  text-align: center;
+.tafel:not(.aktiv) .tafel-rest {
   color: var(--jg-muted-strong);
 }
 
-.wurf-summe {
-  /* Bewusst nicht --jg-text/800 wie .rest: sonst sind Rest-Score und
-     Wurfsumme aus der Entfernung kaum zu unterscheiden (Review-Befund,
-     Screenshot-Vergleich bestaetigt --jg-muted als klarer). Die Zeilengroesse
-     (6vh vs. 40vh) traegt den Groessenunterschied schon, die Farbe macht die
-     Zugehoerigkeit eindeutig. */
+.tafel-rest.bust {
+  color: var(--jg-warning);
+}
+
+/* Punkte der laufenden Aufnahme, klein neben der grossen Zahl. */
+.tafel-zug {
+  margin-top: 1vh;
+  min-width: 3.4vh;
+  padding: 0.4vh 0.6vh;
+  border-radius: 0.5vh;
+  background: var(--jg-bg);
+  color: var(--jg-muted-strong);
+  font-size: 2.2vh;
   font-weight: 700;
+  text-align: center;
+}
+
+.tafel-schnitte {
+  text-align: center;
+  font-size: 2vh;
+  font-weight: 700;
+  color: var(--jg-text);
+}
+
+.tafel-label {
   color: var(--jg-muted);
+  font-weight: 500;
+  margin-right: 0.2em;
+}
+
+.tafel-trenner {
+  margin: 0 0.5em;
+  color: var(--jg-muted);
+}
+
+.tafel-darts {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5vw;
+  font-size: 2vh;
+  font-weight: 700;
+  color: var(--jg-muted-strong);
+}
+
+.tafel-darts .dartsymbol {
+  width: 2.6vw;
+  max-width: 3.4vh;
+}
+
+/* ─── Checkout-Weg ──────────────────────────────────────────────────── */
+
+.tafel-checkout {
+  display: flex;
+  justify-content: center;
+  gap: 0.5vw;
+  min-height: 4.4vh;
+}
+
+/* Haelt den Platz frei, ohne etwas anzuzeigen. */
+.tafel-checkout.leer .checkout-wurf {
+  visibility: hidden;
+}
+
+.checkout-wurf {
+  padding: 0.6vh 1vw;
+  border-radius: 0.6vh;
+  background: var(--jg-accent-dim);
+  border: 1px solid var(--jg-accent);
+  color: var(--jg-accent);
+  font-size: 2.6vh;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+/* Ein Setup-Wurf ist kein Finish - er wird ruhiger gesetzt, damit beides
+   nicht verwechselt wird. */
+.tafel-checkout.setup .checkout-wurf {
+  background: transparent;
+  border-color: var(--jg-border-strong);
+  color: var(--jg-muted-strong);
+}
+
+/* ─── Verlauf des laufenden Legs ────────────────────────────────────── */
+
+/* Feste Hoehe fuer genau fuenf Zeilen: ohne sie waechst die Tafel mit dem
+   Leg, die beiden Tafeln stehen nicht mehr auf gleicher Hoehe, und die
+   unterste Zeile wird abgeschnitten. */
+.verlauf {
+  margin: 0.6vh -1.4vw 0;
+  border-top: 1px solid var(--jg-border-strong);
+  background: var(--jg-bg);
+  height: 20.6vh;
+  overflow: hidden;
+}
+
+.verlauf-zeile {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--jg-border);
+}
+
+.verlauf-zeile:last-child {
+  border-bottom: none;
+}
+
+.verlauf-punkte,
+.verlauf-rest {
+  padding: 0.7vh 1vw;
+  font-size: 2.1vh;
+  font-weight: 600;
+  text-align: center;
+}
+
+.verlauf-punkte {
+  color: var(--jg-muted-strong);
+  border-right: 1px solid var(--jg-border);
+}
+
+.verlauf-punkte.bust {
+  color: var(--jg-warning);
+}
+
+.verlauf-rest {
+  color: var(--jg-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tafel,
+  .tafel-rest {
+    transition: none;
+  }
 }
