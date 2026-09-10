@@ -461,6 +461,20 @@ describe('anwenden: Match-Ende ueber den Board-Kanal', () => {
     )
   })
 
+  it('ignoriert ein Ende, das einem ANDEREN Match gilt', () => {
+    // Aus dem Protokoll vom 10.09.2026: waehrend Match 01a08cfc lief, kam
+    // ein "delete" fuer das 24 Minuten alte Match 01a08ce8. Ohne diese
+    // Pruefung schaltete das die Anzeige des laufenden Matches ab.
+    const laufend = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    expect(
+      anwenden(laufend, {
+        channel: 'autodarts.boards',
+        topic: 'b.matches',
+        data: { event: 'delete', id: 'match-alt' },
+      }),
+    ).toBe(laufend)
+  })
+
   it('laesst den Zustand unangetastet, wenn das Ereignis gar kein event-Feld hat', () => {
     const laufend = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
     expect(anwenden(laufend, { channel: 'autodarts.boards', topic: 'b.matches', data: { id: 'match-2' } })).toBe(laufend)

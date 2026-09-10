@@ -78,12 +78,17 @@ jobs:
           # Ohne latest.yml findet die Selbstaktualisierung diese Version nie.
           test -s release/latest.yml
           grep -q "autodarts-screens-Setup-${version}.exe" release/latest.yml
+          # Ohne die Blockmap laedt electron-updater bei jedem Update den
+          # vollen Installer statt nur der geaenderten Bloecke und schreibt
+          # jedes Mal einen 404 ins Protokoll.
+          test -s "release/autodarts-screens-Setup-${version}.exe.blockmap"
 
       - name: An GitHub-Release haengen
         uses: softprops/action-gh-release@v2
         with:
           files: |
             release/*.exe
+            release/*.exe.blockmap
             release/*.cdx.json
             release/latest.yml
           fail_on_unmatched_files: true

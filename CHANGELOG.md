@@ -4,6 +4,39 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.12] - 2026-09-10
+
+Zwölfte Beta. Die Auftreffpunkte sitzen jetzt dort, wo sie bei Autodarts
+sitzen — nachgemessen, nicht geschätzt.
+
+### Behoben
+- **Die Punkte auf der Scheibe lagen 32 % zu weit außen.** Der Wert 1,0 der
+  Autodarts-Koordinaten ist die Außenkante des Doppelrings; gerechnet wurde
+  bisher, als läge sie bei 0,76. Ein Dart im inneren Einzelfeld erschien
+  dadurch im Triple. Belegt an einem Bildschirmfoto der Autodarts-Anzeige
+  (Ausgleich über Mittelpunkt, Maßstab und Drehung: Restfehler 0,03
+  Bildpunkte, Drehung 0,00°) und an sechs echten Würfen, zu denen der Server
+  den getroffenen Ring mitgeliefert hat — vorher lagen 3 von 6 im falschen
+  Ring, jetzt 6 von 6 im richtigen
+- **Ein beendetes Match konnte ein laufendes abschalten.** Autodarts räumt
+  alte Matches nachträglich weg und meldet das auf dem Brett-Kanal. Die
+  Anwendung folgte jeder gemeldeten Match-Kennung — auch der eines Matches,
+  das gerade gelöscht wurde. Sie hing dann am falschen Match und bekam vom
+  laufenden nichts mehr mit; im Protokoll stand danach nur noch „match not
+  found". Jetzt wird einem Ende-Ereignis nicht mehr gefolgt, und es gilt nur
+  noch für das Match, dem es tatsächlich zugeordnet ist
+- **Die Checkout-Quote war doppelt falsch.** `checkouts` sind bei Autodarts
+  die Finish*versuche*, `checkoutsHit` die getroffenen. Gelesen wurde
+  `checkouts` als Treffer, die Versuche wurden daneben selbst gezählt
+
+### Geändert
+- Das höchste Finish wird wieder selbst mitgezählt: ein `highestFinish` gibt
+  es in den Serverdaten nicht
+- Das Diagnoseprotokoll meldet nicht mehr, dass `bullDistance` fehlt — das
+  Feld gibt es nur während der Anfangsermittlung. Dafür steht jetzt jedes
+  Brett-Ereignis mit Art und Match-Kennung darin, damit sich der Spielstart
+  nachvollziehen lässt
+
 ## [0.1.0-beta.11] - 2026-09-10
 
 Elfte Beta. Alle drei Pfeile stehen auf der Scheibe, und sie sind so klein wie

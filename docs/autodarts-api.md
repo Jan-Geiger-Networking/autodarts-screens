@@ -447,18 +447,39 @@ Bekannte `bed`-Werte: `Single`, `SingleInner`, `SingleOuter`, `Double`,
 function toSvg(e) { return { cx: e.x * RADIUS, cy: -e.y * RADIUS } }
 ```
 
-`RADIUS` ist 500; im selben SVG endet der Doppelring außen bei 377,778. Für
-ein Raster, in dem der Doppelring außen dem Wert 100 entspricht, gilt also:
+**Der Wert 1,0 ist die Außenkante des Doppelrings.** Für ein Raster, in dem
+der Doppelring außen dem Wert 100 entspricht, gilt also schlicht:
 
 ```
-x_eigen =  x * (500 / 377,778) * 100
-y_eigen = -y * (500 / 377,778) * 100
+x_eigen =  x * 100
+y_eigen = -y * 100
 ```
 
-Gegenprobe an einem echten Kreis aus der Autodarts-Anzeige
-(`cx=14,36 cy=-357,73`): Abstand 358 von 377,778 → 94,8 % des
-Doppelring-Radius, Winkel knapp rechts der Senkrechten — ein einfaches Feld
-20 dicht am Doppel. Passt.
+Nachgemessen am 10.09.2026, nicht angenommen. In einem Bildschirmfoto der
+Autodarts-Anzeige (Vantage-Brett, drei Darts) wurden die Punkte und die
+Ringkanten ausgezählt und Mittelpunkt, Maßstab und Drehung ausgeglichen:
+
+| Größe | Messwert |
+| --- | --- |
+| Mittelpunkt aus dem Ausgleich | (341,9 \| 349,5) |
+| Schwerpunkt des Bulls im selben Bild | (341,9 \| 349,9) |
+| Drehung | 0,00° |
+| Maßstab | 221,6 Bildpunkte je Koordinateneinheit |
+| Restfehler | 0,03 Bildpunkte |
+| Außenkante Doppelring | 219,5 Bildpunkte → Koordinate **0,99** |
+
+Zweite, unabhängige Gegenprobe: sechs Würfe aus echten Matches, zu denen der
+Server den getroffenen Ring (`segment.bed`) mitgeliefert hat. Mit Faktor 100
+landen **6 von 6** im gemeldeten Ring, mit dem bis 0.1.0-beta.11 verwendeten
+Faktor 132,353 nur 3 von 6 (die drei falschen lagen im Triple statt im
+inneren Einzelfeld). Der Test dazu steht in
+`src/renderer/shared/scheibengeometrie.test.ts`.
+
+**Woher der falsche Faktor kam:** `RADIUS` in `toSvg` ist zwar 500, aber
+dieses SVG ist nicht dasselbe wie das Brett, dessen Doppelring außen bei
+377,778 endet. Aus den gezeichneten Kreisen wird eine Koordinate mit
+`cx / 377,778`, nicht mit `cx / 500`. Wer aus einer Autodarts-Anzeige
+zurückrechnet, muss durch 377,778 teilen.
 
 ### Weiterer Fund: Autodarts liefert einen eigenen Checkout-Vorschlag
 
@@ -470,6 +491,28 @@ Bisher nicht genutzt — dieses Projekt rechnet den Weg selbst
 (`src/shared/checkout.ts`). Falls die beiden je auseinanderlaufen, ist hier
 die Vergleichsquelle.
 
+## Der Brett-Kanal `<brett>.matches` — belegt aus einem Protokoll 2026-09-10
+
+Die Ereignisse haben die Form `{"event": "...", "id": "<matchId>"}`.
+Beobachtete Werte für `event`:
+
+| Wert | Bedeutung |
+| --- | --- |
+| `start` | Ein Match beginnt |
+| `finish` | Das Match ist ausgespielt |
+| `delete` | Ein Match wird weggeräumt |
+
+**`delete` kommt auch für längst beendete Matches.** Im Protokoll vom
+10.09.2026 traf um 20:24:54 ein `delete` für das Match `01a08ce8` ein, das um
+20:01 begonnen hatte — während `01a08cfc` lief. Zwei Folgen daraus:
+
+1. Einem Ende-Ereignis darf **nicht** gefolgt werden, sonst abonniert die
+   Anwendung genau das Match, das gerade weggeräumt wird, und bekommt vom
+   laufenden nichts mehr mit. Genau das stand im Protokoll: danach kam nur
+   noch `{"type":"error","error":"match not found"}`.
+2. Ein Ende-Ereignis gilt nur, wenn seine `id` die des laufenden Matches ist.
+   Sonst schaltet ein alter Aufräumvorgang eine laufende Anzeige ab.
+
 ## Spielerstatistik und Anfangsermittlung — belegt aus dem Quelltext 2026-09-10
 
 Gleiche Quelle wie oben (`use-game-*.js`). Vertrauen: **hoch**.
@@ -480,9 +523,26 @@ Gleiche Quelle wie oben (`use-game-*.js`). Vertrauen: **hoch**.
 legMatchPills(_, f.legStats.average, f.matchStats.average)
 ```
 
-Bekannte Felder darunter: `legStats.average`, `legStats.dartsThrown`,
-`legStats.bullDistance`, `legStats.coords`, `matchStats.average`,
-`matchStats.first9Average`, `matchStats.dartsThrown`, `matchStats.checkouts`.
+**Vollständige Feldliste**, aus einem Diagnoseprotokoll vom 10.09.2026 (X01,
+lokal gegen einen Bot). `legStats` und `matchStats` tragen dieselben Felder:
+
+```
+average, averageUntil170, checkoutPercent, checkoutPoints,
+checkoutPointsAverage, checkouts, checkoutsHit, dartsThrown, dartsUntil170,
+first9Average, first9Score, less60, plus60, plus100, plus140, plus170,
+score, scoreUntil170, total180
+```
+
+Daraus folgt für die Checkout-Zahlen: **`checkouts` sind die Versuche,
+`checkoutsHit` die getroffenen**, `checkoutPercent` die Quote aus beiden. Bis
+0.1.0-beta.11 wurde `checkouts` fälschlich als Treffer gelesen.
+
+**Nicht vorhanden:** ein `highestFinish` — das höchste Finish muss selbst
+mitgezählt werden. `bullDistance` und `coords`/`segment` stehen nur während
+der Anfangsermittlung in `legStats`, im laufenden X01 fehlen sie planmäßig;
+danach zu fragen ist kein Fehler und wird deshalb nicht protokolliert.
+
+`setStats` ist bei einem Match ohne Sätze `null`.
 
 Bis 0.1.0-beta.9 suchte dieses Projekt eine Ebene zu flach
 (`stats[i].average`) und fand deshalb nie etwas. Die eigene Rechnung sprang

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NichtAngemeldetFehler, senden } from './rest'
 import {
   boardThema,
+  brettEreignisArt,
   ereignisZeileFuerProtokoll,
   MATCH_ABO_ZWECKE,
   matchIdAusEreignis,
@@ -429,5 +430,33 @@ describe('verbinden: Zustandsmeldungen und Abonnement-Dedublizierung', () => {
     }
 
     verbindung.schliessen()
+  })
+})
+
+describe('brettEreignisArt', () => {
+  const brett = (event: unknown) => ({
+    channel: 'autodarts.boards',
+    topic: 'ec1301ae.matches',
+    data: { event, id: 'match-1' },
+  })
+
+  it('erkennt einen Beginn', () => {
+    expect(brettEreignisArt(brett('start'))).toBe('beginn')
+  })
+
+  it('wertet die belegten Abschlusswerte als Ende', () => {
+    // Beide Werte kamen im Protokoll vom 10.09.2026 vor.
+    expect(brettEreignisArt(brett('finish'))).toBe('ende')
+    expect(brettEreignisArt(brett('delete'))).toBe('ende')
+  })
+
+  it('wertet einen unbekannten Wert als Ende - die sichere Richtung', () => {
+    expect(brettEreignisArt(brett('irgendwas'))).toBe('ende')
+  })
+
+  it('liefert null fuer alles, was kein Brett-Ereignis ist', () => {
+    expect(brettEreignisArt({ channel: 'autodarts.matches', topic: 'm.state', data: { event: 'start' } })).toBeNull()
+    expect(brettEreignisArt(brett(undefined))).toBeNull()
+    expect(brettEreignisArt(null)).toBeNull()
   })
 })

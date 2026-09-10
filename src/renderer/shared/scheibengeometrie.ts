@@ -70,12 +70,29 @@ function ringRadius(segment: Segment): number {
 /**
  * Umrechnungsfaktor von Autodarts-Koordinaten in dieses Raster.
  *
- * Autodarts liefert den Auftreffpunkt normiert auf -1..1. Im eigenen Client
- * wird daraus `{cx: x * 500, cy: -y * 500}` in einem SVG, dessen Doppelring
- * aussen bei 377,778 endet (beides belegt im Quelltext, use-game-*.js). Hier
- * entspricht der Doppelring aussen dem Wert 100 - also 500/377,778 * 100.
+ * Der Wert 1,0 der Autodarts-Koordinaten IST die Aussenkante des
+ * Doppelrings. Hier entspricht die dem Wert 100 - der Faktor ist also 1:1.
+ *
+ * Gemessen, nicht angenommen: In einem Bildschirmfoto der Autodarts-Anzeige
+ * (Vantage-Brett, drei Darts) wurden die drei Punkte und die Ringkanten
+ * ausgezaehlt. Ein Ausgleich ueber Mittelpunkt, Massstab und Drehung ergab
+ * den Mittelpunkt (341,9|349,5) - deckungsgleich mit dem Schwerpunkt des
+ * Bulls (341,9|349,9) -, eine Drehung von 0,00 Grad und 221,6 Bildpunkte je
+ * Koordinateneinheit, bei einem Restfehler von 0,03 Bildpunkten. Die
+ * Aussenkante des Doppelrings lag im selben Bild bei 219,5 Bildpunkten,
+ * also bei Koordinate 0,99.
+ *
+ * Gegenprobe an sechs Wuerfen eines echten Matches, zu denen der Server den
+ * getroffenen Ring mitgeliefert hat: mit Faktor 100 landen 6 von 6 im
+ * gemeldeten Ring, mit dem bis 0.1.0-beta.11 verwendeten Faktor 132,353 nur
+ * 3 von 6 (siehe scheibengeometrie.test.ts).
+ *
+ * Der alte Faktor kam daher, dass die SVG-Koordinaten des Autodarts-Clients
+ * fuer echte Koordinaten gehalten wurden: dessen Kreise stehen in einem SVG,
+ * dessen Doppelring aussen bei 377,778 endet - `cx / 377,778`, nicht
+ * `cx / 500`, ergibt die Koordinate.
  */
-export const KOORDINATEN_FAKTOR = (500 / 377.778) * 100
+export const KOORDINATEN_FAKTOR = 100
 
 /**
  * Rechnet einen gemessenen Auftreffpunkt in dieses Raster um. Die y-Achse

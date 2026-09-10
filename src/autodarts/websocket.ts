@@ -189,6 +189,31 @@ export function ticketAusAntwort(antwort: unknown): string {
 // Pruefreihenfolge. Nicht geraten, sondern die vom Herausgeber genannte Liste
 // - welches Feld Autodarts tatsaechlich benutzt, ist unbekannt, bis ein
 // echter Mitschnitt vorliegt (siehe matchIdAusEreignis).
+// Werte des Feldes "event" in einem Brett-Ereignis, die einen BEGINN meinen.
+// Belegt aus einem Diagnoseprotokoll vom 10.09.2026: dort kamen "start",
+// "finish" und "delete" vor. Alles, was hier nicht steht, gilt als Ende -
+// diese Richtung ist die sichere: ein unbekannter Wert beendet die Anzeige
+// und laesst die Spielpause laufen, statt einen Endstand endlos stehen zu
+// lassen. Beginnt das Match doch weiter, kommt die naechste
+// .state-Momentaufnahme ohnehin sofort und baut die Anzeige wieder auf.
+export const BOARD_BEGINN_WERTE = new Set(['start', 'started', 'create', 'created', 'begin', 'new'])
+
+/**
+ * Art eines Brett-Ereignisses (Kanal autodarts.boards, Thema
+ * "<brett>.matches"): 'beginn', wenn ein Match anfaengt, 'ende' sonst.
+ * Liefert null, wenn das Ereignis gar keines vom Brett ist - dann sagt es
+ * nichts ueber Anfang oder Ende aus.
+ */
+export function brettEreignisArt(roh: unknown): 'beginn' | 'ende' | null {
+  if (typeof roh !== 'object' || roh === null) return null
+  const o = roh as Record<string, unknown>
+  if (o.channel !== KANAL_BOARDS) return null
+  const daten = typeof o.data === 'object' && o.data !== null ? (o.data as Record<string, unknown>) : o
+  const wert = typeof daten.event === 'string' ? daten.event.toLowerCase() : null
+  if (wert === null) return null
+  return BOARD_BEGINN_WERTE.has(wert) ? 'beginn' : 'ende'
+}
+
 const MATCH_KENNUNG_KANDIDATEN = ['matchId', 'id', 'match'] as const
 
 function ersterKandidat(objekt: unknown): string | null {
@@ -402,11 +427,30 @@ async function echteVerbindung(
     )
   }
 
+  const matchAbonnementBeenden = (): void => {
+    if (!aktuellerMatchId) return
+    for (const thema of matchThemen(aktuellerMatchId)) abbestellenIntern(KANAL_MATCHES, thema)
+    void protokollieren(`Match ${aktuellerMatchId} beendet, Themen abbestellt`)
+    aktuellerMatchId = null
+  }
+
   const ereignisVerarbeiten = (roh: unknown): void => {
     void protokollieren(ereignisZeileFuerProtokoll(roh))
 
     const matchId = matchIdAusEreignis(roh)
-    if (matchId) {
+    const brettArt = brettEreignisArt(roh)
+    if (brettArt !== null) void protokollieren(`Brett-Ereignis "${brettArt}" fuer Match ${matchId ?? '(ohne Kennung)'}`)
+
+    // Einem Brett-Ereignis, das ein ENDE meint, darf nicht gefolgt werden:
+    // sonst abonniert die Anwendung genau das Match, das gerade weggeraeumt
+    // wird, und bekommt vom laufenden nichts mehr mit. Genau das stand am
+    // 10.09.2026 im Protokoll - ein "delete" fuer ein 24 Minuten altes Match
+    // hat das laufende abbestellt, danach kam nur noch "match not found".
+    // Betrifft das Ende das laufende Match, werden dessen Themen
+    // abbestellt; betrifft es ein anderes, wird es ganz ignoriert.
+    if (brettArt === 'ende') {
+      if (matchId && matchId === aktuellerMatchId) matchAbonnementBeenden()
+    } else if (matchId) {
       matchAbonnementAktualisieren(matchId)
     } else if (!aktuellerMatchId && !matchKennungFehltProtokolliert) {
       matchKennungFehltProtokolliert = true

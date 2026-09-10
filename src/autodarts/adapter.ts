@@ -32,7 +32,7 @@
 // kommentiert und ueber eine kleine, eigene Zugriffsfunktion isoliert, die
 // bei unerwarteter Form auf einen Vorgabewert zurueckfaellt statt zu werfen.
 
-import { MATCH_ABO_ZWECKE } from './websocket'
+import { BOARD_BEGINN_WERTE, MATCH_ABO_ZWECKE } from './websocket'
 import { protokollieren } from './diagnose'
 import { checkoutWeg, setupWurf } from '../shared/checkout'
 import type { LegEntry, MatchEvent, MatchState, Player, PlayerScore, Segment } from '../shared/typen'
@@ -138,10 +138,16 @@ export function ersteZahl(wert: unknown, felder: readonly string[], schluessel: 
     const kandidat = o[feld]
     if (typeof kandidat === 'number' && Number.isFinite(kandidat)) return kandidat
   }
-  einmaligProtokollieren(
-    schluessel,
-    `${schluessel}: keines der erwarteten Felder [${felder.join(', ')}] gefunden, vorhandene Felder: [${Object.keys(o).join(', ')}] - Vorgabewert verwendet.`,
-  )
+  // Leerer Schluessel heisst: das Feld fehlt bekanntermassen haeufig, ohne
+  // dass etwas kaputt ist (bullDistance gibt es nur bei der
+  // Anfangsermittlung). Solche Faelle nicht protokollieren - sonst gehen die
+  // echten Ueberraschungen im Rauschen unter.
+  if (schluessel !== '') {
+    einmaligProtokollieren(
+      schluessel,
+      `${schluessel}: keines der erwarteten Felder [${felder.join(', ')}] gefunden, vorhandene Felder: [${Object.keys(o).join(', ')}] - Vorgabewert verwendet.`,
+    )
+  }
   return null
 }
 
@@ -154,10 +160,12 @@ export function ersterText(wert: unknown, felder: readonly string[], schluessel:
     const kandidat = o[feld]
     if (typeof kandidat === 'string' && kandidat.length > 0) return kandidat
   }
-  einmaligProtokollieren(
-    schluessel,
-    `${schluessel}: keines der erwarteten Felder [${felder.join(', ')}] gefunden, vorhandene Felder: [${Object.keys(o).join(', ')}] - Vorgabewert verwendet.`,
-  )
+  if (schluessel !== '') {
+    einmaligProtokollieren(
+      schluessel,
+      `${schluessel}: keines der erwarteten Felder [${felder.join(', ')}] gefunden, vorhandene Felder: [${Object.keys(o).join(', ')}] - Vorgabewert verwendet.`,
+    )
+  }
   return null
 }
 
@@ -241,7 +249,7 @@ export function segmentAusWurf(eintrag: unknown, schluessel: string): Segment | 
       }
     }
     // Kein bed/number, aber vielleicht ein Name im Segment selbst.
-    const name = ersterText(seg, ['name'], `${schluessel}-segment`)
+    const name = ersterText(seg, ['name'], schluessel === '' ? '' : `${schluessel}-segment`)
     if (name !== null) return { ...segmentAusName(name), ...(koordinaten ? { koordinaten } : {}) }
   }
 
@@ -346,20 +354,10 @@ function einordnen(roh: unknown): Einordnung {
   return istMatchZustandsForm(o) ? { art: 'state', nutz: o } : { art: 'unbekannt' }
 }
 
-// Werte des Feldes "event" im Board-Ereignis, die einen BEGINN meinen. Alles
-// andere ("finish", "delete", "exit", ... - der tatsaechliche Wortlaut ist
-// nicht belegt) wird als Ende gewertet. Diese Richtung ist die sichere: ein
-// unbekannter Wert beendet die Anzeige und laesst die Spielpause laufen,
-// statt einen Endstand endlos stehen zu lassen. Beginnt das Match doch
-// weiter, kommt die naechste .state-Momentaufnahme ohnehin sofort und baut
-// die Anzeige wieder auf.
-const BOARD_BEGINN_WERTE = new Set(['start', 'started', 'create', 'created', 'begin', 'new'])
-
 /**
- * Sagt, ob ein Board-Ereignis das Ende des laufenden Matches meint. Der
- * tatsaechliche Wortlaut der Werte ist unbelegt (siehe
- * docs/autodarts-api.md), deshalb wird er beim ersten Mal protokolliert -
- * danach steht er im Diagnoseprotokoll und laesst sich hier eintragen.
+ * Sagt, ob ein Board-Ereignis das Ende eines Matches meint. Die bekannten
+ * Werte stehen in BOARD_BEGINN_WERTE (siehe websocket.ts); der Wortlaut wird
+ * beim ersten Mal protokolliert.
  */
 export function istMatchEnde(nutz: Record<string, unknown>): boolean {
   const wert = typeof nutz.event === 'string' ? nutz.event.toLowerCase() : null
@@ -398,7 +396,13 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
     // auch wenn nie ein "finished" im Zustandskanal ankam. Ein Beginn wird
     // hier nicht ausgewertet: den baut die erste .state-Momentaufnahme auf,
     // die ohnehin unmittelbar folgt.
-    return istMatchEnde(eingeordnet.nutz) ? RUHEZUSTAND : zustand
+    if (!istMatchEnde(eingeordnet.nutz)) return zustand
+    // Ein Ende-Ereignis gilt nur fuer das Match, das gerade laeuft. Autodarts
+    // raeumt aeltere Matches nachtraeglich weg ("delete") - ein solches
+    // Ereignis darf die Anzeige eines laufenden Matches nicht abschalten.
+    const id = typeof eingeordnet.nutz.id === 'string' ? eingeordnet.nutz.id : null
+    if (id !== null && zustand.matchId !== null && id !== zustand.matchId) return zustand
+    return RUHEZUSTAND
   }
   if (eingeordnet.art === 'unbekannt') {
     const o = objekt(roh)
@@ -582,8 +586,10 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
 
     const legAverage = ersteZahl(legStats, ['average'], `stats[${index}].legStats.average`)
     const legDarts = ersteZahl(legStats, ['dartsThrown'], `stats[${index}].legStats.dartsThrown`)
-    const bullAbstand = ersteZahl(legStats, ['bullDistance'], `stats[${index}].legStats.bullDistance`)
-    const bullWurf = legStats ? (segmentAusWurf(legStats, `stats[${index}].legStats`) ?? undefined) : undefined
+    // Beides gibt es nur waehrend der Anfangsermittlung; im laufenden X01
+    // fehlt es planmaessig. Deshalb ohne Protokolleintrag nachfragen.
+    const bullAbstand = ersteZahl(legStats, ['bullDistance'], '')
+    const bullWurf = legStats ? (segmentAusWurf(legStats, '') ?? undefined) : undefined
     // Gezaehlt wird genau die eine Aufnahme, die mit diesem Ereignis fertig
     // geworden ist - und die gehoert nicht zwangslaeufig dem Spieler, der
     // JETZT am Wurf ist (siehe Abschluss oben).
@@ -608,21 +614,30 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
     // faelschlich als Finishversuch gezaehlt.
     const restVorZug = remaining + punkteDesZugs
     const versuch = zaehlt && restVorZug >= 2 && restVorZug <= 170
-    // Fuer die Zahl der Finishversuche gibt es keine Entsprechung beim
-    // Server (er fuehrt checkouts und checkoutPercent, nicht die Versuche) -
-    // sie bleibt deshalb selbst gezaehlt.
-    const checkoutAttempts = (vorheriger?.checkoutAttempts ?? 0) + (versuch ? 1 : 0)
-    const checkoutHits =
+    // matchStats fuehrt beides: `checkouts` sind die Finishversuche,
+    // `checkoutsHit` die getroffenen (daneben steht `checkoutPercent`, die
+    // Quote aus beiden). Beide Namen stammen aus einem echten Protokoll vom
+    // 10.09.2026, nicht aus einer Vermutung. Bis 0.1.0-beta.11 wurde
+    // `checkouts` faelschlich als Treffer gelesen und die Versuche selbst
+    // gezaehlt - die Quote war damit doppelt falsch.
+    const checkoutAttempts =
       ersteZahl(matchStats, ['checkouts'], `stats[${index}].matchStats.checkouts`) ??
+      (vorheriger?.checkoutAttempts ?? 0) + (versuch ? 1 : 0)
+    const checkoutHits =
+      ersteZahl(matchStats, ['checkoutsHit'], `stats[${index}].matchStats.checkoutsHit`) ??
       (vorheriger?.checkoutHits ?? 0) + (zaehlt && remaining === 0 ? 1 : 0)
     const count180 =
       ersteZahl(matchStats, ['total180'], `stats[${index}].matchStats.total180`) ??
       (vorheriger?.count180 ?? 0) + (zaehlt && punkteDesZugs === 180 ? 1 : 0)
 
     const finishJetzt = zaehlt && remaining === 0 ? punkteDesZugs : 0
+    // Das hoechste Finish fuehrt matchStats NICHT (die Felder sind: average,
+    // averageUntil170, checkoutPercent, checkoutPoints, checkoutPointsAverage,
+    // checkouts, checkoutsHit, dartsThrown, dartsUntil170, first9Average,
+    // first9Score, less60, plus60/100/140/170, score, scoreUntil170,
+    // total180). Es bleibt deshalb selbst gezaehlt.
     const highestFinish =
-      ersteZahl(matchStats, ['highestFinish'], `stats[${index}].matchStats.highestFinish`) ??
-      (finishJetzt > (vorheriger?.highestFinish ?? 0) ? finishJetzt : (vorheriger?.highestFinish ?? null))
+      finishJetzt > (vorheriger?.highestFinish ?? 0) ? finishJetzt : (vorheriger?.highestFinish ?? null)
 
     return {
       playerId: spieler.id,
