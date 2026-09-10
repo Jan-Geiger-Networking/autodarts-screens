@@ -195,3 +195,48 @@ Der Fehlerrumpf des Servers hat durchgängig die Form
 `{"statusCode":401,"error":{"status":401,"code":"unauthorized","message":"unauthorized"}}`
 — nützlich, um in der Anwendung zwischen „nicht angemeldet" und anderen
 Fehlern zu unterscheiden.
+
+## WebSocket-Abonnements: Kanal- und Themennamen, eigener Fund 2026-09-10
+
+Quelle: `https://play.autodarts.com/assets/clients-B_BDSwju.js`, offizieller
+Web-Client. Der Dateiname enthält einen Hash und ändert sich bei jedem
+Deploy — diese genaue Adresse kann also schon beim nächsten Blick veraltet
+sein, der Fund selbst (Rahmenwerk, Kanal- und Themennamen) bleibt davon
+unberührt, solange das Frontend nicht umgebaut wird.
+
+| Feld | Wert | Quelle | Vertrauensgrad |
+|---|---|---|---|
+| Abonnement-Rahmenwerk | `sub(e,t){ this.send({ type: "subscribe", channel: e, topic: t }) }` / `unsub(e,t){ this.send({ type: "unsubscribe", channel: e, topic: t }) }` | Methoden `sub`/`unsub` im genannten Bundle | aus veröffentlichtem, unauthentifiziertem JS-Bundle der offiziellen Web-App |
+| Kanalnamen | `autodarts.boards`, `autodarts.boards.images`, `autodarts.lobbies`, `autodarts.matches`, `autodarts.matchmaking`, `autodarts.users` | wie oben | wie oben |
+| Themenform | `<kennung>.<zweck>` | wie oben | wie oben |
+| Belegte Zwecke | `.matches`, `.state`, `.events`, `.game-events`, `.stream`, `.corrections` | wie oben | wie oben |
+| Board-Match-Feed | Kanal `autodarts.boards`, Thema `<boardId>.matches` | Ableitung aus obiger Tabelle, umgesetzt in `boardThema()`, `src/autodarts/websocket.ts` | wie oben |
+| Match-Zustand-Feed | Kanal `autodarts.matches`, Thema `<matchId>.state` | Ableitung aus obiger Tabelle, umgesetzt in `matchThema()`, `src/autodarts/websocket.ts` | wie oben |
+| Datum der Feststellung | 2026-09-10 | — | — |
+
+Weiterhin unbestätigt: welches Feld eines Rohereignisses die Match-Kennung
+trägt (`matchId`, `id` oder `match` sind die geprüften Kandidaten, siehe
+`matchIdAusEreignis()` in `src/autodarts/websocket.ts`). Das braucht einen
+echten Mitschnitt (siehe `docs/UEBERGABE.md`).
+
+### Ereignis-Umschlag, eigener Live-Fund 2026-09-10
+
+Während der Umsetzung dieser Aufgabe lief die Anwendung des Herausgebers
+bereits mit gesetzter Board-Kennung und bestehender Anmeldung (`npm run dev`,
+Hot-Reload bei jedem Speichern). Dabei kam **ein echtes Ereignis** vom Kanal
+`autodarts.boards` an und landete unverändert im Diagnoseprotokoll:
+
+```
+Ereignis empfangen: Kanal=autodarts.boards Thema=<boardId>.matches Felder=[channel:string, topic:string, data:object]
+```
+
+Das bestätigt: Ein eingehendes Ereignis ist selbst in denselben Umschlag
+gepackt wie die abgehenden Abonnement-Rahmen — `channel` und `topic` als
+eigene Felder, die eigentliche Nutzlast liegt darunter in `data`. Nicht
+bestätigt: was innerhalb von `data` steht (das Diagnoseprotokoll zeigt nur
+`data:object`, nicht dessen eigene Feldnamen — bei diesem einen Ereignis
+fehlte dort jedenfalls eines der Kandidatenfelder `matchId`/`id`/`match`, es
+war also vermutlich kein Match-Start, sondern z. B. ein Board-Statusereignis).
+`matchIdAusEreignis()` sucht deshalb zuerst am Ereignis selbst und dann in
+einem etwaigen `data`-Feld — weiterhin nur unter den drei genannten
+Kandidatennamen, nicht geraten.

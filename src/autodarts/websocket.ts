@@ -1,25 +1,50 @@
 // WebSocket-Anbindung an Autodarts: Ticket holen, Verbindung aufbauen,
 // Abonnements verwalten, bei Abbruch mit wachsendem Abstand neu verbinden.
 //
-// Der gesamte Ablauf hier ist eine Annahme aus Community-Projekten (siehe
-// Task-5-Brief). Bestaetigt per eigenem Test ist ausschliesslich, dass
-// POST /ms/v0/tickets existiert (401 statt 404, siehe docs/autodarts-api.md,
-// Abschnitt "Endpunkt-Existenz, eigener Test") - Rumpf und Antwortform des
-// Tickets, die WebSocket-Adresse, das Abonnement-Format und die Kanal-/
-// Themennamen sind unbestaetigt. Jede darauf beruhende Stelle ist unten als
-// Annahme markiert; Abweichungen werden protokolliert statt stillschweigend
-// zu scheitern. Kein zusaetzliches Paket - Electron liefert im Hauptprozess
-// eine WebSocket-Implementierung mit.
+// Der gesamte Ablauf hier stammte urspruenglich aus einer Annahme aus
+// Community-Projekten (siehe Task-5-Brief). Inzwischen bestaetigt: Ticket im
+// Feld "code" (siehe ticketAusAntwort), der Abfrageparameter "code" statt
+// "ticket" (siehe subscribeAdresse), das Abonnement-Rahmenwerk
+// {channel,type,topic} sowie die Kanal- und Themennamen KANAL_BOARDS/
+// KANAL_MATCHES/boardThema/matchThema - alle am 2026-09-10 aus dem
+// offiziellen Web-Client belegt (siehe docs/autodarts-api.md). Unbestaetigt
+// bleibt weiterhin, welches Feld eines Ereignisses die Match-Kennung traegt
+// (siehe matchIdAusEreignis) - dafuer fehlt bislang ein echter Mitschnitt.
+// Kein zusaetzliches Paket - Electron liefert im Hauptprozess eine
+// WebSocket-Implementierung mit.
 
 import { holen, NichtAngemeldetFehler, senden } from './rest'
 import { aufzeichnungBeenden, aufzeichnungStarten, wiedergeben } from './aufzeichnung'
-import { protokollieren } from './diagnose'
+import { feldUebersicht, protokollieren } from './diagnose'
 
 // Annahme: Verbindungsadresse laut Community-Projekten, nicht selbst bestaetigt.
 const WS_ADRESSE = 'wss://api.autodarts.com/ms/v0/subscribe'
 
+// Kanal- und Themennamen, bestaetigt am 2026-09-10 aus dem offiziellen
+// Web-Client (https://play.autodarts.com/assets/clients-B_BDSwju.js - der
+// Dateiname enthaelt einen Hash und aendert sich bei jedem Deploy, siehe
+// docs/autodarts-api.md). Ein Thema hat die Form "<kennung>.<zweck>"; von den
+// bestaetigten Zwecken (.matches, .state, .events, .game-events, .stream,
+// .corrections) sind hier nur die beiden bislang gebrauchten abgebildet.
+export const KANAL_BOARDS = 'autodarts.boards'
+export const KANAL_MATCHES = 'autodarts.matches'
+
+/** Thema, um die Match-Ereignisse eines Boards zu abonnieren. */
+export function boardThema(boardId: string): string {
+  return `${boardId}.matches`
+}
+
+/** Thema, um den Zustand eines einzelnen Matches zu abonnieren. */
+export function matchThema(matchId: string): string {
+  return `${matchId}.state`
+}
+
 export type Verbindung = {
   abonnieren(kanal: string, thema: string): void
+  // Gegenstueck zu abonnieren() - entfernt den Eintrag auch aus der
+  // Merkliste (siehe abonnements unten), damit eine spaetere
+  // Wiederverbindung das abbestellte Thema nicht erneut sendet.
+  abbestellen(kanal: string, thema: string): void
   // Liefert ein Promise, das erst aufgeloest wird, wenn eine laufende
   // Aufzeichnung tatsaechlich vollstaendig auf die Platte geschrieben ist -
   // damit die Anwendung beim Beenden darauf warten kann, statt den Prozess
@@ -133,18 +158,53 @@ export function ticketAusAntwort(antwort: unknown): string {
   )
 }
 
+// Gaengige Kandidatenfelder fuer die Match-Kennung in einem Rohereignis, in
+// Pruefreihenfolge. Nicht geraten, sondern die vom Herausgeber genannte Liste
+// - welches Feld Autodarts tatsaechlich benutzt, ist unbekannt, bis ein
+// echter Mitschnitt vorliegt (siehe matchIdAusEreignis).
+const MATCH_KENNUNG_KANDIDATEN = ['matchId', 'id', 'match'] as const
+
+function ersterKandidat(objekt: unknown): string | null {
+  if (typeof objekt !== 'object' || objekt === null) return null
+  const feldwerte = objekt as Record<string, unknown>
+  for (const feld of MATCH_KENNUNG_KANDIDATEN) {
+    const wert = feldwerte[feld]
+    if (typeof wert === 'string' && wert.length > 0) return wert
+  }
+  return null
+}
+
+// Live am 2026-09-10 beobachtet (siehe Diagnoseprotokoll waehrend dieser
+// Aufgabe, Abonnement-Report): ein echtes Ereignis vom Board-Kanal kam als
+// {channel, topic, data} an - die eigentliche Nutzlast steckt in "data",
+// nicht im Umschlag selbst. Kein Ratewert: beobachtet wurde nur, DASS ein
+// "data"-Feld den Rest traegt - nicht, was darin steht (die Kandidatensuche
+// unten bleibt dieselbe). matchZustandNeuLaden() liefert dagegen die
+// REST-Antwort direkt ohne diesen Umschlag (deshalb zuerst am Objekt selbst
+// suchen, dann erst in "data").
+function nutzlast(roh: unknown): unknown {
+  if (typeof roh !== 'object' || roh === null) return roh
+  const wert = (roh as Record<string, unknown>).data
+  return typeof wert === 'object' && wert !== null ? wert : roh
+}
+
 /**
- * Heuristische Extraktion einer Match-Kennung aus einem Rohereignis, um nach
- * einer Wiederverbindung zu wissen, welches Match per GET
- * /gs/v0/matches/{matchId}/state neu geladen werden muss. Annahme: Ereignisse
- * tragen ein Top-Level-Feld "matchId" (passend zum bestaetigten Endpunkt-Pfad
- * und zu MatchState.matchId aus src/shared/typen.ts) - durch keinen echten
- * Mitschnitt bestaetigt, da diese Aufgabe ohne Dartscheibe umgesetzt wurde.
+ * Heuristische Extraktion einer Match-Kennung aus einem Rohereignis - sowohl
+ * um nach einer Wiederverbindung zu wissen, welches Match per GET
+ * /gs/v0/matches/{matchId}/state neu geladen werden muss, als auch um den
+ * Match-Kanal (KANAL_MATCHES/matchThema) automatisch zu abonnieren. Prueft
+ * MATCH_KENNUNG_KANDIDATEN der Reihe nach, zuerst am Objekt selbst und dann -
+ * falls dort nichts passt - in einem verschachtelten "data"-Feld (siehe
+ * nutzlast oben), und liefert den ersten Treffer, der eine nichtleere
+ * Zeichenkette ist. Ein Kandidatenfeld mit falschem Typ (z.B. eine Zahl) wird
+ * uebersprungen statt die Suche abzubrechen. Liefert null, wenn kein Kandidat
+ * passt; welches Feld die eigentliche Nutzlast tatsaechlich benutzt, ist
+ * durch keinen echten Mitschnitt bestaetigt, da diese Aufgabe ohne
+ * Dartscheibe umgesetzt wurde. Liefert null: ereignisVerarbeiten() in
+ * echteVerbindung() protokolliert das einmalig deutlich.
  */
-function matchIdAusEreignis(roh: unknown): string | null {
-  if (typeof roh !== 'object' || roh === null) return null
-  const wert = (roh as Record<string, unknown>).matchId
-  return typeof wert === 'string' && wert.length > 0 ? wert : null
+export function matchIdAusEreignis(roh: unknown): string | null {
+  return ersterKandidat(roh) ?? ersterKandidat(nutzlast(roh))
 }
 
 /**
@@ -191,6 +251,9 @@ function wiedergabeVerbindung(pfad: string, beiEreignis: (roh: unknown) => void)
     abonnieren: () => {
       // Es gibt keine echte Verbindung, also nichts zu abonnieren.
     },
+    abbestellen: () => {
+      // Siehe abonnieren oben - nichts zu abbestellen ohne echte Verbindung.
+    },
     schliessen: () => {
       // Siehe Kommentar oben - nichts zu schliessen, nichts zu erwarten.
       return Promise.resolve()
@@ -214,18 +277,88 @@ async function echteVerbindung(
   let wiederverbindungsVersuch = 0
   let wiederverbindungsTimer: ReturnType<typeof setTimeout> | null = null
 
-  // Nur das allererste Ereignis ist fuers Diagnoseprotokoll interessant (ein
-  // Beleg, dass ueberhaupt etwas ankommt) - jedes weitere waere nur Rauschen
-  // in einer Datei, die sich ohnehin selbst begrenzt.
-  let erstesEreignisProtokolliert = false
+  // Nur einmal protokolliert, nicht bei jedem Ereignis ohne Match-Kennung -
+  // sonst waere das eine Zeile pro Ereignis, solange noch kein Match laeuft
+  // (z.B. Board-Heartbeats). Der Herausgeber sieht die Feldnamen ohnehin bei
+  // jedem Ereignis (siehe ereignisProtokollZeile) - dieser Hinweis ist nur
+  // die deutliche Zusatzmeldung, falls MATCH_KENNUNG_KANDIDATEN nie greift.
+  let matchKennungFehltProtokolliert = false
+
+  // Fasst ein Ereignis fuers Diagnoseprotokoll zusammen: Kanal und Thema aus
+  // dem Umschlag, plus die Feldnamen der eigentlichen Nutzlast (nutzlast()
+  // oben entpackt ein etwaiges "data"-Feld) ueber feldUebersicht() - nie die
+  // Werte. Jedes Ereignis wird protokolliert (nicht nur das erste): das
+  // Diagnoseprotokoll begrenzt sich selbst (siehe diagnose.ts, MAX_BYTES),
+  // und genau diese Feldnamen sind es, die spaeter den Adapter ermoeglichen.
+  const ereignisProtokollZeile = (roh: unknown): string => {
+    const objekt = typeof roh === 'object' && roh !== null ? (roh as Record<string, unknown>) : null
+    const kanal = objekt && typeof objekt.channel === 'string' ? objekt.channel : '?'
+    const thema = objekt && typeof objekt.topic === 'string' ? objekt.topic : '?'
+    return `Ereignis empfangen: Kanal=${kanal} Thema=${thema} Felder=[${feldUebersicht(nutzlast(roh))}]`
+  }
+
+  // Kernlogik von abonnieren()/abbestellen() - auch von der automatischen
+  // Match-Erkennung unten genutzt, nicht nur vom zurueckgegebenen
+  // Verbindung-Objekt.
+  const abonnierenIntern = (kanal: string, thema: string): void => {
+    const schluessel = `${kanal} ${thema}`
+    // Schon bekannt (egal ob laengst wieder-abonniert oder frisch gesetzt)
+    // -> nichts erneut senden. Ohne diese Pruefung wuerde ein zweiter
+    // Aufruf mit demselben Kanal/Thema ein zweites, identisches
+    // subscribe-Rahmenwerk auf die Leitung schicken - wie der Server auf
+    // ein Doppel-Abonnement reagiert, ist unbekannt, im schlechtesten Fall
+    // kaeme jedes Ereignis doppelt an.
+    if (abonnements.has(schluessel)) return
+    abonnements.set(schluessel, { kanal, thema })
+    if (aktiverSocket && aktiverSocket.readyState === WebSocket.OPEN) {
+      aktiverSocket.send(JSON.stringify({ channel: kanal, type: 'subscribe', topic: thema }))
+      void protokollieren(`Abonnement gesendet: ${kanal}/${thema}`)
+    }
+  }
+
+  const abbestellenIntern = (kanal: string, thema: string): void => {
+    const schluessel = `${kanal} ${thema}`
+    // Nicht (mehr) abonniert -> nichts zu tun. Verhindert unter anderem, dass
+    // eine Wiederverbindung ein laengst abbestelltes Thema erneut sendet:
+    // abbestellen() entfernt den Eintrag aus derselben Merkliste, die
+    // alleAbonnementsSenden() nach jedem (Wieder-)Verbinden durchgeht.
+    if (!abonnements.has(schluessel)) return
+    abonnements.delete(schluessel)
+    if (aktiverSocket && aktiverSocket.readyState === WebSocket.OPEN) {
+      aktiverSocket.send(JSON.stringify({ channel: kanal, type: 'unsubscribe', topic: thema }))
+      void protokollieren(`Abonnement abbestellt: ${kanal}/${thema}`)
+    }
+  }
+
+  // Sobald ein Ereignis eine (neue) Match-Kennung traegt: das Match-Thema
+  // abonnieren und - falls zuvor ein anderes Match lief - dessen Thema
+  // abbestellen. Eine neue Match-Kennung heisst zwangslaeufig, dass ein
+  // vorheriges Match vorbei ist (es gibt immer nur ein laufendes Match je
+  // Board) - eine eigene "Match zu Ende"-Kennung waere eine weitere Annahme
+  // ueber ein unbekanntes Ereignisfeld, die sich ohne Mitschnitt nicht
+  // pruefen liesse.
+  const matchAbonnementAktualisieren = (matchId: string): void => {
+    if (matchId === aktuellerMatchId) return
+    const vorherigeMatchId = aktuellerMatchId
+    aktuellerMatchId = matchId
+    if (vorherigeMatchId) abbestellenIntern(KANAL_MATCHES, matchThema(vorherigeMatchId))
+    abonnierenIntern(KANAL_MATCHES, matchThema(matchId))
+    void protokollieren(`Match erkannt, ${KANAL_MATCHES}/${matchThema(matchId)} abonniert`)
+  }
 
   const ereignisVerarbeiten = (roh: unknown): void => {
-    if (!erstesEreignisProtokolliert) {
-      erstesEreignisProtokolliert = true
-      void protokollieren('Erstes Ereignis empfangen')
-    }
+    void protokollieren(ereignisProtokollZeile(roh))
+
     const matchId = matchIdAusEreignis(roh)
-    if (matchId) aktuellerMatchId = matchId
+    if (matchId) {
+      matchAbonnementAktualisieren(matchId)
+    } else if (!aktuellerMatchId && !matchKennungFehltProtokolliert) {
+      matchKennungFehltProtokolliert = true
+      void protokollieren(
+        `Keine Match-Kennung unter den bekannten Feldern (${MATCH_KENNUNG_KANDIDATEN.join(', ')}) gefunden - weder im Ereignis selbst noch in einem verschachtelten "data"-Feld - kein automatisches Match-Abonnement moeglich.`,
+      )
+    }
+
     schreiben?.(roh)
     nutzerEreignis(roh)
   }
@@ -248,7 +381,6 @@ async function echteVerbindung(
   const alleAbonnementsSenden = (socket: WebSocket): void => {
     if (abonnements.size === 0) return
     for (const a of abonnements.values()) {
-      // Annahme: Abonnement-Form laut Community-Projekten, siehe Dateikopf.
       socket.send(JSON.stringify({ channel: a.kanal, type: 'subscribe', topic: a.thema }))
     }
     void protokollieren(`Abonnements gesendet: ${abonnements.size}`)
@@ -357,22 +489,8 @@ async function echteVerbindung(
   await verbindungOeffnen()
 
   return {
-    abonnieren(kanal: string, thema: string): void {
-      const schluessel = `${kanal} ${thema}`
-      // Schon bekannt (egal ob laengst wieder-abonniert oder frisch gesetzt)
-      // -> nichts erneut senden. Ohne diese Pruefung wuerde ein zweiter
-      // Aufruf mit demselben Kanal/Thema ein zweites, identisches
-      // subscribe-Rahmenwerk auf die Leitung schicken - wie der Server auf
-      // ein Doppel-Abonnement reagiert, ist unbekannt, im schlechtesten Fall
-      // kaeme jedes Ereignis doppelt an.
-      if (abonnements.has(schluessel)) return
-      abonnements.set(schluessel, { kanal, thema })
-      if (aktiverSocket && aktiverSocket.readyState === WebSocket.OPEN) {
-        // Annahme: Abonnement-Form laut Community-Projekten, siehe Dateikopf.
-        aktiverSocket.send(JSON.stringify({ channel: kanal, type: 'subscribe', topic: thema }))
-        void protokollieren(`Abonnement gesendet: ${kanal}/${thema}`)
-      }
-    },
+    abonnieren: abonnierenIntern,
+    abbestellen: abbestellenIntern,
     schliessen(): Promise<void> {
       geschlossen = true
       if (wiederverbindungsTimer) clearTimeout(wiederverbindungsTimer)

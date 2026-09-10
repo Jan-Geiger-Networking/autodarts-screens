@@ -6,8 +6,9 @@
 
 import { isAbsolute, resolve } from 'node:path'
 import { verbindungszustandVerteilen } from './fenster'
+import { konfigurationLesen } from './konfiguration'
 import { istAngemeldet } from '../autodarts/oauth'
-import { verbinden, type Verbindung } from '../autodarts/websocket'
+import { boardThema, KANAL_BOARDS, verbinden, type Verbindung } from '../autodarts/websocket'
 import { protokollieren } from '../autodarts/diagnose'
 
 // Die einzige offene Verbindung dieses Prozesses - gehalten, um sie beim
@@ -54,11 +55,31 @@ async function verbindungAufbauen(): Promise<void> {
       () => {
         // Adapter fehlt absichtlich (siehe docs/UEBERGABE.md) - das
         // Rohereignis geht bislang nirgendwo hin, ausser in eine laufende
-        // Aufzeichnung (die verbinden() selbst schreibt, siehe websocket.ts).
+        // Aufzeichnung und ins Diagnoseprotokoll (beides schreibt verbinden()
+        // selbst, siehe websocket.ts: jedes Ereignis wird dort mit Kanal,
+        // Thema und Feldnamen protokolliert, und ein erkanntes Match wird
+        // automatisch abonniert).
       },
       (zustand) => verbindungszustandVerteilen(zustand),
     )
     void protokollieren('Verbindung aufgebaut')
+
+    // Ohne Board-Kennung kann die Anwendung kein Match finden - es gibt
+    // keinen anderen Weg, an ein laufendes Match heranzukommen, als den
+    // Board-Kanal zu abonnieren. Im Wiedergabefall (AD_WIEDERGABE) gibt es
+    // ohnehin keine echte Verbindung, die etwas abonnieren koennte (siehe
+    // wiedergabeVerbindung in websocket.ts), deshalb hier ausgelassen.
+    if (!wiedergabe) {
+      const konfiguration = await konfigurationLesen()
+      if (konfiguration.boardId) {
+        aktiveVerbindung.abonnieren(KANAL_BOARDS, boardThema(konfiguration.boardId))
+        void protokollieren(`Board abonniert: ${KANAL_BOARDS}/${boardThema(konfiguration.boardId)}`)
+      } else {
+        void protokollieren(
+          'Kein Board-Abonnement: keine Board-Kennung in der Konfiguration - ohne sie kann die Anwendung kein Match finden. Board-Kennung im Control-Fenster setzen.',
+        )
+      }
+    }
   } catch (fehler) {
     void protokollieren(`Verbindungsaufbau fehlgeschlagen: ${fehler instanceof Error ? fehler.message : String(fehler)}`)
     console.error('Autodarts-Verbindung konnte nicht aufgebaut werden, bleibe im Ruhezustand:', fehler)

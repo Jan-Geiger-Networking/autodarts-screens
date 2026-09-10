@@ -11,22 +11,38 @@ vi.mock('../autodarts/oauth', () => ({
 }))
 
 const verbindenMock = vi.fn()
-vi.mock('../autodarts/websocket', () => ({
-  verbinden: verbindenMock,
-}))
+vi.mock('../autodarts/websocket', async (importOriginal) => {
+  // boardThema/KANAL_BOARDS sind reine Werte/Funktionen - die echten reichen
+  // hier, nur verbinden() selbst muss gemockt werden (echte Netzwerkanfragen
+  // waeren sonst unvermeidlich).
+  const echte = await importOriginal<typeof import('../autodarts/websocket')>()
+  return { ...echte, verbinden: verbindenMock }
+})
 
 const verbindungszustandVerteilenMock = vi.fn()
 vi.mock('./fenster', () => ({
   verbindungszustandVerteilen: verbindungszustandVerteilenMock,
 }))
 
-const { verbindungStarten } = await import('./verbindung')
+const konfigurationLesenMock = vi.fn()
+vi.mock('./konfiguration', () => ({
+  konfigurationLesen: konfigurationLesenMock,
+}))
+
+const { verbindungBeenden, verbindungStarten } = await import('./verbindung')
 
 describe('verbindungStarten: Single-Flight fuer gleichzeitige Verbindungsversuche', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Reset des modulinternen aktiveVerbindung-Zustands vor jedem Test -
+    // sonst wuerde ein Test, der wirklich verbindet (siehe Board-Abonnement-
+    // Tests unten), jeden nachfolgenden Test verfaelschen: verbindungStarten()
+    // uebersprringt bei bereits aktiver Verbindung sofort, ohne istAngemeldet()
+    // erneut aufzurufen.
+    await verbindungBeenden()
     vi.clearAllMocks()
     delete process.env.AD_WIEDERGABE
     delete process.env.AD_AUFZEICHNEN
+    konfigurationLesenMock.mockResolvedValue({ boardId: null, playerDisplayId: null, spectatorDisplayId: null })
   })
 
   it('buendelt zwei gleichzeitige Aufrufe zu genau einem Verbindungsversuch (istAngemeldet nur einmal aufgerufen)', async () => {
@@ -70,5 +86,36 @@ describe('verbindungStarten: Single-Flight fuer gleichzeitige Verbindungsversuch
     istAngemeldetMock.mockResolvedValueOnce(false)
     await verbindungStarten()
     expect(istAngemeldetMock).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('verbindungStarten: Board-Abonnement nach erfolgreichem Verbindungsaufbau', () => {
+  // Attrappe fuer die von verbinden() gelieferte Verbindung - nur abonnieren()
+  // ist fuer diese Tests interessant.
+  const abonnierenMock = vi.fn()
+
+  beforeEach(async () => {
+    await verbindungBeenden()
+    vi.clearAllMocks()
+    delete process.env.AD_WIEDERGABE
+    delete process.env.AD_AUFZEICHNEN
+    istAngemeldetMock.mockResolvedValue(true)
+    verbindenMock.mockResolvedValue({ abonnieren: abonnierenMock, abbestellen: vi.fn(), schliessen: vi.fn() })
+  })
+
+  it('abonniert autodarts.boards/<boardId>.matches, wenn die Konfiguration eine Board-Kennung hat', async () => {
+    konfigurationLesenMock.mockResolvedValue({ boardId: 'board-1', playerDisplayId: null, spectatorDisplayId: null })
+
+    await verbindungStarten()
+
+    expect(abonnierenMock).toHaveBeenCalledWith('autodarts.boards', 'board-1.matches')
+  })
+
+  it('abonniert nichts, wenn keine Board-Kennung in der Konfiguration steht', async () => {
+    konfigurationLesenMock.mockResolvedValue({ boardId: null, playerDisplayId: null, spectatorDisplayId: null })
+
+    await verbindungStarten()
+
+    expect(abonnierenMock).not.toHaveBeenCalled()
   })
 })

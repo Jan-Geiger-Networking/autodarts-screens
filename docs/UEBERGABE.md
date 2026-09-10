@@ -29,6 +29,14 @@ entstehen, der die Rohereignisse in den Anzeigezustand übersetzt.
   bei dir in Schritt 1 noch aus.
 - Die rechtlichen Pflichtangaben sind vollständig, im Repository und im
   Über-Panel der Anwendung.
+- Die Verbindung abonniert jetzt tatsächlich etwas (vorher stand sie offen und
+  stumm): sobald sie steht, wird automatisch der Board-Kanal abonniert (siehe
+  Board-Kennung, Schritt 2) und jedes ankommende Ereignis landet mit Kanal,
+  Thema und Feldnamen im Diagnoseprotokoll. Erkennt die Anwendung darin eine
+  Match-Kennung (Feld `matchId`, `id` oder `match`), abonniert sie automatisch
+  auch den Match-Zustand; wechselt die Kennung, wird das vorherige Match
+  abbestellt. Der Adapter, der daraus einen Anzeigezustand macht, fehlt
+  weiterhin absichtlich (siehe „Was noch fehlt").
 
 ## Was noch fehlt
 
@@ -116,7 +124,14 @@ noch den im Juni 2026 abgeschalteten Keycloak-Server.
 
 Voraussetzung: Schritt 1 (Anmeldung) muss vorher einmal erfolgreich
 durchgelaufen sein — ohne gespeicherte Anmeldung verbindet sich die Anwendung
-gar nicht erst, und `AD_AUFZEICHNEN` hätte nichts mitzuschneiden.
+gar nicht erst, und `AD_AUFZEICHNEN` hätte nichts mitzuschneiden. Ebenso muss
+die **Board-Kennung aus Schritt 2 im Control-Fenster gesetzt sein**, bevor du
+mitschneidest: die Anwendung abonniert den Match-Feed eines Boards
+automatisch, sobald die Verbindung steht (Kanal `autodarts.boards`, Thema
+`<boardId>.matches` — siehe `docs/autodarts-api.md`), aber nur, wenn eine
+Board-Kennung in der Konfiguration steht. Fehlt sie, bleibt die Verbindung
+offen und stumm — ohne Abonnement kommt kein Ereignis an, und der Mitschnitt
+bliebe leer.
 
 ```powershell
 $env:AD_AUFZEICHNEN = "docs\fixtures\match.jsonl"; npm run dev
@@ -161,10 +176,15 @@ entweder auf oder bestätigen sich:
 |---|---|
 | `POST /ms/v0/tickets` liefert das Ticket in einem bestimmten Antwortformat | `src/autodarts/websocket.ts` |
 | Die WebSocket-Adresse lautet `wss://api.autodarts.com/ms/v0/subscribe?ticket=<ticket>` | `src/autodarts/websocket.ts` |
-| Abonnements haben die Form `{"channel","type":"subscribe","topic"}` | `src/autodarts/websocket.ts` |
-| Die Kanal- und Themennamen für Board und Match | `src/autodarts/websocket.ts` |
 | Das Feld, das die Match-Kennung trägt | `src/autodarts/websocket.ts` |
 | Feldnamen `refresh_token` und `expires_in` in der Token-Antwort | `src/autodarts/oauth.ts` |
+
+Bestätigt und deshalb aus dieser Liste entfernt: Das Abonnement-Rahmenwerk
+(`{"channel","type":"subscribe"/"unsubscribe","topic"}`) sowie die Kanal- und
+Themennamen für Board (`autodarts.boards`/`<boardId>.matches`) und Match
+(`autodarts.matches`/`<matchId>.state`) — belegt am 2026-09-10 aus dem
+offiziellen Web-Client, siehe `docs/autodarts-api.md`, Abschnitt
+„WebSocket-Abonnements".
 
 Der Pfad `/ms/v0/tickets` selbst ist geprüft. Die Variante im Singular
 existiert nicht — das steht in mehreren Community-Projekten falsch.

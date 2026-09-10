@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NichtAngemeldetFehler, senden } from './rest'
-import { subscribeAdresse, ticketAusAntwort, verbinden, wartezeit } from './websocket'
+import {
+  boardThema,
+  matchIdAusEreignis,
+  matchThema,
+  subscribeAdresse,
+  ticketAusAntwort,
+  verbinden,
+  wartezeit,
+} from './websocket'
 
 // Ersetzt die Ticket-Beschaffung: senden() kommt aus rest.ts und wuerde ohne
 // Mock echtes fetch()/zugriffsToken() ausloesen. holen() wird ebenfalls
@@ -108,6 +116,76 @@ describe('ticketAusAntwort', () => {
     expect(() => ticketAusAntwort(null)).toThrow()
     expect(() => ticketAusAntwort(42)).toThrow()
     expect(() => ticketAusAntwort('')).toThrow()
+  })
+})
+
+describe('boardThema', () => {
+  it('haengt ".matches" an die Board-Kennung', () => {
+    expect(boardThema('board-1')).toBe('board-1.matches')
+  })
+})
+
+describe('matchThema', () => {
+  it('haengt ".state" an die Match-Kennung', () => {
+    expect(matchThema('match-1')).toBe('match-1.state')
+  })
+})
+
+describe('matchIdAusEreignis', () => {
+  // Kandidaten in Pruefreihenfolge: matchId, id, match - vom Herausgeber
+  // genannt, nicht geraten (siehe websocket.ts).
+  it('findet die Kennung im Feld matchId', () => {
+    expect(matchIdAusEreignis({ matchId: 'm1' })).toBe('m1')
+  })
+
+  it('findet die Kennung im Feld id', () => {
+    expect(matchIdAusEreignis({ id: 'm2' })).toBe('m2')
+  })
+
+  it('findet die Kennung im Feld match', () => {
+    expect(matchIdAusEreignis({ match: 'm3' })).toBe('m3')
+  })
+
+  it('bevorzugt matchId vor id vor match, wenn mehrere vorhanden sind', () => {
+    expect(matchIdAusEreignis({ matchId: 'richtig', id: 'falsch1', match: 'falsch2' })).toBe('richtig')
+    expect(matchIdAusEreignis({ id: 'richtig', match: 'falsch' })).toBe('richtig')
+  })
+
+  it('liefert null fuer ein Ereignis ohne bekanntes Kennungsfeld', () => {
+    expect(matchIdAusEreignis({ irgendwas: 'egal' })).toBeNull()
+    expect(matchIdAusEreignis({})).toBeNull()
+  })
+
+  it('ueberspringt ein Kandidatenfeld mit falschem Typ statt abzubrechen', () => {
+    // matchId ist hier eine Zahl statt einer Zeichenkette - die Suche faellt
+    // auf den naechsten Kandidaten zurueck, statt komplett zu scheitern.
+    expect(matchIdAusEreignis({ matchId: 42, id: 'm4' })).toBe('m4')
+    // Sind alle Kandidaten falsch typisiert, bleibt es bei null.
+    expect(matchIdAusEreignis({ matchId: 1, id: 2, match: 3 })).toBeNull()
+  })
+
+  it('liefert null fuer Nicht-Objekte', () => {
+    expect(matchIdAusEreignis(null)).toBeNull()
+    expect(matchIdAusEreignis('m1')).toBeNull()
+    expect(matchIdAusEreignis(42)).toBeNull()
+  })
+
+  // Live am 2026-09-10 waehrend dieser Aufgabe beobachtet: ein echtes
+  // Ereignis vom Board-Kanal kam als {channel,topic,data} an, siehe
+  // Abonnement-Report. Die Kandidatensuche muss deshalb auch in einem
+  // verschachtelten "data"-Feld greifen, nicht nur am Objekt selbst.
+  it('findet die Kennung auch in einem verschachtelten data-Feld (echter Ereignis-Umschlag)', () => {
+    expect(matchIdAusEreignis({ channel: 'autodarts.boards', topic: 'b1.matches', data: { matchId: 'm5' } })).toBe(
+      'm5',
+    )
+  })
+
+  it('bevorzugt eine Kennung am Objekt selbst vor einer in data', () => {
+    expect(matchIdAusEreignis({ matchId: 'richtig', data: { matchId: 'falsch' } })).toBe('richtig')
+  })
+
+  it('liefert null, wenn weder das Objekt noch ein verschachteltes data-Feld eine Kennung traegt', () => {
+    expect(matchIdAusEreignis({ channel: 'autodarts.boards', topic: 'b1.matches', data: { irgendwas: 1 } })).toBeNull()
   })
 })
 
@@ -232,5 +310,59 @@ describe('verbinden: Zustandsmeldungen und Abonnement-Dedublizierung', () => {
     await verbindung.schliessen()
 
     expect(zustaende).toEqual(['verbunden'])
+  })
+
+  it('abbestellen() sendet unsubscribe und tut nichts, wenn das Thema nie abonniert war', async () => {
+    vi.mocked(senden).mockResolvedValueOnce('ticket-1')
+    const verbindung = await verbinden(() => {})
+    const socket = AttrappeWebSocket.instanzen[0]!
+
+    verbindung.abbestellen('matches', 'nie-abonniert')
+    expect(socket.gesendet.length).toBe(0)
+
+    verbindung.abonnieren('matches', 'm1')
+    verbindung.abbestellen('matches', 'm1')
+    const unsub = socket.gesendet.filter((s) => s.includes('"type":"unsubscribe"') && s.includes('"topic":"m1"'))
+    expect(unsub.length).toBe(1)
+
+    verbindung.schliessen()
+  })
+
+  it('sendet ein abbestelltes Thema nach einer Wiederverbindung nicht erneut (Merkliste bereinigt)', async () => {
+    vi.mocked(senden).mockResolvedValueOnce('ticket-1').mockResolvedValueOnce('ticket-2')
+    const verbindung = await verbinden(() => {})
+
+    verbindung.abonnieren('matches', 'm1')
+    verbindung.abbestellen('matches', 'm1')
+
+    // Abbruch von aussen, dann der erste automatische Wiederverbindungsversuch.
+    AttrappeWebSocket.instanzen[0]!.close()
+    await vi.advanceTimersByTimeAsync(1000)
+
+    const zweiterSocket = AttrappeWebSocket.instanzen[1]!
+    const erneutGesendet = zweiterSocket.gesendet.filter((s) => s.includes('"topic":"m1"'))
+    expect(erneutGesendet.length).toBe(0)
+
+    verbindung.schliessen()
+  })
+
+  it('abonniert automatisch den Match-Kanal, sobald ein Ereignis eine Match-Kennung traegt, und bestellt das vorherige Match ab', async () => {
+    vi.mocked(senden).mockResolvedValueOnce('ticket-1')
+    const verbindung = await verbinden(() => {})
+    const socket = AttrappeWebSocket.instanzen[0]!
+
+    socket.onmessage?.({ data: JSON.stringify({ matchId: 'm-1' }) })
+    const ersteAnfrage = socket.gesendet.filter((s) => s.includes('"channel":"autodarts.matches"') && s.includes('"type":"subscribe"'))
+    expect(ersteAnfrage.length).toBe(1)
+    expect(ersteAnfrage[0]).toContain('"topic":"m-1.state"')
+
+    socket.onmessage?.({ data: JSON.stringify({ matchId: 'm-2' }) })
+    const abbestellt = socket.gesendet.filter((s) => s.includes('"type":"unsubscribe"'))
+    expect(abbestellt.length).toBe(1)
+    expect(abbestellt[0]).toContain('"topic":"m-1.state"')
+    const zweiteAnfrage = socket.gesendet.filter((s) => s.includes('"topic":"m-2.state"') && s.includes('"type":"subscribe"'))
+    expect(zweiteAnfrage.length).toBe(1)
+
+    verbindung.schliessen()
   })
 })
