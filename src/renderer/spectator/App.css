@@ -573,6 +573,10 @@
   overflow: hidden;
 }
 
+/* Dauer der Fahrt (1200ms) muss zu UEBERGANG_MS in Vorspann.tsx passen - auf
+   Rueckmeldung ("wirkt zu hastig auf dem grossen Bildschirm") vom
+   urspruenglichen 700ms auf das 1,7-fache angehoben. Die harte Abbremsung
+   (var(--jg-ease)) bleibt: nur der Weg dorthin ist laenger, kein Bounce. */
 @keyframes vorspann-bild-ein {
   from {
     transform: translateX(100%);
@@ -585,14 +589,39 @@
   }
 }
 
+/* Zwischenfolie ("Es geht gleich los") faehrt entgegengesetzt zu den
+   Leistungsfolien - der Richtungswechsel markiert sie als Zaesur, statt sie
+   wie eine weitere Leistung wirken zu lassen. animation-name ueberschreibt
+   dafuer nur den Keyframe-Namen, Dauer/Kurve/Fill-Mode kommen unveraendert
+   aus der jeweiligen Basisregel. */
+@keyframes vorspann-bild-ein-invers {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes vorspann-bild-aus-invers {
+  to {
+    transform: translateX(100%);
+  }
+}
+
 .vorspann-folie--ankommend {
   z-index: 2;
-  animation: vorspann-bild-ein 700ms var(--jg-ease) both;
+  animation: vorspann-bild-ein 1200ms var(--jg-ease) both;
 }
 
 .vorspann-folie--verlassend {
   z-index: 1;
-  animation: vorspann-bild-aus 700ms var(--jg-ease) both;
+  animation: vorspann-bild-aus 1200ms var(--jg-ease) both;
+}
+
+.vorspann-folie--ankommend.vorspann-folie--invers {
+  animation-name: vorspann-bild-ein-invers;
+}
+
+.vorspann-folie--verlassend.vorspann-folie--invers {
+  animation-name: vorspann-bild-aus-invers;
 }
 
 .vorspann-foto {
@@ -616,7 +645,7 @@
 }
 
 .vorspann-folie--ankommend .vorspann-foto {
-  animation: vorspann-foto-einrasten 700ms var(--jg-ease) both;
+  animation: vorspann-foto-einrasten 1200ms var(--jg-ease) both;
 }
 
 @keyframes vorspann-text-ein {
@@ -642,7 +671,7 @@
 }
 
 .vorspann-folie--ankommend .vorspann-text {
-  animation: vorspann-text-ein 550ms var(--jg-ease) 150ms both;
+  animation: vorspann-text-ein 950ms var(--jg-ease) 250ms both;
 }
 
 .vorspann-wort {
@@ -684,12 +713,40 @@
   font-size: 1.3vw;
 }
 
+/* Zwischenfolie "Es geht gleich los": eigene, volle Flaeche statt Foto plus
+   Textspalte - sie traegt keine Leistung, sondern ausschliesslich diese eine
+   Aussage, deshalb zentriert (bewusste Ausnahme von "nicht zentrieren", die
+   fuer die Leistungsfolien gilt). Flacher Farbblock wie ueberall sonst im
+   Screen, kein Farbverlauf. Gruen bleibt hier Signal, nicht Deko: nur das
+   Wort selbst ist gruen, die Flaeche dahinter bleibt --jg-bg. */
+.vorspann-signalfolie {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--jg-bg);
+}
+
+.vorspann-signalfolie-text {
+  font-family: var(--jg-font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--jg-accent);
+  font-size: 7vw;
+  text-align: center;
+  padding: 0 4vw;
+}
+
 /* Eigener Untergrund fuer das Logo statt des geteilten .bug direkt: die
    Fotos sind an dieser Bildecke nicht immer dunkel genug (z.B. ein helles
    Etikett auf dem Patch-Panel-Foto waehrend der Fahrt), das Logo wirkte dann
    kontrastarm bis "zerschnitten". Dieselbe Behandlung wie .vorspann-signal,
    nur als eigene Klasse statt am geteilten .bug (der bleibt fuer das
-   Scoreboard unveraendert, dort steht er immer auf einer flachen Farbe). */
+   Scoreboard unveraendert, dort steht er immer auf einer flachen Farbe).
+   Groesse auf Rueckmeldung verkleinert ("Signatur, kein Motiv") - vormals
+   2.8vh/0.6vh-1vh Polsterung. */
 .vorspann-logo {
   position: absolute;
   top: 2vh;
@@ -698,12 +755,12 @@
   display: flex;
   align-items: center;
   background: rgba(2, 6, 23, 0.55);
-  padding: 0.6vh 1vh;
+  padding: 0.4vh 0.8vh;
 }
 
 .vorspann-logo img {
   display: block;
-  height: 2.8vh;
+  height: 1.8vh;
   width: auto;
 }
 
