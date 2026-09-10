@@ -461,9 +461,14 @@ function Statistikleiste({ zustand }: { zustand: MatchState }) {
       titel: 'Dieses Leg',
       werte: (id) => {
         const leg = legStatistik(legHistory, id)
+        // Zahl des Servers zuerst - sie zaehlt auch das, was vor dem Start
+        // dieser Anwendung geworfen wurde.
+        const score = scores.find((s) => s.playerId === id)
+        const schnitt = score?.legAverage ?? leg.schnitt
+        const darts = score?.legDarts ?? leg.darts
         return [
-          { label: 'Average', wert: leg.schnitt === null ? '—' : leg.schnitt.toFixed(1) },
-          { label: 'Darts', wert: String(leg.darts) },
+          { label: 'Average', wert: schnitt === null ? '—' : schnitt.toFixed(1) },
+          { label: 'Darts', wert: String(darts) },
           { label: 'Beste Aufnahme', wert: leg.beste === null ? '—' : String(leg.beste) },
           { label: '100+', wert: String(leg.ueber100) },
           { label: '140+', wert: String(leg.ueber140) },

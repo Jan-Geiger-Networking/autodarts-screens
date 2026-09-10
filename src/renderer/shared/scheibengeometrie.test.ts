@@ -83,3 +83,48 @@ describe('dartPosition mit gemessenem Auftreffpunkt', () => {
     expect(oben.y).toBeLessThan(0)
   })
 })
+
+describe('dartPosition gegen echte Autodarts-Daten', () => {
+  // Drei Wuerfe aus einem echten Match des Herausgebers (S16, D19, T15,
+  // zusammen 99), samt der Kreise, die der Autodarts-Client dafuer zeichnet.
+  // Umgerechnet muessen sie in genau diesen Feldern liegen - sonst stimmt der
+  // Umrechnungsfaktor nicht.
+  const ausSvg = (cx: number, cy: number) => ({ x: cx / 500, y: -cy / 500 })
+  const seg = (koordinaten: { x: number; y: number }): Segment => ({
+    name: '?',
+    value: 0,
+    multiplier: 1,
+    koordinaten,
+  })
+
+  it('legt einen einfachen 16er ins innere Feld', () => {
+    const { x, y } = dartPosition(seg(ausSvg(-131.723, 96.517)), 0)
+    const abstand = Math.hypot(x, y)
+    expect(abstand).toBeGreaterThan(RADIUS.bullAussen)
+    expect(abstand).toBeLessThan(RADIUS.tripleInnen)
+    expect(sektorFuer(x, y)).toBe(16)
+  })
+
+  it('legt ein Doppel 19 in den Doppelring', () => {
+    const { x, y } = dartPosition(seg(ausSvg(-122.559, 346.235)), 1)
+    const abstand = Math.hypot(x, y)
+    expect(abstand).toBeGreaterThan(RADIUS.doppelInnen)
+    expect(abstand).toBeLessThan(RADIUS.doppelAussen)
+    expect(sektorFuer(x, y)).toBe(19)
+  })
+
+  it('legt ein Triple 15 in den Triple-Ring', () => {
+    const { x, y } = dartPosition(seg(ausSvg(180.239, 130.718)), 2)
+    const abstand = Math.hypot(x, y)
+    expect(abstand).toBeGreaterThan(RADIUS.tripleInnen)
+    expect(abstand).toBeLessThan(RADIUS.tripleAussen)
+    expect(sektorFuer(x, y)).toBe(15)
+  })
+})
+
+/** Sektorzahl an einer Position - Umkehrung von sektorWinkel(). */
+function sektorFuer(x: number, y: number): number {
+  const grad = (Math.atan2(y, x) * 180) / Math.PI
+  const index = Math.round((((grad + 90) % 360) + 360) % 360 / 18) % 20
+  return SEKTOREN[index]!
+}

@@ -4,6 +4,31 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.11] - 2026-09-10
+
+Elfte Beta. Alle drei Pfeile stehen auf der Scheibe, und sie sind so klein wie
+bei Autodarts.
+
+### Behoben
+- **Es wurde nur ein Pfeil angezeigt statt drei.** Sobald eine Aufnahme fertig
+  ist, hängt Autodarts den nächsten, noch leeren Zug an die Liste. Die Scheibe
+  war dadurch schlagartig leer, und was blieb, war ein einzelner Rest aus dem
+  eigenen Verlauf. Jetzt gilt der Zug davor, solange der neue leer ist — es ist
+  derselbe, den auch die Wurfleiste zeigt
+- **Die Treffermarkierungen waren viel zu groß.** Autodarts zeichnet einen
+  Punkt mit etwa einem Hundertstel des Scheibenradius, hier war er fünfmal so
+  groß und deckte halbe Felder zu. Der Treffer saß richtig, sah aber falsch
+  aus. Die Nummerierung im Punkt entfällt dafür
+- **Der Leg-Average stand auf 0.0**, obwohl der Wert vorlag: die Anzeige
+  rechnete weiter selbst, statt die Zahl des Servers zu nehmen. Betrifft
+  Player- und Zuschauer-Screen
+
+### Geprüft
+- Die Umrechnung der Auftreffpunkte ist an drei echten Würfen nachgerechnet
+  und als Test festgehalten: S16 landet im inneren Feld von Sektor 16, D19 im
+  Doppelring von Sektor 19, T15 im Triple-Ring von Sektor 15 — jeweils aus den
+  Koordinaten, die Autodarts für genau diese Würfe geliefert hat
+
 ## [0.1.0-beta.10] - 2026-09-10
 
 Zehnte Beta. Die Statistik stimmt mit Autodarts überein, und die

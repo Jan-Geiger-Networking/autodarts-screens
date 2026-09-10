@@ -69,14 +69,16 @@ export function Dartscheibe({ darts, verblasst = false }: { darts: Segment[]; ve
             {/* Drei Ringe uebereinander: der dunkle Hof hebt den Treffer von
                 jeder Feldfarbe ab (auf dem cremefarbenen Feld ging ein rein
                 gruener Punkt vorher unter), der helle Ring gibt die Kante,
-                der Kern die Signalfarbe. Dazu die Nummer des Darts, damit die
-                Reihenfolge der drei Wuerfe ablesbar ist. */}
-            <circle className="treffer-schatten" cx={x} cy={y} r="11" />
-            <circle className="treffer-hof" cx={x} cy={y} r="8.5" />
-            <circle className="treffer-kern" cx={x} cy={y} r="5" />
-            <text className="treffer-nummer" x={x} y={y}>
-              {index + 1}
-            </text>
+                der Kern die Signalfarbe.
+                Die Groesse ist bewusst klein: Autodarts zeichnet einen Punkt
+                mit einem Hundertstel des Scheibenradius. Vorher war er hier
+                fuenfmal so gross und deckte halbe Felder zu - der Treffer sass
+                richtig, sah aber falsch aus. Etwas groesser als das Vorbild
+                bleibt er trotzdem, weil diese Scheibe kleiner dargestellt
+                wird. */}
+            <circle className="treffer-schatten" cx={x} cy={y} r="4.2" />
+            <circle className="treffer-hof" cx={x} cy={y} r="3" />
+            <circle className="treffer-kern" cx={x} cy={y} r="1.9" />
           </g>
         )
       })}

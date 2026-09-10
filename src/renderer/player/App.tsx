@@ -101,6 +101,8 @@ function Spielertafel({
 }) {
   const eigene = legHistory.filter((e) => e.playerId === spieler.id)
   const leg = legStatistik(legHistory, spieler.id)
+  const legSchnitt = score?.legAverage ?? leg.schnitt
+  const legDarts = score?.legDarts ?? leg.darts
   const checkoutIstSetup = !checkout && checkoutHinweis !== null
   const wuerfe = aktiv ? (checkout ?? (checkoutHinweis ? [checkoutHinweis] : [])) : []
 
@@ -121,14 +123,17 @@ function Spielertafel({
       </div>
 
       <div className="tafel-schnitte">
-        <span className="tafel-label">Leg</span> {leg.schnitt === null ? '0.0' : leg.schnitt.toFixed(1)}
+        {/* Zahl des Servers, sonst die selbst gerechnete: Autodarts zeigte
+            Leg 92.0, wo hier 0.0 stand - der Wert lag laengst im Zustand,
+            wurde aber nicht benutzt. */}
+        <span className="tafel-label">Leg</span> {legSchnitt === null ? '0.0' : legSchnitt.toFixed(1)}
         <span className="tafel-trenner">/</span>
         <span className="tafel-label">Match</span> {score?.average3 == null ? '0.0' : score.average3.toFixed(1)}
       </div>
 
       <div className="tafel-darts">
         <DartSymbol gefuellt />
-        {leg.darts}
+        {legDarts}
       </div>
 
       {/* Der Grund, warum dieser Bildschirm neben der Scheibe haengt: was zu

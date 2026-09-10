@@ -638,3 +638,29 @@ describe('anwenden: Anfangsermittlung', () => {
     expect(ergebnis.phase).not.toBe('bullOff')
   })
 })
+
+describe('dartsAusZug: fertige Aufnahme bleibt stehen', () => {
+  it('nimmt den vorletzten Zug, wenn der letzte noch leer ist', () => {
+    // Sobald eine Aufnahme fertig ist, haengt Autodarts den naechsten, noch
+    // leeren Zug an. Ohne diesen Rueckgriff waere die Scheibe schlagartig
+    // leer, obwohl die drei Darts noch stecken - gemeldet als "es wird nur
+    // ein Pfeil angezeigt".
+    const turns = [
+      { throws: [{ segment: { number: 16, bed: 'SingleInner' } }, { segment: { number: 19, bed: 'Double' } }] },
+      { throws: [] },
+    ]
+    expect(dartsAusZug(turns, 'k')).toHaveLength(2)
+  })
+
+  it('nimmt den letzten Zug, sobald dort etwas steht', () => {
+    const turns = [
+      { throws: [{ segment: { number: 16, bed: 'SingleInner' } }] },
+      { throws: [{ segment: { number: 20, bed: 'Triple' } }] },
+    ]
+    expect(dartsAusZug(turns, 'k')).toEqual([{ name: 'T20', value: 20, multiplier: 3 }])
+  })
+
+  it('liefert [] wenn beide leer sind', () => {
+    expect(dartsAusZug([{ throws: [] }, { throws: [] }], 'k')).toEqual([])
+  })
+})

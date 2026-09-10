@@ -262,13 +262,23 @@ export function segmentAusWurf(eintrag: unknown, schluessel: string): Segment | 
 export function dartsAusZug(turns: unknown, schluessel: string): Segment[] {
   const zuege = nachIndex(turns)
   if (zuege.length === 0) return []
-  const laufender = objekt(zuege[zuege.length - 1])
-  if (!laufender) return []
 
-  return nachIndex(laufender.throws)
-    .slice(0, 3)
-    .map((eintrag, i) => segmentAusWurf(eintrag, `${schluessel}-wurf-${i}`))
-    .filter((s): s is Segment => s !== null)
+  const wuerfeVon = (zug: unknown): Segment[] => {
+    const o = objekt(zug)
+    if (!o) return []
+    return nachIndex(o.throws)
+      .slice(0, 3)
+      .map((eintrag, i) => segmentAusWurf(eintrag, `${schluessel}-wurf-${i}`))
+      .filter((s): s is Segment => s !== null)
+  }
+
+  // Der laufende Zug ist der letzte Eintrag. Sobald eine Aufnahme fertig ist,
+  // haengt Autodarts den naechsten, noch leeren Zug an - dann waere die
+  // Scheibe schlagartig leer, obwohl die drei Darts noch stecken. In dem Fall
+  // gilt der Zug davor: es ist derselbe, den auch die Wurfleiste zeigt.
+  const letzte = wuerfeVon(zuege[zuege.length - 1])
+  if (letzte.length > 0) return letzte
+  return zuege.length >= 2 ? wuerfeVon(zuege[zuege.length - 2]) : []
 }
 
 // ---------------------------------------------------------------------
