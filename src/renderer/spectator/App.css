@@ -684,6 +684,29 @@
   font-size: 1.3vw;
 }
 
+/* Eigener Untergrund fuer das Logo statt des geteilten .bug direkt: die
+   Fotos sind an dieser Bildecke nicht immer dunkel genug (z.B. ein helles
+   Etikett auf dem Patch-Panel-Foto waehrend der Fahrt), das Logo wirkte dann
+   kontrastarm bis "zerschnitten". Dieselbe Behandlung wie .vorspann-signal,
+   nur als eigene Klasse statt am geteilten .bug (der bleibt fuer das
+   Scoreboard unveraendert, dort steht er immer auf einer flachen Farbe). */
+.vorspann-logo {
+  position: absolute;
+  top: 2vh;
+  left: 2vh;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  background: rgba(2, 6, 23, 0.55);
+  padding: 0.6vh 1vh;
+}
+
+.vorspann-logo img {
+  display: block;
+  height: 2.8vh;
+  width: auto;
+}
+
 /* Dauerhaftes Signal: sagt in jeder Folie, dass es gleich losgeht - Gruen
    bleibt dabei ausschliesslich dieses Signal, keine Dekoration sonst (siehe
    Abschnitt 12/Farbrollen). */
@@ -738,8 +761,8 @@
   }
 }
 
-/* Kontakt und Herstellerzeichen: dauerhaft, dezent, an fester Stelle -
-   gehoeren zum Rahmen, nicht zu einer einzelnen Folie. */
+/* Kontakt und Partner-Namen: dauerhaft, dezent, an fester Stelle - gehoeren
+   zum Rahmen, nicht zu einer einzelnen Folie. */
 .vorspann-fuss {
   position: absolute;
   left: 2vh;
@@ -752,19 +775,23 @@
   gap: 3vw;
 }
 
+/* Schlichte Namenszeile statt Logo-Reihe (siehe Kommentar bei PARTNER in
+   Vorspann.tsx) - Trenner per ::after wie bei .statistikleiste-verlauf, statt
+   Rahmen oder Kasten. */
 .vorspann-partner {
   display: flex;
   align-items: center;
-  gap: 2.4vw;
-  opacity: 0.55;
+  font-family: var(--jg-font-display);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  font-size: 1.4vh;
+  color: var(--jg-muted);
 }
 
-.vorspann-partner img {
-  height: 2.2vh;
-  width: auto;
-  /* Herstellerzeichen einfarbig hell erzwingen, unabhaengig von ihrer
-     Ausgangsfarbe: erst auf Schwarz reduzieren, dann invertieren. */
-  filter: brightness(0) invert(1);
+.vorspann-partner span:not(:last-child)::after {
+  content: '·';
+  margin: 0 0.9vw;
+  color: var(--jg-border-strong);
 }
 
 .vorspann-kontakt {

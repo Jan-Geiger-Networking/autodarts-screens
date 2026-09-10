@@ -17,11 +17,6 @@ import logoWeiss from '../../../assets/logo-white.png'
 import patchpanel from '../../../assets/vorspann-patchpanel.jpg'
 import server from '../../../assets/vorspann-server.jpg'
 import switchFoto from '../../../assets/vorspann-switch.jpg'
-import cisco from '../../../assets/partner/cisco.svg'
-import juniper from '../../../assets/partner/juniper.svg'
-import tpLink from '../../../assets/partner/tp-link.svg'
-import ubiquiti from '../../../assets/partner/ubiquiti.svg'
-import backblaze from '../../../assets/partner/backblaze.svg'
 import { vorfuehrungAktiv, vorspannFolieParam } from './vorfuehrung'
 
 /** Fester Takt zwischen zwei Folien - siehe "Takt statt Zufall" in der Vorgabe. */
@@ -58,16 +53,14 @@ const FOLIEN: Folie[] = [
   { zeilen: ['Windows-', 'Lizenzen'], groesse: 'gross', bild: switchFoto },
 ]
 
-// Herstellerzeichen, mit denen der Herausgeber arbeitet - Beleg fuer
+// Hersteller, mit denen der Herausgeber arbeitet - Beleg fuer
 // Networking/Hosting/Backup, deshalb dauerhaft in einer ruhigen Zone statt an
-// einzelne Folien gebunden.
-const PARTNER = [
-  { name: 'Cisco', src: cisco },
-  { name: 'Juniper', src: juniper },
-  { name: 'TP-Link', src: tpLink },
-  { name: 'Ubiquiti', src: ubiquiti },
-  { name: 'Backblaze', src: backblaze },
-]
+// einzelne Folien gebunden. Als schlichte Namenszeile statt als Logo-Reihe:
+// die im Design-System vorhandenen SVGs waren dort selbst als "(Platzhalter)"
+// ausgezeichnet (gestrichelte Box, Schreibmaschinenschrift) - auf einem
+// Screen vor Gaesten sieht das nach unfertiger Arbeit aus. Echte Hersteller-
+// Logos ohne Zustimmung nachzubauen waere zudem markenrechtlich heikel.
+const PARTNER = ['Cisco', 'Juniper', 'TP-Link', 'Ubiquiti', 'Backblaze']
 
 export function Vorspann() {
   // ?vorfuehrung&folie=N haelt den Vorspann auf einer Folie fest, unabhaengig
@@ -106,7 +99,9 @@ export function Vorspann() {
       {vorheriger !== null && <VorspannFolie key={`v-${vorheriger}`} folie={FOLIEN[vorheriger]!} rolle="verlassend" />}
       <VorspannFolie key={`a-${aktuell}`} folie={folie} rolle="ankommend" />
 
-      <img className="bug" src={logoWeiss} alt="JGNet" />
+      <div className="vorspann-logo">
+        <img src={logoWeiss} alt="JGNet" />
+      </div>
 
       <div className="vorspann-signal">
         <span className="vorspann-signal-punkt" />
@@ -115,8 +110,8 @@ export function Vorspann() {
 
       <div className="vorspann-fuss">
         <div className="vorspann-partner">
-          {PARTNER.map((p) => (
-            <img key={p.name} src={p.src} alt={p.name} />
+          {PARTNER.map((name) => (
+            <span key={name}>{name}</span>
           ))}
         </div>
         <div className="vorspann-kontakt">jgnet.eu · hey@bsbnet.eu · +49 5222 9179070</div>
