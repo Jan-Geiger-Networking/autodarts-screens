@@ -169,7 +169,26 @@ export function App() {
   if (!zustand || zustand.phase === 'idle' || zustand.players.length === 0) {
     return (
       <div className="ruhezustand">
-        <img className="ruhezustand-logo" src={logoWeiss} alt="JGNet" />
+        {/* Ringe, die langsam aus der Mitte nach aussen laufen - das Motiv
+            der Scheibe selbst. Sehr langsam und sehr leise gehalten: der
+            Bildschirm haengt neben dem Board, und sobald geworfen wird, ist
+            er ohnehin durch den Spielstand ersetzt. */}
+        <div className="ruhezustand-ringe" aria-hidden="true">
+          <span className="ruhering" />
+          <span className="ruhering" />
+          <span className="ruhering" />
+        </div>
+        <div className="ruhezustand-mitte">
+          <img className="ruhezustand-logo" src={logoWeiss} alt="JGNet" />
+          <p className="ruhezustand-text">
+            Warte auf Spielstart
+            <span className="ruhepunkte" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </span>
+          </p>
+        </div>
       </div>
     )
   }

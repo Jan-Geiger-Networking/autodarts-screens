@@ -56,3 +56,30 @@ describe('dartPosition', () => {
     expect(dartPosition(seg('T20', 20, 3), 2)).toEqual(dartPosition(seg('T20', 20, 3), 2))
   })
 })
+
+describe('dartPosition mit gemessenem Auftreffpunkt', () => {
+  it('nimmt den gemessenen Punkt, statt die Feldmitte zu schaetzen', () => {
+    // Beispiel aus einem echten Autodarts-Bild: der Client zeichnet dafuer
+    // einen Kreis bei cx=14.36, cy=-357.73 in einem SVG mit Radius 500.
+    const gemessen = { x: 14.36 / 500, y: 357.73 / 500 }
+    const { x, y } = dartPosition({ name: '20', value: 20, multiplier: 1, koordinaten: gemessen }, 0)
+
+    // Oberhalb der Mitte (SVG-y negativ), knapp innerhalb des Doppelrings.
+    expect(y).toBeLessThan(0)
+    const abstand = Math.hypot(x, y)
+    expect(abstand).toBeGreaterThan(RADIUS.tripleAussen)
+    expect(abstand).toBeLessThan(RADIUS.doppelInnen + 1)
+  })
+
+  it('streut gemessene Punkte NICHT - sie sind schon verschieden', () => {
+    const seg = (x: number): Segment => ({ name: '20', value: 20, multiplier: 1, koordinaten: { x, y: 0.5 } })
+    expect(dartPosition(seg(0.1), 0)).not.toEqual(dartPosition(seg(0.2), 1))
+    // Derselbe Punkt bleibt derselbe, egal als wievielter Dart.
+    expect(dartPosition(seg(0.1), 0)).toEqual(dartPosition(seg(0.1), 2))
+  })
+
+  it('spiegelt die y-Achse, weil Autodarts y nach oben zaehlt', () => {
+    const oben = dartPosition({ name: '20', value: 20, multiplier: 1, koordinaten: { x: 0, y: 0.5 } }, 0)
+    expect(oben.y).toBeLessThan(0)
+  })
+})

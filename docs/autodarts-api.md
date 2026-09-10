@@ -400,3 +400,72 @@ Eine vom Server geführte Zahl hat diese Eigenschaft nicht.
 Sechs Ereignisse trugen statt des Zustands die Felder
 `channel, error, topic, type`. Sie kamen auf demselben Thema an. Der Adapter
 behandelt sie wie jedes unerwartete Schema: protokollieren, überspringen.
+
+## Wurfdaten: `turns`, `throws`, `segment`, `coords` — belegt aus dem Quelltext des Web-Clients 2026-09-10
+
+Quelle: `https://play.autodarts.com/assets/use-game-CDD_V3db.js` (Dateiname
+enthält einen Hash und ändert sich bei jedem Deploy). Vertrauen: **hoch** —
+das ist der Code, der die Anzeige auf play.autodarts.com selbst erzeugt.
+
+### `turns` ist eine flache Liste, nicht nach Spieler indiziert
+
+Wörtlich im Quelltext:
+
+```js
+let c = t.turns[t.turns.length - 1]
+```
+
+Der laufende Zug ist der **letzte Eintrag** der Liste. Bis 0.1.0-beta.8 griff
+dieses Projekt mit `turns[spielerIndex]` zu — das ist der Grund, warum die
+Wurfliste in echten Matches immer leer blieb: keine Pfeile auf der Scheibe,
+keine Namen in der Wurfleiste, und (bis beta.8) keine Statistik.
+
+### Ein Zug trägt `throws`, ein Wurf `segment` und `coords`
+
+```js
+let a = t.throws[e]                     // t ist ein Zug
+e.coords !== void 0 || e.segment.name === `Miss`
+```
+
+### `segment` hat `number` und `bed`
+
+```js
+function boardSegmentKey(e) {
+  switch (e.bed) {
+    case Bed.Double:       return e.number === 25 ? `Bull` : `D` + e.number
+    case Bed.SingleInner:  return e.number === 25 ? `25`   : `SI` + e.number
+    case Bed.SingleOuter:  return `SO` + e.number
+    ...
+```
+
+Bekannte `bed`-Werte: `Single`, `SingleInner`, `SingleOuter`, `Double`,
+`Triple`, `Outside`. `Outside` ist ein Wurf neben die Scheibe.
+
+### `coords` sind normiert auf -1..1, y zeigt nach oben
+
+```js
+function toSvg(e) { return { cx: e.x * RADIUS, cy: -e.y * RADIUS } }
+```
+
+`RADIUS` ist 500; im selben SVG endet der Doppelring außen bei 377,778. Für
+ein Raster, in dem der Doppelring außen dem Wert 100 entspricht, gilt also:
+
+```
+x_eigen =  x * (500 / 377,778) * 100
+y_eigen = -y * (500 / 377,778) * 100
+```
+
+Gegenprobe an einem echten Kreis aus der Autodarts-Anzeige
+(`cx=14,36 cy=-357,73`): Abstand 358 von 377,778 → 94,8 % des
+Doppelring-Radius, Winkel knapp rechts der Senkrechten — ein einfaches Feld
+20 dicht am Doppel. Passt.
+
+### Weiterer Fund: Autodarts liefert einen eigenen Checkout-Vorschlag
+
+```js
+t.state?.checkoutGuides?.[t.player]
+```
+
+Bisher nicht genutzt — dieses Projekt rechnet den Weg selbst
+(`src/shared/checkout.ts`). Falls die beiden je auseinanderlaufen, ist hier
+die Vergleichsquelle.

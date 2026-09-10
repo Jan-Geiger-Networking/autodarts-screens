@@ -4,6 +4,42 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.9] - 2026-09-10
+
+Neunte Beta. Die Pfeile stehen auf der Scheibe — an der Stelle, an der sie
+wirklich gelandet sind.
+
+### Behoben
+- **Die Wurfliste wurde falsch gelesen.** `turns` ist eine flache Liste der
+  Züge eines Legs, der laufende Zug ist der **letzte** Eintrag — nicht der mit
+  dem Index des Spielers. Belegt im Quelltext des Autodarts-Web-Clients, dort
+  steht wörtlich `t.turns[t.turns.length-1]`. Solange danach mit dem
+  Spielerindex gegriffen wurde, blieb die Liste in jedem echten Match leer:
+  keine Pfeile auf der Scheibe, keine Feldnamen in der Wurfleiste, keine
+  gezählten Darts
+
+### Hinzugefügt
+- **Der gemessene Auftreffpunkt jedes Darts.** Autodarts liefert ihn normiert
+  mit; die Scheibe zeigt jetzt den echten Punkt statt der Feldmitte. Fehlt er
+  (etwa bei einer von Hand eingetragenen Korrektur), bleibt es bei der
+  Feldmitte
+- Ein Wurf neben die Scheibe wird als „Miss" mit null Punkten geführt und an
+  seiner gemessenen Stelle gezeigt
+- **Standby-Bildschirm auf dem Player-Screen**: Logo, „Warte auf Spielstart"
+  und langsam nach außen laufende Ringe — das Motiv der Scheibe selbst
+
+### Geändert
+- Das Segment eines Wurfs wird aus `number` und `bed` gelesen (`Single`,
+  `SingleInner`, `SingleOuter`, `Double`, `Triple`, `Outside`) statt aus einem
+  Namen. Der Name bleibt Rückfall, falls die Felder einmal fehlen
+
+### Bekannte Einschränkungen
+- Die Anzeige der Anfangsermittlung (Bull-off) fehlt weiterhin. Die Sonden aus
+  0.1.0-beta.8 schreiben die dafür nötigen Feldnamen beim nächsten solchen
+  Match ins Diagnoseprotokoll
+- Autodarts liefert unter `state.checkoutGuides` einen eigenen
+  Checkout-Vorschlag. Diese Anwendung rechnet ihn weiterhin selbst
+
 ## [0.1.0-beta.8] - 2026-09-10
 
 Achte Beta. Die Statistik zählt endlich mit.

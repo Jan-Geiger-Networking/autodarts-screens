@@ -58,6 +58,24 @@ function ringRadius(segment: Segment): number {
 }
 
 /**
+ * Umrechnungsfaktor von Autodarts-Koordinaten in dieses Raster.
+ *
+ * Autodarts liefert den Auftreffpunkt normiert auf -1..1. Im eigenen Client
+ * wird daraus `{cx: x * 500, cy: -y * 500}` in einem SVG, dessen Doppelring
+ * aussen bei 377,778 endet (beides belegt im Quelltext, use-game-*.js). Hier
+ * entspricht der Doppelring aussen dem Wert 100 - also 500/377,778 * 100.
+ */
+export const KOORDINATEN_FAKTOR = (500 / 377.778) * 100
+
+/**
+ * Rechnet einen gemessenen Auftreffpunkt in dieses Raster um. Die y-Achse
+ * wird dabei gespiegelt: bei Autodarts zeigt y nach oben, in SVG nach unten.
+ */
+export function ausKoordinaten(koordinaten: { x: number; y: number }): Punkt {
+  return { x: koordinaten.x * KOORDINATEN_FAKTOR, y: -koordinaten.y * KOORDINATEN_FAKTOR }
+}
+
+/**
  * Position eines Darts auf der Scheibe, in Prozent vom Mittelpunkt aus
  * (-100 bis 100 in beiden Richtungen). `index` ist der wievielte Dart des
  * Zuges - er bestimmt die Streuung, damit drei Darts im selben Feld
@@ -65,6 +83,10 @@ function ringRadius(segment: Segment): number {
  * derselbe Wurf sieht bei jedem Neuzeichnen gleich aus, statt zu springen.
  */
 export function dartPosition(segment: Segment, index: number): Punkt {
+  // Liegt ein gemessener Auftreffpunkt vor, gilt er - und zwar unveraendert,
+  // ohne Streuung: er ist der tatsaechliche Punkt, nicht eine Schaetzung.
+  if (segment.koordinaten) return ausKoordinaten(segment.koordinaten)
+
   const streuungWinkel = [-4.5, 0, 4.5][index % 3] ?? 0
   const streuungRadius = [-3, 2, -1][index % 3] ?? 0
 

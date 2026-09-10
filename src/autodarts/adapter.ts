@@ -180,28 +180,94 @@ export function segmentAusName(name: string): Segment {
   return { name, value: Number.isFinite(zahl) ? zahl : 0, multiplier: multiplikator }
 }
 
-function segmentAusEintrag(eintrag: unknown, schluessel: string): Segment | null {
-  const name = ersterText(eintrag, ['name', 'segment', 'field'], schluessel)
-  return name === null ? null : segmentAusName(name)
+/**
+ * Faktor je "bed" - die Ringbezeichnung, die Autodarts in einem Segment
+ * mitschickt. Werte belegt aus dem Quelltext des offiziellen Web-Clients
+ * (use-game-*.js, boardSegmentKey/highlightForSegment).
+ */
+const FAKTOR_JE_BED: Record<string, 1 | 2 | 3> = {
+  Single: 1,
+  SingleInner: 1,
+  SingleOuter: 1,
+  Double: 2,
+  Triple: 3,
+}
+
+/** Name eines Feldes in der Schreibweise, die dieses Projekt durchgehend benutzt. */
+function feldName(zahl: number, faktor: 1 | 2 | 3): string {
+  if (zahl === 25) return faktor === 2 ? 'BULL' : '25'
+  if (faktor === 3) return `T${zahl}`
+  if (faktor === 2) return `D${zahl}`
+  return String(zahl)
+}
+
+/** Auftreffpunkt aus einem Wurf, wenn er einen hat. */
+function koordinatenAus(wurf: Record<string, unknown>): { x: number; y: number } | undefined {
+  const c = objekt(wurf.coords)
+  if (!c) return undefined
+  const x = typeof c.x === 'number' ? c.x : null
+  const y = typeof c.y === 'number' ? c.y : null
+  if (x === null || y === null || !Number.isFinite(x) || !Number.isFinite(y)) return undefined
+  return { x, y }
 }
 
 /**
- * Darts des aktuellen Zugs eines Spielers aus `turns[spielerIndex]` - Form
- * unbestaetigt (kein Mitschnitt mit Werten), zwei plausible Varianten
- * gegeneinander abgewogen: entweder ist der Wert direkt die Liste der in
- * diesem Zug bisher geworfenen Darts, oder eine Liste vergangener Zuege,
- * deren letztes Element wiederum diese Liste ist. Deckt beide ab, indem
- * geprueft wird, ob das letzte Element selbst ein Array ist. Liefert []
- * statt zu raten, wenn keine der beiden Formen passt - lieber ein leerer
- * Wurf-Anzeigebereich als erfundene Dartnamen.
+ * Ein Segment aus einem einzelnen Wurf. Vorrang hat die Form, die Autodarts
+ * tatsaechlich schickt - `segment: { number, bed }` -, weil sie eindeutig ist;
+ * nur wenn die fehlt, wird auf einen Namen wie "T20" zurueckgegriffen.
+ *
+ * `bed: "Outside"` ist ein Wurf neben die Scheibe: er zaehlt null und
+ * bekommt keinen Auftreffpunkt auf dem Feldraster, wohl aber seine
+ * gemessenen Koordinaten - dort liegt er tatsaechlich.
  */
-export function dartsAusTurns(turnsFuerSpieler: unknown, schluessel: string): Segment[] {
-  if (!Array.isArray(turnsFuerSpieler) || turnsFuerSpieler.length === 0) return []
-  const letztes = turnsFuerSpieler[turnsFuerSpieler.length - 1]
-  const wurf = Array.isArray(letztes) ? letztes : turnsFuerSpieler
-  return wurf
+export function segmentAusWurf(eintrag: unknown, schluessel: string): Segment | null {
+  const wurf = objekt(eintrag)
+  if (!wurf) return null
+
+  const seg = objekt(wurf.segment)
+  const koordinaten = koordinatenAus(wurf)
+
+  if (seg) {
+    const bed = typeof seg.bed === 'string' ? seg.bed : null
+    const zahl = typeof seg.number === 'number' ? seg.number : null
+    if (bed !== null && zahl !== null) {
+      const faktor = FAKTOR_JE_BED[bed] ?? 1
+      const ausserhalb = bed === 'Outside' || zahl === 0
+      return {
+        name: ausserhalb ? 'Miss' : feldName(zahl, faktor),
+        value: ausserhalb ? 0 : zahl,
+        multiplier: faktor,
+        ...(koordinaten ? { koordinaten } : {}),
+      }
+    }
+    // Kein bed/number, aber vielleicht ein Name im Segment selbst.
+    const name = ersterText(seg, ['name'], `${schluessel}-segment`)
+    if (name !== null) return { ...segmentAusName(name), ...(koordinaten ? { koordinaten } : {}) }
+  }
+
+  const name = ersterText(wurf, ['name', 'segment', 'field'], schluessel)
+  return name === null ? null : { ...segmentAusName(name), ...(koordinaten ? { koordinaten } : {}) }
+}
+
+/**
+ * Die Darts des laufenden Zuges.
+ *
+ * `turns` ist eine FLACHE Liste der Zuege dieses Legs - der laufende Zug ist
+ * der letzte Eintrag, nicht der mit dem Index des Spielers. Belegt aus dem
+ * Quelltext des offiziellen Web-Clients: dort steht woertlich
+ * `t.turns[t.turns.length-1]`. Bis 0.1.0-beta.8 wurde nach Spielerindex
+ * gegriffen; deshalb blieb die Liste leer, auf der Scheibe erschien kein
+ * Pfeil, und die Wurfleiste blieb unbeschriftet.
+ */
+export function dartsAusZug(turns: unknown, schluessel: string): Segment[] {
+  const zuege = nachIndex(turns)
+  if (zuege.length === 0) return []
+  const laufender = objekt(zuege[zuege.length - 1])
+  if (!laufender) return []
+
+  return nachIndex(laufender.throws)
     .slice(0, 3)
-    .map((eintrag, i) => segmentAusEintrag(eintrag, `${schluessel}-dart-${i}`))
+    .map((eintrag, i) => segmentAusWurf(eintrag, `${schluessel}-wurf-${i}`))
     .filter((s): s is Segment => s !== null)
 }
 
@@ -371,8 +437,7 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
   // ---- Wurf des aktiven Spielers -----------------------------------
   const currentThrowTotal = typeof nutz.turnScore === 'number' ? nutz.turnScore : 0
   const bust = nutz.turnBusted === true
-  const turnsRoh = nachIndex(nutz.turns)
-  const currentThrow = aktiverIndex !== null ? dartsAusTurns(turnsRoh[aktiverIndex], `turns[${aktiverIndex}]`) : []
+  const currentThrow = dartsAusZug(nutz.turns, 'turns')
 
   // ---- Leg-/Matchende, Phase ----------------------------------------
   const matchBeendet = nutz.finished === true

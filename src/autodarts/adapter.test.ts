@@ -11,7 +11,7 @@ vi.mock('./diagnose', () => ({ protokollieren: mockProtokollieren }))
 
 import {
   anwenden,
-  dartsAusTurns,
+  dartsAusZug,
   diagnoseWarnungenZuruecksetzen,
   ersteZahl,
   ersterText,
@@ -96,22 +96,64 @@ describe('segmentAusName', () => {
   })
 })
 
-describe('dartsAusTurns', () => {
+describe('dartsAusZug', () => {
+  // Form belegt aus dem Quelltext des offiziellen Autodarts-Web-Clients
+  // (use-game-*.js): turns ist eine FLACHE Liste der Zuege dieses Legs, der
+  // laufende ist der letzte, und jeder Zug traegt throws[] mit
+  // { segment: { number, bed }, coords: { x, y } }.
   it('liefert [] fuer eine leere oder fehlende Liste', () => {
-    expect(dartsAusTurns(undefined, 'k')).toEqual([])
-    expect(dartsAusTurns([], 'k')).toEqual([])
+    expect(dartsAusZug(undefined, 'k')).toEqual([])
+    expect(dartsAusZug([], 'k')).toEqual([])
   })
 
-  it('liest eine flache Liste von Darts des aktuellen Zugs', () => {
-    expect(dartsAusTurns([{ name: 'T20' }, { name: '5' }], 'k')).toEqual([
+  it('nimmt den LETZTEN Zug, nicht den ersten', () => {
+    const turns = [
+      { throws: [{ segment: { number: 20, bed: 'Triple' } }] },
+      { throws: [{ segment: { number: 10, bed: 'Double' } }] },
+    ]
+    expect(dartsAusZug(turns, 'k')).toEqual([{ name: 'D10', value: 10, multiplier: 2 }])
+  })
+
+  it('liest Zahl und Ring aus dem Segment', () => {
+    const turns = [
+      {
+        throws: [
+          { segment: { number: 20, bed: 'Triple' } },
+          { segment: { number: 5, bed: 'SingleOuter' } },
+          { segment: { number: 25, bed: 'Double' } },
+        ],
+      },
+    ]
+    expect(dartsAusZug(turns, 'k')).toEqual([
       { name: 'T20', value: 20, multiplier: 3 },
       { name: '5', value: 5, multiplier: 1 },
+      { name: 'BULL', value: 25, multiplier: 2 },
     ])
   })
 
-  it('liest eine verschachtelte Liste (Zuege je Leg, letzter Zug aktuell)', () => {
-    const turns = [[{ name: 'T20' }, { name: 'T20' }, { name: 'T20' }], [{ name: 'D10' }]]
-    expect(dartsAusTurns(turns, 'k')).toEqual([{ name: 'D10', value: 10, multiplier: 2 }])
+  it('uebernimmt den gemessenen Auftreffpunkt, wenn er dabei ist', () => {
+    const turns = [{ throws: [{ segment: { number: 20, bed: 'Single' }, coords: { x: 0.0287, y: 0.7155 } }] }]
+    expect(dartsAusZug(turns, 'k')[0]!.koordinaten).toEqual({ x: 0.0287, y: 0.7155 })
+  })
+
+  it('macht aus einem Wurf neben die Scheibe einen Miss mit null Punkten', () => {
+    const turns = [{ throws: [{ segment: { number: 0, bed: 'Outside' }, coords: { x: -0.9, y: 0.1 } }] }]
+    expect(dartsAusZug(turns, 'k')[0]).toEqual({
+      name: 'Miss',
+      value: 0,
+      multiplier: 1,
+      koordinaten: { x: -0.9, y: 0.1 },
+    })
+  })
+
+  it('faellt auf einen Feldnamen zurueck, wenn Zahl und Ring fehlen', () => {
+    const turns = [{ throws: [{ name: 'T20' }] }]
+    expect(dartsAusZug(turns, 'k')).toEqual([{ name: 'T20', value: 20, multiplier: 3 }])
+  })
+
+  it('nimmt hoechstens drei Darts', () => {
+    const throws = [1, 2, 3, 4].map(() => ({ segment: { number: 20, bed: 'Triple' } }))
+    expect(dartsAusZug([{ throws }], 'k')).toHaveLength(3)
   })
 })
 

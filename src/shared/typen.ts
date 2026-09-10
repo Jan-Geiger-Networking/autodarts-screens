@@ -5,6 +5,15 @@ export type Segment = {
   name: string
   value: number
   multiplier: 1 | 2 | 3
+  /**
+   * Gemessener Auftreffpunkt, normiert auf -1..1 mit y nach OBEN - genau die
+   * Form, die Autodarts selbst liefert und in ihrem eigenen Client per
+   * `{cx: x * RADIUS, cy: -y * RADIUS}` auf die Scheibe rechnet (belegt im
+   * Quelltext des Web-Clients, use-game-*.js). Fehlt, wenn der Wurf keinen
+   * Auftreffpunkt hat (z.B. eine von Hand eingetragene Korrektur) - dann
+   * zeigt die Scheibe die Mitte des getroffenen Feldes.
+   */
+  koordinaten?: { x: number; y: number }
 }
 
 export type LegEntry = {
