@@ -590,6 +590,19 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
     // fehlt es planmaessig. Deshalb ohne Protokolleintrag nachfragen.
     const bullAbstand = ersteZahl(legStats, ['bullDistance'], '')
     const bullWurf = legStats ? (segmentAusWurf(legStats, '') ?? undefined) : undefined
+    // Umgekehrte Sonde: taucht bullDistance auf, laeuft gerade eine
+    // Anfangsermittlung. Einmal je Lauf protokolliert, samt Variante und
+    // dem, was die Phasenerkennung daraus gemacht hat. Damit steht im
+    // Protokoll, ob Autodarts die Anfangsermittlung als eigene Variante
+    // "Bull-off" fuehrt oder innerhalb des laufenden X01 - davon haengt ab,
+    // woran die Anzeige sie erkennen muss. Bisher lag dazu kein einziger
+    // echter Mitschnitt vor.
+    if (bullAbstand !== null) {
+      einmaligProtokollieren(
+        'bulldistance-gefunden',
+        `stats[].legStats.bullDistance vorhanden (Variante "${variantRoh}") - Anfangsermittlung laeuft, Phasenerkennung greift ${istBullOff ? 'bereits' : 'NICHT'}.`,
+      )
+    }
     // Gezaehlt wird genau die eine Aufnahme, die mit diesem Ereignis fertig
     // geworden ist - und die gehoert nicht zwangslaeufig dem Spieler, der
     // JETZT am Wurf ist (siehe Abschluss oben).
