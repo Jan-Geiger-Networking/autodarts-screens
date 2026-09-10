@@ -904,105 +904,6 @@
 }
 
 /* ------------------------------------------------------------------
-   Dartscheibe in der Mittelanzeige
-   ------------------------------------------------------------------
-   Beantwortet "wo ging der Wurf hin". Farben wie an einer echten Scheibe
-   (schwarz/creme, Ringe rot/gruen), aber abgedunkelt: sie liegt auf einem
-   dunklen Screen und darf die Rest-Punktzahlen nicht ueberstrahlen. Die
-   Signalfarbe des Screens bleibt den Treffern vorbehalten - sie sind das
-   Einzige, was sich hier bewegt. */
-.dartscheibe {
-  /* Aus fuenf Metern Abstand muss der Sektor erkennbar bleiben - kleiner
-     als das traegt die Scheibe keine Information mehr, sondern nur noch
-     eine Ahnung. */
-  width: 34vh;
-  height: 34vh;
-  display: block;
-  margin-top: 0.4vh;
-}
-
-.scheibe-rand {
-  fill: #0c0c0e;
-}
-
-.feld-hell {
-  fill: #d8cfb4;
-}
-
-.feld-dunkel {
-  fill: #16161a;
-}
-
-.ring-rot,
-.ring-rot-flaeche {
-  fill: #9e2b2b;
-}
-
-.ring-gruen,
-.ring-gruen-flaeche {
-  fill: #1f6b3a;
-}
-
-.scheibe-zahl {
-  fill: var(--jg-muted);
-  font-size: 11px;
-  font-weight: 700;
-  text-anchor: middle;
-  dominant-baseline: middle;
-}
-
-/* Jeder Treffer setzt sich einmal kurz, statt zu pulsieren: die Bewegung
-   zeigt an, dass ein Dart dazugekommen ist, und hoert dann auf. */
-.treffer {
-  animation: treffer-setzen 320ms var(--jg-ease) backwards;
-}
-
-/* Die Treffer der VORIGEN Aufnahme, solange die neue noch leer ist: gedaempft,
-   damit die Scheibe zwischen zwei Wuerfen nicht leer dasteht, aber klar von
-   einem frischen Treffer unterscheidbar. */
-.treffer-vorher {
-  opacity: 0.35;
-  animation: none;
-}
-
-.treffer-schatten {
-  fill: rgba(2, 6, 23, 0.85);
-}
-
-.treffer-hof {
-  fill: #ffffff;
-}
-
-.treffer-kern {
-  fill: var(--jg-accent);
-}
-
-.treffer-nummer {
-  fill: #04140a;
-  font-size: 7px;
-  font-weight: 800;
-  text-anchor: middle;
-  dominant-baseline: central;
-}
-
-@keyframes treffer-setzen {
-  from {
-    opacity: 0;
-    transform: scale(2.2);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .treffer {
-    animation: none;
-  }
-}
-
-/* ------------------------------------------------------------------
    Statistikleiste: beide Spieler nebeneinander
    ------------------------------------------------------------------ */
 .statistikblock {
@@ -1331,4 +1232,11 @@
   font-size: 2vh;
   font-weight: 700;
   letter-spacing: 0.1em;
+}
+
+/* Groesse der Scheibe im Zuschauer-Screen. */
+.mittelanzeige .dartscheibe {
+  width: 34vh;
+  height: 34vh;
+  margin-top: 0.4vh;
 }

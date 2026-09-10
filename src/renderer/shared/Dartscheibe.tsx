@@ -9,6 +9,7 @@
 
 import type { Segment } from '../../shared/typen'
 import { dartPosition, RADIUS, SEKTOR_WINKEL, SEKTOREN, sektorWinkel } from './scheibengeometrie'
+import './dartscheibe.css'
 
 /** Ein Ringstueck eines Sektors als SVG-Pfad. */
 function sektorPfad(zahl: number, innen: number, aussen: number): string {
