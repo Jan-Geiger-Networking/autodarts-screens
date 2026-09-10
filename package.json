@@ -1,6 +1,6 @@
 {
   "name": "autodarts-screens",
-  "version": "0.1.0-beta.4",
+  "version": "0.1.0-beta.5",
   "description": "Zwei Vollbildschirme fuer Autodarts-Matches: Spielerinfo neben der Scheibe, Broadcast-Ansicht fuer Zuschauer",
   "author": "Jan Geiger Networking <hey@bsbnet.eu>",
   "license": "MIT",
@@ -28,6 +28,7 @@
     "vitest": "^5.0.0"
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
@@ -36,18 +37,27 @@
     "productName": "Autodarts Dual-Screen",
     "copyright": "Copyright (c) 2026 Jan Geiger Networking",
     "asar": false,
-    "publish": null,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Jan-Geiger-Networking",
+        "repo": "autodarts-screens"
+      }
+    ],
     "directories": {
       "output": "release"
     },
     "files": [
       "out/**/*",
       "assets/**/*",
-      "package.json"
+      "package.json",
+      "CHANGELOG.md",
+      "node_modules/**/*"
     ],
     "win": {
       "target": "nsis",
-      "icon": "build/icon.png"
+      "icon": "build/icon.png",
+      "verifyUpdateCodeSignature": false
     },
     "nsis": {
       "oneClick": false,
@@ -56,6 +66,7 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Autodarts Dual-Screen"
-    }
+    },
+    "artifactName": "${name}-Setup-${version}.${ext}"
   }
 }

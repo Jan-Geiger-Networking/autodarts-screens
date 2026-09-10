@@ -34,6 +34,82 @@ let laufenderVerbindungsversuch: Promise<void> | null = null
 // Ruhezustand zuruecksetzen, solange kein neues Match beginnt.
 let matchZustand: MatchState = RUHEZUSTAND
 
+// Laeuft nach dem Ende eines Matches und setzt beide Bildschirme danach auf
+// den Ruhezustand zurueck - sonst bliebe der Endstand bis zum naechsten Match
+// stehen, und die Spielpause auf dem Zuschauer-Screen kaeme nie wieder
+// (gemeldet: "wenn das match vorbei ist dann kommt nicht der bildschirm mit
+// der werbung"). Wird verworfen, sobald wieder ein Match laeuft.
+let ruhezustandTimer: ReturnType<typeof setTimeout> | null = null
+
+/** Wie lange der Endstand nach dem Match stehen bleibt, bevor die Spielpause
+ * uebernimmt. Lang genug zum Anstossen, kurz genug, dass niemand davorsteht
+ * und sich fragt, ob die Anwendung haengt. */
+const ENDSTAND_STEHEN_LASSEN_MS = 30_000
+
+// Nur einmal je Programmlauf: das vollstaendige Rohereignis eines Matches im
+// Diagnoseprotokoll. Ohne Mitschnitt ist das die einzige Quelle fuer die
+// tatsaechlichen Feldnamen INNERHALB des Zustands (players, turns, stats,
+// scores) - die aeussere Feldliste allein reicht dafuer nicht.
+let rohbeispielProtokolliert = false
+/** Obergrenze fuer dieses eine Beispiel, damit das Protokoll lesbar bleibt. */
+const ROHBEISPIEL_MAX_ZEICHEN = 12_000
+
+function rohbeispielProtokollieren(roh: unknown): void {
+  if (rohbeispielProtokolliert) return
+  rohbeispielProtokolliert = true
+  try {
+    const text = JSON.stringify(roh)
+    void protokollieren(
+      `Rohereignis (einmalig, gekuerzt auf ${ROHBEISPIEL_MAX_ZEICHEN} Zeichen): ${text.slice(0, ROHBEISPIEL_MAX_ZEICHEN)}`,
+    )
+  } catch (fehler) {
+    void protokollieren(`Rohereignis liess sich nicht serialisieren: ${fehler instanceof Error ? fehler.message : String(fehler)}`)
+  }
+}
+
+/**
+ * Verteilt einen neuen Zustand und regelt den Uebergang zurueck in den
+ * Ruhezustand: Endet ein Match, bleibt der Endstand ENDSTAND_STEHEN_LASSEN_MS
+ * stehen, danach uebernimmt die Spielpause. Beginnt vorher ein neues Match,
+ * wird der Ruecksprung verworfen.
+ */
+function zustandUebernehmen(neu: MatchState): void {
+  matchZustand = neu
+  zustandVerteilen(neu)
+
+  if (neu.phase === 'finished') {
+    if (ruhezustandTimer === null) {
+      ruhezustandTimer = setTimeout(() => {
+        ruhezustandTimer = null
+        void protokollieren('Match beendet, zurueck in den Ruhezustand (Spielpause)')
+        matchZustand = RUHEZUSTAND
+        zustandVerteilen(RUHEZUSTAND)
+      }, ENDSTAND_STEHEN_LASSEN_MS)
+      ruhezustandTimer.unref?.()
+    }
+    return
+  }
+
+  if (ruhezustandTimer !== null) {
+    clearTimeout(ruhezustandTimer)
+    ruhezustandTimer = null
+  }
+}
+
+/**
+ * Ob gerade ein Match laeuft. Einzige Frage, die von aussen an den
+ * Match-Zustand gestellt wird (aktualisierung.ts): eine Aktualisierung darf
+ * nie mitten in einem Spiel installiert werden, weil der Neustart beiden
+ * Bildschirmen den Stand nimmt.
+ *
+ * 'idle' heisst, es laeuft nichts; 'finished' heisst, das Match ist vorbei
+ * und der Endstand bleibt nur noch stehen - beide sind ein guter Moment. Die
+ * Phasen dazwischen ('intro', 'playing', 'legBreak') sind es nicht.
+ */
+export function matchLaeuft(): boolean {
+  return matchZustand.phase !== 'idle' && matchZustand.phase !== 'finished'
+}
+
 /**
  * Sorgt dafuer, dass AD_AUFZEICHNEN vor dem Verbindungsaufbau immer einen
  * nutzbaren, absoluten Pfad enthaelt - egal ob der Herausgeber ihn selbst
@@ -56,9 +132,16 @@ async function aufzeichnungspfadSicherstellen(): Promise<void> {
   const pfad = process.env.AD_AUFZEICHNEN
   if (pfad) {
     if (!isAbsolute(pfad)) process.env.AD_AUFZEICHNEN = resolve(process.cwd(), pfad)
+    // Ausdruecklich protokolliert: eine von aussen gesetzte Variable hat
+    // Vorrang und schreibt woandershin als erwartet. Genau das war der Fall,
+    // als nach einem echten Match kein Mitschnitt unter mitschnitte/ lag -
+    // ohne diese Zeile war im Protokoll nicht zu sehen, wohin stattdessen
+    // geschrieben wurde.
+    void protokollieren(`Aufzeichnung nach vorgegebenem Pfad: ${process.env.AD_AUFZEICHNEN}`)
     return
   }
   process.env.AD_AUFZEICHNEN = await standardAufzeichnungspfad()
+  void protokollieren(`Aufzeichnung nach: ${process.env.AD_AUFZEICHNEN}`)
 }
 
 async function verbindungAufbauen(): Promise<void> {
@@ -94,8 +177,8 @@ async function verbindungAufbauen(): Promise<void> {
         // Exceptions) - dieses catch ist trotzdem die letzte Verteidigungs-
         // linie gegen einen Fehler, den anwenden() nicht vorhergesehen hat.
         try {
-          matchZustand = anwenden(matchZustand, roh)
-          zustandVerteilen(matchZustand)
+          rohbeispielProtokollieren(roh)
+          zustandUebernehmen(anwenden(matchZustand, roh))
         } catch (fehler) {
           void protokollieren(
             `Adapter-Fehler, letzter bekannter Zustand bleibt erhalten: ${fehler instanceof Error ? fehler.message : String(fehler)}`,

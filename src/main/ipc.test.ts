@@ -14,6 +14,27 @@ describe('darfKanalNutzen', () => {
     expect(darfKanalNutzen('control', 'anmeldung:status')).toBe(true)
     expect(darfKanalNutzen('control', 'diagnose:pfad')).toBe(true)
     expect(darfKanalNutzen('control', 'diagnose:oeffnen')).toBe(true)
+    expect(darfKanalNutzen('control', 'aktualisierung:zustand')).toBe(true)
+    expect(darfKanalNutzen('control', 'aktualisierung:suchen')).toBe(true)
+    expect(darfKanalNutzen('control', 'aktualisierung:installieren')).toBe(true)
+    expect(darfKanalNutzen('control', 'changelog:neuerungen')).toBe(true)
+  })
+
+  // aktualisierung:installieren startet die Anwendung neu. Aus dem Player-
+  // oder Spectator-Renderer aufgerufen koennte ein Fehler dort mitten im
+  // Match einen Neustart ausloesen - gleicher Grund wie bei
+  // monitore:identifizieren.
+  it('verweigert Player und Spectator die Selbstaktualisierung', () => {
+    for (const kanal of [
+      'aktualisierung:zustand',
+      'aktualisierung:suchen',
+      'aktualisierung:installieren',
+      'changelog:neuerungen',
+    ]) {
+      expect(darfKanalNutzen('player', kanal)).toBe(false)
+      expect(darfKanalNutzen('spectator', kanal)).toBe(false)
+      expect(darfKanalNutzen(null, kanal)).toBe(false)
+    }
   })
 
   it('verweigert dem Player-Fenster die eingeschraenkten Kanaele', () => {

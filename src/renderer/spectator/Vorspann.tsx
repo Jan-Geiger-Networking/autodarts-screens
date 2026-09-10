@@ -1,8 +1,8 @@
 // Vorspann: laeuft, solange kein Match aktiv ist (Basis-Szene 'idle' aus
 // szene.ts), und wiederholt sich endlos. Optik einer Sportuebertragung kurz
 // vor Anpfiff: vollflaechiges Bild, harter Schnitt im festen Takt, ein
-// dauerhaftes Signal-Element ("Gleich geht's los") oben rechts UND eine
-// eigene Zwischenfolie ("Es geht gleich los"), die sich zwischen die
+// dauerhaftes Signal-Element ("Spielpause") oben rechts UND eine
+// eigene Zwischenfolie ("Gleich geht's weiter"), die sich zwischen die
 // Leistungen schiebt - Wunsch des Herausgebers nach Ansehen auf dem echten
 // Bildschirm. Siehe den Abschnitt "Vorspann" in App.css fuer die Fahrten
 // (gerichtete Transforms, keine Ueberblendung) und
@@ -151,7 +151,7 @@ export function Vorspann() {
           Ausrufer dazwischen. Zwei verschiedene Momente, keine Dopplung. */}
       <div className="vorspann-signal">
         <span className="vorspann-signal-punkt" />
-        Gleich geht's los
+        Spielpause
       </div>
 
       <div className="vorspann-fuss">
@@ -177,7 +177,7 @@ function VorspannFolie({ folie, rolle }: { folie: Folie; rolle: 'ankommend' | 'v
     return (
       <div className={klassen}>
         <div className="vorspann-signalfolie">
-          <div className="vorspann-signalfolie-text">Es geht gleich los</div>
+          <div className="vorspann-signalfolie-text">Gleich geht's weiter</div>
         </div>
       </div>
     )

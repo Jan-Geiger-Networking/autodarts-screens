@@ -56,7 +56,11 @@ jobs:
         run: npm run build
 
       - name: Installer bauen
-        run: npx electron-builder --win
+        # --publish never: electron-builder erzeugt wegen der publish-Angabe in
+        # package.json die Datei latest.yml (ohne sie findet electron-updater
+        # nichts), laedt aber nichts selbst hoch - das Release baut der Schritt
+        # weiter unten mit einer festen Aktion und einer engen Berechtigung.
+        run: npx electron-builder --win --publish never
 
       - name: Stueckliste erzeugen
         shell: bash
@@ -65,8 +69,15 @@ jobs:
       - name: Bauergebnis pruefen
         shell: bash
         run: |
-          ls -l release/*.exe release/*.cdx.json
-          test -s "release/Autodarts Dual-Screen Setup ${version}.exe"
+          ls -l release/*.exe release/*.cdx.json release/latest.yml
+          # Dateiname ohne Leerzeichen (artifactName in package.json): GitHub
+          # ersetzt Leerzeichen in Anhangsnamen durch Punkte, electron-updater
+          # erwartet aber Bindestriche - mit Leerzeichen im Namen liefe jeder
+          # Download der Selbstaktualisierung in einen 404.
+          test -s "release/autodarts-screens-Setup-${version}.exe"
+          # Ohne latest.yml findet die Selbstaktualisierung diese Version nie.
+          test -s release/latest.yml
+          grep -q "autodarts-screens-Setup-${version}.exe" release/latest.yml
 
       - name: An GitHub-Release haengen
         uses: softprops/action-gh-release@v2
@@ -74,6 +85,7 @@ jobs:
           files: |
             release/*.exe
             release/*.cdx.json
+            release/latest.yml
           fail_on_unmatched_files: true
           # Jede Version mit Bindestrich ist nach Semantic Versioning eine
           # Vorabversion - 0.1.0-beta.1 ja, 0.1.0 nein. Ohne diese

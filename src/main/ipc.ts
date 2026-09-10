@@ -2,7 +2,16 @@
 // die heute eine echte Implementierung haben.
 
 import { app, BrowserWindow, ipcMain, shell, type IpcMainInvokeEvent } from 'electron'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import type { FensterArt } from '../shared/typen'
+import {
+  aktualisierungInstallieren,
+  aktualisierungSuchen,
+  aktualisierungszustand,
+  changelogAbschnitt,
+  type Aktualisierungszustand,
+} from './aktualisierung'
 import { monitoreAuflisten, monitoreIdentifizieren } from './monitore'
 import { konfigurationLesen, konfigurationSchreiben, zusammenfuehren } from './konfiguration'
 import { fensterArtVon, fensterOeffnen, fensterSchliessen, konfigurationAktualisieren, verbindungszustandVerteilen } from './fenster'
@@ -49,6 +58,14 @@ const NUR_CONTROL: ReadonlySet<string> = new Set([
   // gehoert deshalb erst recht hierher.
   'diagnose:pfad',
   'diagnose:oeffnen',
+  // Die Selbstaktualisierung gehoert dem Control-Fenster. aktualisierung:
+  // suchen und aktualisierung:installieren HANDELN (Netzabruf, Neustart der
+  // Anwendung) - aus dem Player- oder Spectator-Renderer aufgerufen koennte
+  // ein Fehler im Renderer mitten im Match einen Neustart ausloesen.
+  'aktualisierung:zustand',
+  'aktualisierung:suchen',
+  'aktualisierung:installieren',
+  'changelog:neuerungen',
 ])
 
 /**
@@ -210,5 +227,60 @@ export function ipcRegistrieren(): void {
   ipcMain.handle('diagnose:oeffnen', async (event) => {
     kanalPruefen(event, 'diagnose:oeffnen')
     shell.showItemInFolder(await diagnosePfad())
+  })
+
+  // Der zuletzt bekannte Stand, ohne auf die naechste Meldung zu warten: das
+  // Control-Fenster kann jederzeit geoeffnet und geschlossen werden, eine
+  // bereits verschickte Meldung waere dann verloren (Electron speichert
+  // IPC-Nachrichten nicht zwischen).
+  ipcMain.handle('aktualisierung:zustand', (event): Aktualisierungszustand => {
+    kanalPruefen(event, 'aktualisierung:zustand')
+    return aktualisierungszustand()
+  })
+
+  // Sucht sofort statt auf den naechsten Takt zu warten. Wirft nie - das
+  // Ergebnis kommt ueber den Kanal 'aktualisierungszustand', auch ein Fehler.
+  ipcMain.handle('aktualisierung:suchen', (event) => {
+    kanalPruefen(event, 'aktualisierung:suchen')
+    return aktualisierungSuchen()
+  })
+
+  // Lehnt waehrend eines laufenden Matches ab und sagt warum (siehe
+  // aktualisierungInstallieren) - die Rueckfrage vor dem Aufruf uebernimmt
+  // der Renderer.
+  ipcMain.handle('aktualisierung:installieren', (event) => {
+    kanalPruefen(event, 'aktualisierung:installieren')
+    return aktualisierungInstallieren()
+  })
+
+  // Zeigt nach einer Aktualisierung einmalig, was neu ist (Spec Abschnitt 13),
+  // und merkt sich die gezeigte Version sofort. Gibt null zurueck, wenn es
+  // nichts zu zeigen gibt: gleiche Version wie beim letzten Mal, allererster
+  // Start (da gab es keine Aktualisierung, nur eine Installation), fehlender
+  // oder unlesbarer Changelog.
+  ipcMain.handle('changelog:neuerungen', async (event): Promise<string | null> => {
+    kanalPruefen(event, 'changelog:neuerungen')
+    const version = app.getVersion()
+    const bisherige = await konfigurationLesen()
+    if (bisherige.zuletztGeseheneVersion === version) return null
+
+    const neue = { ...bisherige, zuletztGeseheneVersion: version }
+    await konfigurationSchreiben(neue)
+    konfigurationAktualisieren(neue)
+    if (bisherige.zuletztGeseheneVersion === null) return null
+
+    try {
+      // getAppPath() zeigt im gepackten Programm auf das Verzeichnis mit
+      // package.json und CHANGELOG.md (siehe "files" in package.json), in der
+      // Entwicklung auf das Projektverzeichnis - derselbe Aufruf trifft
+      // beidesmal die richtige Datei.
+      const text = await readFile(join(app.getAppPath(), 'CHANGELOG.md'), 'utf-8')
+      return changelogAbschnitt(text, version)
+    } catch (fehler) {
+      void protokollieren(
+        `Changelog nicht lesbar, Neuerungen werden nicht angezeigt: ${fehler instanceof Error ? fehler.message : String(fehler)}`,
+      )
+      return null
+    }
   })
 }

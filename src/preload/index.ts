@@ -5,6 +5,7 @@ import type { MonitorEintrag } from '../main/monitore'
 import type { Verbindungszustand } from '../autodarts/websocket'
 import type { AnmeldungsErgebnis } from '../autodarts/oauth'
 import type { AnmeldungsStatus } from '../autodarts/konto'
+import type { Aktualisierungszustand } from '../main/aktualisierung'
 
 contextBridge.exposeInMainWorld('app', {
   // Synchron per sendSync statt eines Umgebungsvariablen-Rueckfalls: npm
@@ -61,4 +62,24 @@ contextBridge.exposeInMainWorld('app', {
   diagnosePfad: (): Promise<string> => ipcRenderer.invoke('diagnose:pfad'),
   // Oeffnet den Datei-Explorer mit dem Diagnoseprotokoll markiert.
   diagnoseOeffnen: (): Promise<void> => ipcRenderer.invoke('diagnose:oeffnen'),
+
+  // Stand der Selbstaktualisierung, laufend verteilt (siehe
+  // aktualisierungszustandVerteilen in src/main/fenster.ts) - nur das
+  // Control-Fenster bekommt diese Nachrichten.
+  beiAktualisierungszustand(rueckruf: (z: Aktualisierungszustand) => void): () => void {
+    const listener = (_event: Electron.IpcRendererEvent, zustand: Aktualisierungszustand) => rueckruf(zustand)
+    ipcRenderer.on('aktualisierungszustand', listener)
+    return () => ipcRenderer.removeListener('aktualisierungszustand', listener)
+  },
+
+  // Der zuletzt bekannte Stand, ohne auf die naechste Meldung zu warten.
+  aktualisierungZustand: (): Promise<Aktualisierungszustand> => ipcRenderer.invoke('aktualisierung:zustand'),
+  aktualisierungSuchen: (): Promise<void> => ipcRenderer.invoke('aktualisierung:suchen'),
+  // Lehnt waehrend eines laufenden Matches ab und sagt warum.
+  aktualisierungInstallieren: (): Promise<{ erfolg: boolean; meldung?: string }> =>
+    ipcRenderer.invoke('aktualisierung:installieren'),
+
+  // Der Changelog-Abschnitt der laufenden Version, einmalig nach einer
+  // Aktualisierung - sonst null.
+  neuerungen: (): Promise<string | null> => ipcRenderer.invoke('changelog:neuerungen'),
 })

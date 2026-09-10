@@ -106,3 +106,20 @@ button:disabled {
 .loeschmeldung {
   color: var(--jg-accent);
 }
+
+/* Changelog-Abschnitt nach einer Aktualisierung: vorformatiert, weil der Text
+   direkt aus CHANGELOG.md stammt und seine Zeilenumbrueche und Aufzaehlungs-
+   striche behalten soll. Umbricht trotzdem, statt waagerecht zu scrollen. */
+.neuerungen {
+  margin: 0;
+  padding: 0.75rem;
+  max-height: 14rem;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 2px solid var(--jg-akzent, #7ee787);
+  border-radius: 2px;
+}

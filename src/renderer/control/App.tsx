@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Konfiguration } from '../../main/konfiguration'
 import type { MonitorEintrag } from '../../main/monitore'
 import type { Verbindungszustand } from '../../autodarts/websocket'
+import type { Aktualisierungszustand } from '../../main/aktualisierung'
 import { UeberPanel } from './UeberPanel'
 import '../shared/tokens.css'
 import './App.css'
@@ -26,6 +27,31 @@ function anmeldeText(angemeldet: boolean | null, kontoName: string | null): stri
   return kontoName ? `Angemeldet als: ${kontoName}` : 'Angemeldet, Kontoname nicht abrufbar'
 }
 
+// Ein Satz je Zustand der Selbstaktualisierung. Jeder Fall ist benannt - es
+// gibt keinen, in dem hier nichts steht, denn "nichts steht da" war genau die
+// Rueckmeldung, die zur Ueberarbeitung gefuehrt hat.
+function aktualisierungsText(z: Aktualisierungszustand | null): string {
+  if (z === null) return 'wird geprüft …'
+  switch (z.art) {
+    case 'aus':
+      return z.grund
+    case 'ruht':
+      return 'noch nicht gesucht'
+    case 'suche':
+      return 'Suche läuft …'
+    case 'aktuell':
+      return `Aktuell — zuletzt geprüft ${new Date(z.geprueft).toLocaleTimeString('de-DE')}`
+    case 'gefunden':
+      return `Version ${z.version} gefunden, Download beginnt …`
+    case 'laedt':
+      return `Version ${z.version} wird geladen — ${z.prozent} %`
+    case 'bereit':
+      return `Version ${z.version} liegt bereit und wird beim Beenden installiert`
+    case 'fehler':
+      return z.meldung
+  }
+}
+
 export function App() {
   const [konfiguration, setKonfiguration] = useState<Konfiguration | null>(null)
   const [monitore, setMonitore] = useState<MonitorEintrag[]>([])
@@ -48,6 +74,12 @@ export function App() {
   // gemeldete Problem, ein stiller Abbruch bleibt deshalb nicht mehr stumm.
   const [anmeldungMeldung, setAnmeldungMeldung] = useState<string | null>(null)
   const [diagnosePfad, setDiagnosePfad] = useState<string | null>(null)
+  // null: der Hauptprozess hat noch nicht geantwortet.
+  const [aktualisierung, setAktualisierung] = useState<Aktualisierungszustand | null>(null)
+  const [aktualisierungMeldung, setAktualisierungMeldung] = useState<string | null>(null)
+  // Der Changelog-Abschnitt der laufenden Version - nur nach einer
+  // Aktualisierung gefuellt, danach nie wieder (siehe changelog:neuerungen).
+  const [neuerungen, setNeuerungen] = useState<string | null>(null)
 
   useEffect(() => {
     window.app.konfigurationLesen().then(setKonfiguration)
@@ -61,7 +93,10 @@ export function App() {
       setKontoName(status.kontoName)
     })
     window.app.diagnosePfad().then(setDiagnosePfad)
-    return window.app.beiVerbindungszustand((z) => {
+    window.app.aktualisierungZustand().then(setAktualisierung)
+    window.app.neuerungen().then(setNeuerungen)
+    const abmeldenAktualisierung = window.app.beiAktualisierungszustand(setAktualisierung)
+    const abmeldenVerbindung = window.app.beiVerbindungszustand((z) => {
       setVerbindungszustand(z)
       if (z === 'nichtAngemeldet') {
         setAngemeldet(false)
@@ -69,6 +104,10 @@ export function App() {
       }
       if (z === 'verbunden') setAngemeldet(true)
     })
+    return () => {
+      abmeldenVerbindung()
+      abmeldenAktualisierung()
+    }
   }, [])
 
   async function konfigurationAendern(teil: Partial<Konfiguration>): Promise<void> {
@@ -93,6 +132,13 @@ export function App() {
     } finally {
       setAnmeldungLaeuft(false)
     }
+  }
+
+  async function installierenAusloesen(): Promise<void> {
+    const ergebnis = await window.app.aktualisierungInstallieren()
+    // Nur der Nicht-Erfolg braucht eine Meldung: klappt es, startet die
+    // Anwendung neu, und niemand liest hier noch etwas.
+    setAktualisierungMeldung(ergebnis.erfolg ? null : (ergebnis.meldung ?? 'Installation nicht möglich.'))
   }
 
   async function abmeldenAusloesen(): Promise<void> {
@@ -203,6 +249,49 @@ export function App() {
             Spectator-Screen schließen
           </button>
         </div>
+      </fieldset>
+
+      <fieldset className="bereich">
+        <legend>Aktualisierung</legend>
+        <p className="hinweis">Stand: {aktualisierungsText(aktualisierung)}</p>
+        <label className="feld">
+          Beta-Versionen
+          <select
+            value={konfiguration?.betaKanal === null || konfiguration === null ? '' : String(konfiguration.betaKanal)}
+            onChange={(e) =>
+              konfigurationAendern({ betaKanal: e.target.value === '' ? null : e.target.value === 'true' })
+            }
+          >
+            <option value="">automatisch — wie die laufende Version</option>
+            <option value="true">anbieten</option>
+            <option value="false">nicht anbieten</option>
+          </select>
+        </label>
+        <p className="hinweis">
+          „Automatisch" heißt: läuft eine Beta, werden Betas angeboten; läuft eine stabile Version, nur stabile.
+        </p>
+        <div className="knopfreihe">
+          <button
+            type="button"
+            onClick={() => {
+              setAktualisierungMeldung(null)
+              void window.app.aktualisierungSuchen()
+            }}
+            disabled={aktualisierung?.art === 'suche' || aktualisierung?.art === 'laedt'}
+          >
+            Jetzt suchen
+          </button>
+          <button type="button" onClick={installierenAusloesen} disabled={aktualisierung?.art !== 'bereit'}>
+            Jetzt neu starten und installieren
+          </button>
+        </div>
+        {aktualisierungMeldung && <p className="hinweis">{aktualisierungMeldung}</p>}
+        {neuerungen && (
+          <>
+            <p className="hinweis">Neu in Version {window.app.version}:</p>
+            <pre className="neuerungen">{neuerungen}</pre>
+          </>
+        )}
       </fieldset>
 
       <fieldset className="bereich">

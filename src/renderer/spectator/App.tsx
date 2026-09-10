@@ -6,11 +6,15 @@ import { useAusblenden } from './useAusblenden'
 import { useVorfuehrung, vorfuehrungAktiv, vorfuehrungEingefroren } from './vorfuehrung'
 import { Vorspann } from './Vorspann'
 import { averageAnzeige, checkoutQuote, finishAnzeige, initialen } from './formatierung'
+import { Dartscheibe } from './Dartscheibe'
+import { legStatistik } from './statistik'
+import { spielerAufteilen } from './aufteilung'
 import '../shared/tokens.css'
 import './App.css'
 
 type BigMoment = Extract<Ueberlagerung, { art: 'bigMoment' }>
 type MatchWin = Extract<Ueberlagerung, { art: 'matchWin' }>
+type LegWin = Extract<Ueberlagerung, { art: 'legWin' }>
 
 export function App() {
   // Vorfuehrmodus (?vorfuehrung in der Adresse) ersetzt window.app komplett -
@@ -65,9 +69,11 @@ export function App() {
   // letzte Wert je Art getrennt gemerkt statt direkt aus `ueberlagerung` gelesen.
   const [letzterBigMoment, setLetzterBigMoment] = useState<BigMoment | null>(null)
   const [letzterMatchWin, setLetzterMatchWin] = useState<MatchWin | null>(null)
+  const [letzterLegWin, setLetzterLegWin] = useState<LegWin | null>(null)
   useEffect(() => {
     if (ueberlagerung?.art === 'bigMoment') setLetzterBigMoment(ueberlagerung)
     if (ueberlagerung?.art === 'matchWin') setLetzterMatchWin(ueberlagerung)
+    if (ueberlagerung?.art === 'legWin') setLetzterLegWin(ueberlagerung)
   }, [ueberlagerung])
 
   const basis = zustand ? ermittleBasis(zustand) : 'idle'
@@ -104,6 +110,10 @@ export function App() {
           sichtbar={ueberlagerung?.art === 'bigMoment'}
           zustand={zustand}
         />
+      )}
+
+      {zustand && (
+        <LegWinSchicht ueberlagerung={letzterLegWin} sichtbar={ueberlagerung?.art === 'legWin'} zustand={zustand} />
       )}
 
       {zustand && (
@@ -148,18 +158,17 @@ function Spielstand({
           hervorgehobenerGewinner={hervorgehobenerGewinner}
         />
       ) : (
-        <SpielerRaster
+        <SpielerSpalten
           spieler={players}
           scores={scores}
           activePlayerId={activePlayerId}
           bust={zustand.bust}
           hervorgehobenerGewinner={hervorgehobenerGewinner}
+          darts={zustand.currentThrow}
         />
       )}
 
-      {!intro && (
-        <Statistikleiste spieler={aktiverSpieler} score={scoreVon(activePlayerId ?? '')} legHistory={zustand.legHistory} activePlayerId={activePlayerId} />
-      )}
+      {!intro && <Statistikleiste zustand={zustand} />}
     </div>
   )
 }
@@ -203,7 +212,7 @@ function ZweiSpielerReihe({
         currentThrowTotal={activePlayerId === spielerA.id ? currentThrowTotal : 0}
       />
 
-      <Mittelanzeige scoreA={scoreA} scoreB={scoreB} />
+      <Mittelanzeige scoreA={scoreA} scoreB={scoreB} darts={currentThrow} />
 
       <Spielerkarte
         seite="rechts"
@@ -289,7 +298,15 @@ function Spielerfoto({ spieler }: { spieler: Player }) {
   return <div className="spielerfoto spielerfoto-initialen">{initialen(spieler.displayName)}</div>
 }
 
-function Mittelanzeige({ scoreA, scoreB }: { scoreA: PlayerScore | undefined; scoreB: PlayerScore | undefined }) {
+function Mittelanzeige({
+  scoreA,
+  scoreB,
+  darts,
+}: {
+  scoreA: PlayerScore | undefined
+  scoreB: PlayerScore | undefined
+  darts: Segment[]
+}) {
   return (
     <div className="mittelanzeige">
       <div className="mittelanzeige-sets">
@@ -302,82 +319,117 @@ function Mittelanzeige({ scoreA, scoreB }: { scoreA: PlayerScore | undefined; sc
         <span className="mittelanzeige-trenner">–</span>
         {scoreB?.legs ?? 0}
       </div>
+      {/* Zeigt den laufenden Wurf dort, wo er auf der Scheibe gelandet ist -
+          die Frage "wo ging der Wurf hin" beantwortet keine Zahlenreihe. */}
+      <Dartscheibe darts={darts} />
     </div>
   )
 }
 
-function SpielerRaster({
+function SpielerSpalten({
   spieler,
   scores,
   activePlayerId,
   bust,
   hervorgehobenerGewinner,
+  darts,
 }: {
   spieler: Player[]
   scores: PlayerScore[]
   activePlayerId: string | null
   bust: boolean
   hervorgehobenerGewinner: string | undefined
+  darts: Segment[]
 }) {
-  return (
-    <div className="spielraster">
-      {spieler.map((p) => {
+  const { links, rechts } = spielerAufteilen(spieler)
+
+  const spalte = (liste: Player[], seite: 'links' | 'rechts') => (
+    <div className={`spielspalte spielspalte-${seite}`}>
+      {liste.map((p) => {
         const score = scores.find((s) => s.playerId === p.id)
         const aktiv = p.id === activePlayerId
-        const klassen = ['rasterkarte', aktiv && 'aktiv', hervorgehobenerGewinner === p.id && 'leg-gewonnen'].filter(Boolean).join(' ')
+        const klassen = ['rasterkarte', aktiv && 'aktiv', hervorgehobenerGewinner === p.id && 'leg-gewonnen']
+          .filter(Boolean)
+          .join(' ')
         return (
           <div key={p.id} className={klassen}>
             <Spielerfoto spieler={p} />
             <span className="spielername">{p.displayName}</span>
             <div className={`rasterkarte-rest${aktiv && bust ? ' bust' : ''}`}>{score?.remaining ?? 0}</div>
             <div className="rasterkarte-legs">
-              <span className="statistik-label">Legs</span> {score?.legs ?? 0} <span className="statistik-label">Sätze</span> {score?.sets ?? 0}
+              <span className="statistik-label">Legs</span> {score?.legs ?? 0} <span className="statistik-label">Sätze</span>{' '}
+              {score?.sets ?? 0}
             </div>
           </div>
         )
       })}
     </div>
   )
-}
-
-function Statistikleiste({
-  spieler,
-  score,
-  legHistory,
-  activePlayerId,
-}: {
-  spieler: Player | undefined
-  score: PlayerScore | undefined
-  legHistory: LegEntry[]
-  activePlayerId: string | null
-}) {
-  if (!spieler || !score) return <div className="statistikleiste" />
-  const verlauf = legHistory.filter((e) => e.playerId === activePlayerId)
 
   return (
-    <div className="statistikleiste">
-      <div className="statistikleiste-werte">
-        <span>
-          <span className="statistik-label">Ø</span> {averageAnzeige(score.average3)}
-        </span>
-        <span>
-          <span className="statistik-label">CO</span> {checkoutQuote(score)}
-        </span>
-        <span>
-          <span className="statistik-label">180er</span> {score.count180}
-        </span>
-        <span>
-          <span className="statistik-label">HF</span> {finishAnzeige(score.highestFinish)}
-        </span>
+    <div className="spielspalten">
+      {spalte(links, 'links')}
+      <div className="spielmitte">
+        <Dartscheibe darts={darts} />
       </div>
+      {spalte(rechts, 'rechts')}
+    </div>
+  )
+}
+
+function Statistikleiste({ zustand }: { zustand: MatchState }) {
+  const { players, scores, activePlayerId, legHistory } = zustand
+  if (players.length === 0) return <div className="statistikleiste" />
+
+  // Beide Spieler nebeneinander statt nur des aktiven: waehrend eines Wurfes
+  // will man vergleichen koennen, ohne auf den Spielerwechsel zu warten
+  // (Wunsch des Herausgebers: "mehr statistiken damit man daten zum angucken
+  // hat"). Der aktive Spieler ist hervorgehoben, damit die Zuordnung bleibt.
+  return (
+    <div className="statistikleiste">
+      {players.map((spieler) => {
+        const score = scores.find((s) => s.playerId === spieler.id)
+        const leg = legStatistik(legHistory, spieler.id)
+        const aktiv = spieler.id === activePlayerId
+        return (
+          <div className={`statistikblock${aktiv ? ' aktiv' : ''}`} key={spieler.id}>
+            <span className="statistikblock-name">{spieler.displayName}</span>
+            <div className="statistikblock-werte">
+              <Wert label="Ø Match" wert={averageAnzeige(score?.average3 ?? null)} />
+              <Wert label="Checkout" wert={score ? checkoutQuote(score) : '—'} />
+              <Wert label="180er" wert={String(score?.count180 ?? 0)} />
+              <Wert label="Höchstes Finish" wert={finishAnzeige(score?.highestFinish ?? null)} />
+            </div>
+            <div className="statistikblock-werte statistikblock-leg">
+              <Wert label="Ø Leg" wert={leg.schnitt === null ? '—' : leg.schnitt.toFixed(1)} />
+              <Wert label="Darts" wert={String(leg.darts)} />
+              <Wert label="Beste" wert={leg.beste === null ? '—' : String(leg.beste)} />
+              <Wert label="100+" wert={String(leg.ueber100)} />
+              <Wert label="140+" wert={String(leg.ueber140)} />
+            </div>
+          </div>
+        )
+      })}
+
       <div className="statistikleiste-verlauf">
-        {verlauf.map((eintrag, i) => (
-          <span className="verlauf-eintrag" key={i}>
-            {eintrag.scored}
-          </span>
-        ))}
+        {legHistory
+          .filter((e) => e.playerId === activePlayerId)
+          .map((eintrag, i) => (
+            <span className={`verlauf-eintrag${eintrag.bust ? ' verlauf-bust' : ''}`} key={i}>
+              {eintrag.bust ? 'Bust' : eintrag.scored}
+            </span>
+          ))}
       </div>
     </div>
+  )
+}
+
+function Wert({ label, wert }: { label: string; wert: string }) {
+  return (
+    <span className="wert">
+      <span className="statistik-label">{label}</span>
+      <span className="wert-zahl">{wert}</span>
+    </span>
   )
 }
 
@@ -419,6 +471,52 @@ function BigMomentSchicht({ ueberlagerung, sichtbar, zustand }: { ueberlagerung:
   )
 }
 
+/**
+ * Leg-Gewinn: ausdruecklich benannt ("XXX hat das Leg gewonnen") statt nur
+ * die Tafel des Gewinners hervorzuheben. Zeigt zusaetzlich den neuen
+ * Leg-Stand und, wenn das Leg auf ein Doppel endete, den Finish-Weg - das
+ * ist der Moment, den man im Fernsehen wiederholt sieht.
+ */
+function LegWinSchicht({ ueberlagerung, sichtbar, zustand }: { ueberlagerung: LegWin | null; sichtbar: boolean; zustand: MatchState }) {
+  const imBaum = useAusblenden(sichtbar, 500)
+  if (!imBaum || !ueberlagerung) return null
+
+  const gewinner = zustand.players.find((p) => p.id === ueberlagerung.spielerId)
+  if (!gewinner) return null
+
+  // Letzte Aufnahme des Gewinners im gerade beendeten Leg: der Finish-Wurf.
+  const finish = [...zustand.legHistory].reverse().find((e) => e.playerId === gewinner.id && e.remainingAfter === 0)
+
+  return (
+    <div className={`vollbild leg-win${sichtbar ? ' zeigen' : ''}`}>
+      <div className="leg-win-balken">
+        <span className="leg-win-name">{gewinner.displayName}</span>
+        <span className="leg-win-text">hat das Leg gewonnen</span>
+      </div>
+      {finish && finish.darts.length > 0 && (
+        <div className="leg-win-finish">
+          <span className="statistik-label">Finish {finish.scored}</span>
+          {finish.darts.map((dart, i) => (
+            <span className="leg-win-dart" key={i} style={{ animationDelay: `${450 + i * 130}ms` }}>
+              {dart.name}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="leg-win-stand">
+        {zustand.players.map((p, i) => (
+          <span key={p.id}>
+            {i > 0 && <span className="leg-win-trenner">–</span>}
+            <span className={p.id === gewinner.id ? 'leg-win-zahl hervor' : 'leg-win-zahl'}>
+              {zustand.scores.find((sc) => sc.playerId === p.id)?.legs ?? 0}
+            </span>
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function MatchWinSchicht({ ueberlagerung, sichtbar, zustand }: { ueberlagerung: MatchWin | null; sichtbar: boolean; zustand: MatchState }) {
   const imBaum = useAusblenden(sichtbar, 600)
   if (!imBaum || !ueberlagerung) return null
@@ -431,7 +529,7 @@ function MatchWinSchicht({ ueberlagerung, sichtbar, zustand }: { ueberlagerung: 
         <div className="match-win-gewinner">
           <Spielerfoto spieler={gewinner} />
           <span className="match-win-name">{gewinner.displayName}</span>
-          <span className="match-win-titel">Sieger</span>
+          <span className="match-win-titel">hat das Match gewonnen</span>
         </div>
       )}
       <div className="match-win-statistik">

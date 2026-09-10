@@ -4,6 +4,74 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.5] - 2026-09-10
+
+Fünfte Beta. Selbstaktualisierung, richtiger Legstand, Dartscheibe auf dem
+Zuschauer-Screen.
+
+### Hinzugefügt
+- **Selbstaktualisierung.** Die Anwendung sucht beim Start, danach alle sechs
+  Stunden und zusätzlich, sobald der Rechner aus dem Ruhezustand zurückkommt.
+  Sie lädt im Hintergrund und installiert beim Beenden — nie während eines
+  laufenden Matches. Jeder Schritt steht im Control-Fenster: Suche, Fortschritt
+  in Prozent, bereitliegende Version, Fehler samt Grund
+- Im Control-Fenster einstellbar, ob auch Beta-Versionen angeboten werden.
+  „Automatisch" richtet sich nach der laufenden Version: eine Beta bekommt
+  Betas, eine stabile Version nur stabile
+- Knöpfe „Jetzt suchen" und „Jetzt neu starten und installieren". Der zweite
+  lehnt während eines laufenden Matches ab und sagt warum
+- Nach einer Aktualisierung zeigt das Control-Fenster einmalig, was neu ist
+- **Dartscheibe** in der Mitte des Zuschauer-Screens: sie zeigt, in welchem
+  Feld die Darts des laufenden Wurfs gelandet sind
+- **Leg-Gewinn** ist jetzt eine eigene Einblendung — „<Name> hat das Leg
+  gewonnen", mit Finish-Weg und neuem Legstand. Der Match-Gewinn sagt
+  ausdrücklich „hat das Match gewonnen" statt nur „Sieger"
+- Mehr Statistik auf dem Zuschauer-Screen, und für **beide** Spieler statt nur
+  für den am Wurf: Match-Average, Checkout-Quote, 180er und höchstes Finish,
+  darunter für das laufende Leg Average, Darts, beste Aufnahme, 100+ und 140+
+- Ab drei Spielern stehen die Tafeln links und rechts der Scheibe — bis vier in
+  den Ecken, ab fünf drei je Seite. Die Scheibe bleibt immer in der Mitte
+- Das erste Rohereignis eines Matches landet vollständig im Diagnoseprotokoll.
+  Ohne es sind die Feldnamen innerhalb des Zustands nicht nachprüfbar
+- Der Pfad der laufenden Aufzeichnung steht im Diagnoseprotokoll, und ein
+  Abbruch der Aufzeichnung ebenfalls. Beides war vorher unsichtbar
+
+### Behoben
+- **Der Legstand war falsch** — nach einem gewonnenen Leg stand 0:2 statt 0:1.
+  Die Anwendung zählte selbst mit, statt die Zahl zu nehmen, die der Server
+  ohnehin mitschickt. Eine selbst geführte Zählung verdoppelt sich, sobald
+  dieselbe Momentaufnahme zweimal ankommt — etwa nach einer Wiederverbindung.
+  Jetzt gilt die Zahl des Servers, die eigene Zählung ist nur noch Rückfall
+- **Nach dem Matchende blieb der Endstand stehen.** Der Zuschauer-Screen kam
+  nie zurück in die Spielpause. Jetzt bleibt der Endstand 30 Sekunden stehen,
+  danach übernimmt wieder die Spielpause
+- Ein Wurf mit dem Namen „S20" (statt „20") wurde als Wert 0 gelesen und lag
+  damit auf keinem Feld der Scheibe
+- Die zweite Zeile der Statistikleiste wurde am unteren Bildrand abgeschnitten
+
+### Geändert
+- Der Ruhezustand des Zuschauer-Screens heißt jetzt „Spielpause", die
+  Zwischenfolie „Gleich geht's weiter"
+- Der Installer heißt `autodarts-screens-Setup-<Version>.exe`, ohne
+  Leerzeichen. GitHub ersetzt Leerzeichen in Anhangsnamen durch Punkte,
+  electron-updater erwartet Bindestriche — mit dem alten Namen wäre jeder
+  automatische Download in einen 404 gelaufen
+
+### Bekannte Einschränkungen
+- Die Selbstaktualisierung wirkt erst ab der **nächsten** Version: die
+  Releases bis einschließlich beta.4 enthalten die dafür nötige `latest.yml`
+  nicht, und beta.4 selbst kennt noch keinen Updater. Der Sprung auf beta.5
+  muss ein letztes Mal von Hand installiert werden
+- Die Feldnamen für die Spielerstatistiken (Average, Checkout-Quote, 180er,
+  höchstes Finish) sind weiterhin nicht bestätigt — im Protokoll eines echten
+  Matches waren diese Objekte leer. Der Adapter meldet jede solche Annahme
+  einmalig im Diagnoseprotokoll
+- Der Satzstand bleibt die schwächste Ableitung: es gibt kein erkanntes Signal
+  für das Ende eines Satzes
+- Die Dartscheibe zeigt die Mitte des getroffenen Feldes, nicht den gemessenen
+  Auftreffpunkt. Das Rohereignis enthält nach heutigem Kenntnisstand keine
+  Koordinaten
+
 ## [0.1.0-beta.4] - 2026-09-10
 
 Vierte Beta. Der Kreis schließt sich: ein Wurf auf der Scheibe erreicht jetzt

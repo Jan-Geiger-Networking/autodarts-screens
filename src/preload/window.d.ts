@@ -4,6 +4,7 @@ import type { MonitorEintrag } from '../main/monitore'
 import type { Verbindungszustand } from '../autodarts/websocket'
 import type { AnmeldungsErgebnis } from '../autodarts/oauth'
 import type { AnmeldungsStatus } from '../autodarts/konto'
+import type { Aktualisierungszustand } from '../main/aktualisierung'
 
 export {}
 
@@ -25,6 +26,11 @@ declare global {
       anmeldungStatus: () => Promise<AnmeldungsStatus>
       diagnosePfad: () => Promise<string>
       diagnoseOeffnen: () => Promise<void>
+      beiAktualisierungszustand: (rueckruf: (z: Aktualisierungszustand) => void) => () => void
+      aktualisierungZustand: () => Promise<Aktualisierungszustand>
+      aktualisierungSuchen: () => Promise<void>
+      aktualisierungInstallieren: () => Promise<{ erfolg: boolean; meldung?: string }>
+      neuerungen: () => Promise<string | null>
     }
   }
 }

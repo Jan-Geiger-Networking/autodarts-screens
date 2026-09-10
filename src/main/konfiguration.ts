@@ -11,12 +11,28 @@ export type Konfiguration = {
   boardId: string | null
   playerDisplayId: number | null
   spectatorDisplayId: number | null
+  /**
+   * Ob die Selbstaktualisierung auch Vorabversionen anbietet. null heisst
+   * "nicht entschieden": dann richtet es sich nach der laufenden Version
+   * (siehe betasErlaubt in aktualisierung.ts). Erst eine ausdrueckliche Wahl
+   * im Control-Fenster schreibt true oder false hierher.
+   */
+  betaKanal: boolean | null
+  /**
+   * Die Version, deren Neuerungen im Control-Fenster schon gezeigt wurden.
+   * Weicht sie von der laufenden Version ab, gab es dazwischen eine
+   * Aktualisierung, und das Control-Fenster zeigt den Changelog-Abschnitt
+   * einmalig an (Spec Abschnitt 13).
+   */
+  zuletztGeseheneVersion: string | null
 }
 
 export const standardKonfiguration: Konfiguration = {
   boardId: null,
   playerDisplayId: null,
   spectatorDisplayId: null,
+  betaKanal: null,
+  zuletztGeseheneVersion: null,
 }
 
 // roh kommt aus einer Datei und ist deshalb ungeprueft. Unbekannte Felder
@@ -38,6 +54,14 @@ export function zusammenfuehren(roh: unknown): Konfiguration {
     spectatorDisplayId: Number.isInteger(quelle.spectatorDisplayId)
       ? (quelle.spectatorDisplayId as number)
       : standardKonfiguration.spectatorDisplayId,
+    // Nur ein echter Wahrheitswert zaehlt als getroffene Wahl. Alles andere -
+    // auch eine "true" als Zeichenkette aus einer von Hand bearbeiteten Datei -
+    // faellt auf null zurueck und heisst damit "nicht entschieden".
+    betaKanal: typeof quelle.betaKanal === 'boolean' ? quelle.betaKanal : standardKonfiguration.betaKanal,
+    zuletztGeseheneVersion:
+      typeof quelle.zuletztGeseheneVersion === 'string'
+        ? quelle.zuletztGeseheneVersion
+        : standardKonfiguration.zuletztGeseheneVersion,
   }
 }
 

@@ -285,3 +285,45 @@ Die engere Rennen-Variante bei B7 (Schliessen genau waehrend der WebSocket-Hands
 ## 67
 
 Die vom Agenten gemeldeten Bedenken 1 und 2 gehen in eine letzte Runde. Grund ist Konsequenz: Bei laufendeErneuerung habe ich in dieser Session ausdruecklich einen Test verlangt, der beweist dass zwei gleichzeitige Aufrufe nur eine Anfrage ausloesen, und ein Reviewer hat gegengeprueft dass der Test das wirklich leistet statt nur so auszusehen. Fuer die beiden neuen Sperren jetzt einen niedrigeren Massstab anzulegen waere inkonsequent — eine Nebenlaeufigkeitssperre ohne Beweis ist genau die Art Code, die still zurueckfaellt. Zusaetzlich verlangt: ein dritter Aufruf nach Abschluss muss wieder greifen, sonst waere eine haengengebliebene Sperre schlimmer als gar keine und der bestehende Test wuerde es nicht bemerken. Und beim onclose-Test beide Richtungen, sonst bliebe er auch dann gruen, wenn jemand die Zustandsmeldung ganz entfernt. Kosten wenn falsch: zwei Tests mehr.
+
+## Selbstaktualisierung, Zuschauer-Screen, Legstand (0.1.0-beta.5)
+
+**69. Legs und Sätze vom Server statt selbst gezählt.** Die eigene Zählung
+verdoppelte sich nach einer Wiederverbindung (belegt: 0:2 statt 0:1 an einem
+echten Match). Die Serverzahl gilt jetzt vorrangig, die eigene Zählung bleibt
+nur als Rückfall und meldet sich dabei im Protokoll. *Kosten bei Irrtum:*
+heißt das Feld nicht `legs`, steht wieder die alte, fehleranfällige Zählung
+da — sichtbar im Protokoll, nicht still.
+
+**70. Beta-Kanal einstellbar statt fest.** Der Herausgeber wollte beides
+wählen können. „Automatisch" (Vorgabe) richtet sich nach der laufenden
+Version, damit eine spätere stabile Version niemanden ungefragt auf eine Beta
+zieht. *Kosten bei Irrtum:* eine Einstellung mehr im Control-Fenster.
+
+**71. Signaturprüfung der Aktualisierung ausdrücklich aus.** Wir liefern
+unsigniert; ohne Zertifikat gibt es keinen Herausgebernamen zu prüfen. Statt
+sich darauf zu verlassen, dass electron-updater dann von selbst nichts prüft,
+steht `verifyUpdateCodeSignature: false` in der Baukonfiguration. *Kosten bei
+Irrtum:* keine zusätzliche Prüfung gegenüber heute — sie fände ohnehin nicht
+statt.
+
+**72. Abhängigkeiten nicht mehr ins Bündel gezogen.** electron-updater lädt
+seine Anbieter zur Laufzeit nach, was ein Bündel nicht auflösen kann. Dafür
+liegt `node_modules` (nur Produktionsabhängigkeiten) im Installer. *Kosten bei
+Irrtum:* etwa 2 MB mehr im Installer.
+
+**73. Installer-Dateiname ohne Leerzeichen.** GitHub ersetzt Leerzeichen in
+Anhangsnamen durch Punkte, electron-updater erwartet Bindestriche. Mit dem
+alten Namen wäre jeder automatische Download in einen 404 gelaufen — belegt
+am Quelltext von `GitHubProvider.resolveFiles`. *Kosten bei Irrtum:* der
+Installer heißt anders als bisher.
+
+**74. Dartscheibe zeigt die Feldmitte, nicht den Auftreffpunkt.** Das
+Rohereignis enthält nach heutigem Kenntnisstand keine Koordinaten. Angezeigt
+wird die Mitte des getroffenen Feldes mit fester Streuung je Dart. *Kosten bei
+Irrtum:* liefert Autodarts doch Koordinaten, werden sie eingesetzt — die
+Geometrie dafür steht schon.
+
+**75. Endstand bleibt 30 Sekunden stehen.** Danach übernimmt die Spielpause.
+Vorher blieb der Endstand bis zum nächsten Match stehen. *Kosten bei Irrtum:*
+zu kurz oder zu lang für den Geschmack; eine Zahl in `verbindung.ts`.

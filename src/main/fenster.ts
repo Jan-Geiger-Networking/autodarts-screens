@@ -5,6 +5,10 @@ import { BrowserWindow, shell } from 'electron'
 import { join } from 'node:path'
 import type { FensterArt, MatchState } from '../shared/typen'
 import type { Verbindungszustand } from '../autodarts/websocket'
+// Nur der Typ: aktualisierung.ts importiert umgekehrt aktualisierungszustand-
+// Verteilen aus dieser Datei. Ein Typimport verschwindet beim Uebersetzen,
+// zur Laufzeit entsteht dadurch kein Kreis.
+import type { Aktualisierungszustand } from './aktualisierung'
 import { monitorFuer } from './monitore'
 import { standardKonfiguration, type Konfiguration } from './konfiguration'
 
@@ -172,5 +176,21 @@ export function verbindungszustandVerteilen(z: Verbindungszustand): void {
   const control = fenster.get('control')
   if (control && !control.isDestroyed() && !control.webContents.isDestroyed()) {
     control.webContents.send('verbindungszustand', z)
+  }
+}
+
+/**
+ * Schickt den Stand der Selbstaktualisierung an das Control-Fenster - das
+ * einzige Fenster, das ihn anzeigt. Der Player- und der Zuschauer-Screen
+ * bekommen davon nichts mit: waehrend eines Matches soll dort nie ein
+ * Hinweis auf eine Aktualisierung auftauchen.
+ *
+ * Laeuft wie verbindungszustandVerteilen nur vom Hauptprozess zum Renderer
+ * und braucht deshalb keine Waechterpruefung in ipc.ts.
+ */
+export function aktualisierungszustandVerteilen(z: Aktualisierungszustand): void {
+  const control = fenster.get('control')
+  if (control && !control.isDestroyed() && !control.webContents.isDestroyed()) {
+    control.webContents.send('aktualisierungszustand', z)
   }
 }

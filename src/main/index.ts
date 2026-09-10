@@ -3,6 +3,7 @@ import { fensterOeffnen, konfigurationAktualisieren, zustandVerteilen } from './
 import { ipcRegistrieren } from './ipc'
 import { konfigurationLesen } from './konfiguration'
 import { verbindungBeenden, verbindungStarten } from './verbindung'
+import { aktualisierungStarten } from './aktualisierung'
 import { checkoutWeg, setupWurf } from '../shared/checkout'
 import type { MatchState, Player, Segment } from '../shared/typen'
 
@@ -103,6 +104,12 @@ app.whenReady().then(async () => {
   // ungesehen verschwinden, weil Electron IPC-Nachrichten nicht zwischenspeichert.
   controlFenster.webContents.once('did-finish-load', () => {
     void verbindungStarten()
+    // Erst hier, aus demselben Grund wie der Verbindungsaufbau: der
+    // beiAktualisierungszustand()-Listener im Control-Fenster ist dann
+    // registriert, sonst verschwaende die erste Meldung ("Suche laeuft")
+    // ungesehen. Wirft nie - ein Fehler bei der Suche landet im Zustand und
+    // im Diagnoseprotokoll, nicht im Start.
+    void aktualisierungStarten()
   })
 })
 

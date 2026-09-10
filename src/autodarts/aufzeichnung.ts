@@ -17,6 +17,7 @@ import { readdir, unlink } from 'node:fs/promises'
 import { createInterface } from 'node:readline'
 import { createReadStream } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { protokollieren } from './diagnose'
 
 // Eine erfolgreich serialisierte Zeile traegt "daten", eine Zeile zu einem
 // Ereignis, das sich nicht serialisieren liess (z.B. zyklisches Objekt oder
@@ -59,6 +60,11 @@ export function aufzeichnungStarten(pfad: string): (roh: unknown) => void {
   let fehlgeschlagen = false
   stream.on('error', (fehler) => {
     console.warn(`Aufzeichnung: Stream-Fehler, Aufzeichnung wird beendet (${fehler.message}).`)
+    // Zusaetzlich ins Diagnoseprotokoll: eine console-Warnung sieht niemand,
+    // der die Anwendung ueber die Verknuepfung startet. Ohne diese Zeile war
+    // eine ausgefallene Aufzeichnung von einer nie gestarteten nicht zu
+    // unterscheiden.
+    void protokollieren(`Aufzeichnung abgebrochen (${pfad}): ${fehler.message}`)
     fehlgeschlagen = true
     if (laufenderStream === stream) laufenderStream = undefined
   })

@@ -147,9 +147,13 @@ export function ersterText(wert: unknown, felder: readonly string[], schluessel:
  * Projektgrenzen in der Aufgabenstellung).
  */
 export function segmentAusName(name: string): Segment {
-  if (name === 'BULL') return { name, value: 25, multiplier: 2 }
+  if (name === 'BULL' || name === 'DB') return { name, value: 25, multiplier: 2 }
+  if (name === 'SB') return { name, value: 25, multiplier: 1 }
   const multiplikator: 1 | 2 | 3 = name.startsWith('T') ? 3 : name.startsWith('D') ? 2 : 1
-  const zifferText = multiplikator === 1 ? name : name.slice(1)
+  // Fuehrenden Buchstaben immer abschneiden, auch bei einfachen Feldern:
+  // schreibt der Server "S20" statt "20", ergaebe Number('S20') sonst NaN und
+  // damit den Wert 0 - ein Dart, der auf keinem Feld liegt.
+  const zifferText = /^[SDT]/.test(name) ? name.slice(1) : name
   const zahl = Number(zifferText)
   return { name, value: Number.isFinite(zahl) ? zahl : 0, multiplier: multiplikator }
 }
@@ -330,6 +334,13 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
   // ---- Punktestand je Spieler -----------------------------------------
   const gameScoresRoh = nachIndex(nutz.gameScores)
   const statsRoh = nachIndex(nutz.stats)
+  // Der Server fuehrt Legs und Saetze selbst mit (top-level "scores", nicht zu
+  // verwechseln mit "gameScores", das den Restpunktestand traegt). Diese Zahl
+  // hat Vorrang vor jeder eigenen Ableitung: eine selbst gezaehlte Zahl kann
+  // doppelt zaehlen, wenn dieselbe Momentaufnahme zweimal ankommt (Wieder-
+  // verbindung, erneutes Abonnement) - genau das war zu sehen, als nach einem
+  // gewonnenen Leg 0:2 statt 0:1 stand.
+  const punkteRoh = nachIndex(nutz.scores)
 
   const scores: PlayerScore[] = effektivePlayers.map((spieler, index) => {
     // Bei einem neuen Match zaehlt kein vorheriger Wert - sonst wuerden
@@ -340,19 +351,18 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
     const restRoh = ersteZahl(gameScoresRoh[index], ['remaining', 'score', 'value', 'points'], `gameScores[${index}]`)
     const remaining = restRoh === null ? (vorheriger?.remaining ?? startScore) : Math.max(0, restRoh)
 
-    // Legs werden NICHT aus einem geratenen Feld gelesen, sondern aus dem
-    // Vergleich mit dem vorherigen Zustand hochgezaehlt (siehe legGewinnerId
-    // oben) - dadurch zwangslaeufig monoton und ohne Annahme ueber einen
-    // Feldnamen, den kein Mitschnitt bestaetigt.
+    // Zuerst die Zahl des Servers, erst danach die eigene Ableitung. Fehlt
+    // das Feld, meldet ersteZahl das einmalig im Diagnoseprotokoll - dann ist
+    // im Protokoll nachlesbar, warum wieder gezaehlt wird, statt dass es
+    // unbemerkt bleibt.
+    const legsRoh = ersteZahl(punkteRoh[index], ['legs', 'legsWon', 'legCount'], `scores[${index}].legs`)
     const legsBisher = vorheriger?.legs ?? 0
-    const legs = legGewinnerId === spieler.id ? legsBisher + 1 : legsBisher
+    const legs = legsRoh ?? (legGewinnerId === spieler.id ? legsBisher + 1 : legsBisher)
 
-    // Sets: anders als Legs gibt es kein top-level Feld, aus dessen
-    // Aenderung sich ein "Set gerade gewonnen" ableiten liesse (nur
-    // finished/gameFinished, keine eigene Set-Ende-Kennung) - bleibt darum
-    // ein geratener Feldzugriff, der bei den meisten Matches (ein einzelnes
-    // Set, siehe "Best of 11" im Beispiel) ohnehin bei 0 bleibt.
-    const setsRoh = ersteZahl(spielerRoh[index], ['setsWon', 'sets', 'setCount'], `players[${index}].setsWon`)
+    // Saetze: gleiche Reihenfolge, gleiche Quelle. Fuer sie gibt es keine
+    // eigene Ableitung - es gibt kein erkanntes Signal fuer das Ende eines
+    // Satzes -, deshalb bleibt ohne Serverzahl der letzte bekannte Stand.
+    const setsRoh = ersteZahl(punkteRoh[index], ['sets', 'setsWon', 'setCount'], `scores[${index}].sets`)
     const sets = setsRoh ?? vorheriger?.sets ?? 0
 
     const statsEintrag = statsRoh[index]

@@ -288,7 +288,7 @@
   align-items: center;
   gap: 0.6vh;
   background: var(--jg-bg);
-  padding: 1.4vh 1.6vw;
+  padding: 1.4vh 1.2vw;
   border: 1px solid var(--jg-border-strong);
 }
 
@@ -338,13 +338,45 @@
 
 /* ─── Raster ab drei Spielern ─────────────────────────────────────── */
 
-.spielraster {
+/* Ab drei Spielern: links und rechts je eine Spalte, die Mitte gehoert der
+   Scheibe. Bis vier Spieler ergibt das je zwei Karten uebereinander (die
+   vier Ecken), ab fuenf drei je Seite - die Scheibe bleibt in jedem Fall
+   mittig, weil sie ein eigenes Element zwischen den Spalten ist und nicht
+   ueber ihnen liegt. */
+.spielspalten {
   flex: 1;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18vw, 1fr));
+  display: flex;
+  align-items: stretch;
   gap: 2px;
   background: var(--jg-border);
   min-height: 0;
+}
+
+.spielspalte {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.spielmitte {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1.5vw;
+  background: var(--jg-bg);
+}
+
+/* In der Spaltenaufteilung darf die Scheibe groesser werden als im
+   Zweikampf - dort teilt sie sich den schmalen Zwischenraum mit Leg- und
+   Satzstand, hier hat sie die ganze Mittelspalte. */
+.spielmitte .dartscheibe {
+  width: 34vh;
+  height: 34vh;
+  margin-top: 0;
 }
 
 .rasterkarte {
@@ -397,12 +429,15 @@
 
 .statistikleiste {
   flex: 0 0 auto;
-  min-height: 8vh;
+  /* Zwei Zeilen je Spieler (Match- und Leg-Werte) brauchen mehr Hoehe als die
+     eine Zeile vorher - mit 8vh wurde die untere Zeile am Bildrand
+     abgeschnitten. */
+  min-height: 15vh;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 3vw;
-  padding: 0 3vw;
+  gap: 2vw;
+  padding: 0.8vh 2.5vw;
   border-top: 1px solid var(--jg-border-strong);
   /* Dieselbe Flaeche wie die Tafeln (--zs-tafel), nicht --jg-surface -
      sonst stand die Leiste als eigenstaendiger dunkler Streifen ohne
@@ -863,4 +898,247 @@
   letter-spacing: 0.02em;
   color: var(--jg-muted);
   white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------
+   Dartscheibe in der Mittelanzeige
+   ------------------------------------------------------------------
+   Beantwortet "wo ging der Wurf hin". Farben wie an einer echten Scheibe
+   (schwarz/creme, Ringe rot/gruen), aber abgedunkelt: sie liegt auf einem
+   dunklen Screen und darf die Rest-Punktzahlen nicht ueberstrahlen. Die
+   Signalfarbe des Screens bleibt den Treffern vorbehalten - sie sind das
+   Einzige, was sich hier bewegt. */
+.dartscheibe {
+  /* Aus fuenf Metern Abstand muss der Sektor erkennbar bleiben - kleiner
+     als das traegt die Scheibe keine Information mehr, sondern nur noch
+     eine Ahnung. */
+  width: 27vh;
+  height: 27vh;
+  display: block;
+  margin-top: 0.4vh;
+}
+
+.scheibe-rand {
+  fill: #0c0c0e;
+}
+
+.feld-hell {
+  fill: #d8cfb4;
+}
+
+.feld-dunkel {
+  fill: #16161a;
+}
+
+.ring-rot,
+.ring-rot-flaeche {
+  fill: #9e2b2b;
+}
+
+.ring-gruen,
+.ring-gruen-flaeche {
+  fill: #1f6b3a;
+}
+
+.scheibe-zahl {
+  fill: var(--jg-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+/* Jeder Treffer setzt sich einmal kurz, statt zu pulsieren: die Bewegung
+   zeigt an, dass ein Dart dazugekommen ist, und hoert dann auf. */
+.treffer {
+  animation: treffer-setzen 320ms var(--jg-ease) backwards;
+}
+
+.treffer-hof {
+  fill: var(--jg-accent-glow);
+}
+
+.treffer-kern {
+  fill: var(--jg-accent);
+}
+
+@keyframes treffer-setzen {
+  from {
+    opacity: 0;
+    transform: scale(2.2);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .treffer {
+    animation: none;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Statistikleiste: beide Spieler nebeneinander
+   ------------------------------------------------------------------ */
+.statistikblock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4vh;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.8vh 1vw;
+  border-left: 2px solid transparent;
+  transition: border-color 200ms var(--jg-ease);
+}
+
+.statistikblock.aktiv {
+  border-left-color: var(--jg-accent);
+}
+
+.statistikblock-name {
+  font-size: 1.9vh;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--jg-muted-strong);
+  text-transform: none;
+}
+
+.statistikblock.aktiv .statistikblock-name {
+  color: var(--jg-text);
+}
+
+.statistikblock-werte {
+  display: flex;
+  gap: 1.6vw;
+  white-space: nowrap;
+}
+
+/* Die Leg-Werte stehen eine Stufe leiser als die Match-Werte darueber -
+   sie gelten nur fuer das laufende Leg und sollen nicht mit den
+   Match-Zahlen verwechselt werden. */
+.statistikblock-leg {
+  font-size: 0.82em;
+  color: var(--jg-muted-strong);
+}
+
+.wert {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.wert .statistik-label {
+  margin-right: 0;
+  font-size: 0.62em;
+}
+
+.wert-zahl {
+  font-variant-numeric: tabular-nums;
+}
+
+.verlauf-bust {
+  color: var(--jg-warning);
+}
+
+/* ------------------------------------------------------------------
+   Leg-Gewinn
+   ------------------------------------------------------------------
+   Eigene Einblendung mit Namen und Satz, nicht nur eine hervorgehobene
+   Tafel. Der Balken faehrt von links ein und bleibt stehen - eine
+   Bewegung, nicht mehrere. */
+.leg-win {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5vh;
+  background: rgba(2, 6, 23, 0.82);
+}
+
+.leg-win-balken {
+  display: flex;
+  align-items: baseline;
+  gap: 1.2vw;
+  padding: 1.6vh 3vw;
+  background: var(--jg-accent);
+  color: #04140a;
+  transform: translateX(-120%);
+  animation: leg-balken-einfahren 620ms var(--jg-ease) forwards;
+}
+
+.leg-win.zeigen .leg-win-balken {
+  animation-play-state: running;
+}
+
+.leg-win-name {
+  font-size: 7vh;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.leg-win-text {
+  font-size: 3.2vh;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.leg-win-finish {
+  display: flex;
+  align-items: center;
+  gap: 1vw;
+  font-size: 3vh;
+}
+
+.leg-win-dart {
+  padding: 0.5vh 1.1vw;
+  border: 1px solid var(--jg-border-strong);
+  color: var(--jg-text);
+  font-weight: 700;
+  opacity: 0;
+  animation: dart-auftauchen 320ms var(--jg-ease) forwards;
+}
+
+.leg-win-stand {
+  display: flex;
+  align-items: baseline;
+  font-size: 5vh;
+  font-weight: 800;
+  color: #f5a623;
+}
+
+.leg-win-trenner {
+  margin: 0 0.4em;
+  color: var(--jg-muted);
+}
+
+.leg-win-zahl.hervor {
+  color: var(--jg-accent);
+}
+
+@keyframes leg-balken-einfahren {
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes dart-auftauchen {
+  from {
+    opacity: 0;
+    transform: translateY(0.8vh);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leg-win-balken,
+  .leg-win-dart {
+    animation: none;
+    transform: none;
+    opacity: 1;
+  }
 }

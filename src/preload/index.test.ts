@@ -38,6 +38,11 @@ const ERWARTETE_SCHLUESSEL = [
   'anmeldungStatus',
   'diagnosePfad',
   'diagnoseOeffnen',
+  'beiAktualisierungszustand',
+  'aktualisierungZustand',
+  'aktualisierungSuchen',
+  'aktualisierungInstallieren',
+  'neuerungen',
 ].sort()
 
 describe('preload: exponierte window.app-Oberflaeche', () => {

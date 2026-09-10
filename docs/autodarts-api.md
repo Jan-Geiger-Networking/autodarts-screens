@@ -354,3 +354,49 @@ nicht mehr angefragt. Ob der Endpunkt mit der eigenen Nutzer-UUID (aus dem
 `sub`-Claim) zusätzliche, im Token nicht enthaltene Kontofelder liefern würde
 (z. B. ein Profilfoto in höherer Auflösung), ist ungeklärt und für die
 aktuelle Anzeige auch nicht nötig — der Token deckt sie bereits ab.
+
+## Match-Zustand `.state`: bestätigte äußere Felder, echter Befund aus dem Protokoll des Herausgebers 2026-09-10
+
+Belegt: Diagnoseprotokoll eines echten Matches (`autodarts.matches/<matchId>.state`),
+157 Ereignisse. Vertrauen: **hoch** für die Feldnamen der obersten Ebene,
+**niedrig** für alles darunter — dazu gibt es bisher nur die Meldungen des
+Adapters über fehlende Felder, keinen vollständigen Mitschnitt.
+
+Felder der obersten Ebene:
+
+```
+chalkboards, createdAt, finished, gameFinished, gameScores, gameWinner,
+hasReferee, host, id, leg, legs, player, players, round, scores, set,
+settings, skippedPlayers, state, stats, turnBusted, turnScore, turns,
+type, variant, winner
+```
+
+Was daraus belegt ist:
+
+- `players[i]` enthält **nur** `name`. Kein `id`, kein `playerId`, kein
+  `uuid` — die Spielerkennung muss aus dem Index gebildet werden
+  (`p0`, `p1`, …). Ebenso wenig `setsWon`/`sets` auf dieser Ebene
+- `stats[i]` war zu Beginn eines Matches ein **leeres Objekt**. Die Namen der
+  Statistikfelder (Average, Checkout-Quote, 180er, höchstes Finish) sind
+  weiterhin unbestätigt
+- `gameScores[i]` wurde ohne Warnung gelesen — der Restpunktestand liegt dort
+  in einer Form, die `ersteZahl` versteht
+- `scores` (oberste Ebene, nicht `gameScores`) wird seit 0.1.0-beta.5 als
+  Quelle für Legs und Sätze gelesen. Ob die Felder dort `legs`/`sets` heißen,
+  meldet der Adapter beim nächsten Match im Diagnoseprotokoll
+
+### Warum nicht mehr selbst gezählt wird
+
+Bis 0.1.0-beta.4 zählte der Adapter gewonnene Legs selbst hoch, weil kein
+Feldname bestätigt war. Ergebnis am echten Match: **0:2 statt 0:1**. Eine
+selbst geführte Zählung verdoppelt sich, sobald dieselbe Momentaufnahme
+zweimal ankommt — und das passiert regelmäßig, denn nach jeder
+Wiederverbindung schickt der Server den aktuellen Zustand erneut
+(im selben Protokoll: 4× „WebSocket offen", 3× „WebSocket getrennt").
+Eine vom Server geführte Zahl hat diese Eigenschaft nicht.
+
+### Fehlerereignisse auf dem Match-Kanal
+
+Sechs Ereignisse trugen statt des Zustands die Felder
+`channel, error, topic, type`. Sie kamen auf demselben Thema an. Der Adapter
+behandelt sie wie jedes unerwartete Schema: protokollieren, überspringen.

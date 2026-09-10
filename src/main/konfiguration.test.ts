@@ -23,6 +23,20 @@ describe('zusammenfuehren', () => {
     expect(zusammenfuehren([])).toEqual(standardKonfiguration)
   })
 
+  it('nimmt nur einen echten Wahrheitswert als Kanalwahl an', () => {
+    // 'true' als Zeichenkette (von Hand in die Datei geschrieben) ist keine
+    // getroffene Wahl - dann gilt weiter "automatisch".
+    expect(zusammenfuehren({ betaKanal: true }).betaKanal).toBe(true)
+    expect(zusammenfuehren({ betaKanal: false }).betaKanal).toBe(false)
+    expect(zusammenfuehren({ betaKanal: 'true' }).betaKanal).toBeNull()
+    expect(zusammenfuehren({}).betaKanal).toBeNull()
+  })
+
+  it('nimmt die zuletzt gesehene Version nur als Zeichenkette an', () => {
+    expect(zusammenfuehren({ zuletztGeseheneVersion: '0.1.0-beta.5' }).zuletztGeseheneVersion).toBe('0.1.0-beta.5')
+    expect(zusammenfuehren({ zuletztGeseheneVersion: 5 }).zuletztGeseheneVersion).toBeNull()
+  })
+
   it('verwirft Zahlen, die keine gueltigen Display-Kennungen sein koennen', () => {
     expect(zusammenfuehren({ playerDisplayId: NaN }).playerDisplayId).toBeNull()
     expect(zusammenfuehren({ playerDisplayId: Infinity }).playerDisplayId).toBeNull()
