@@ -4,6 +4,32 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.13] - 2026-09-10
+
+Dreizehnte Beta. Sie sucht die Daten für den Spielstart.
+
+Der Anfang wird hier immer über die **Entfernung zum Bull** ermittelt, bei
+ausgeschaltetem Bull-off von Autodarts. Dann läuft zu diesem Zeitpunkt gar
+kein Match — und ohne Match gibt es keine Match-Ereignisse. Die Würfe können
+also nur über den Brett-Kanal kommen, falls überhaupt. Diese Version
+abonniert ihn vollständig und schreibt auf, was ankommt.
+
+### Geändert
+- Vom eigenen Brett werden jetzt **alle drei Themen** abonniert (`.matches`,
+  `.state`, `.events`) statt nur `.matches`. Ereignisse außerhalb von
+  `.matches` werden ausschließlich protokolliert — aus ihnen wird noch nichts
+  abgeleitet, weil ihre Form unbelegt ist
+- Das Rohprotokoll unterscheidet die Bauarten jetzt auch nach Thema. Vorher
+  fielen alle Brett-Ereignisse in denselben Topf, und nur das allererste
+  wurde vollständig festgehalten
+- Das Diagnoseprotokoll meldet auch, **wenn** `bullDistance` auftaucht, nicht
+  nur wenn es fehlt
+
+### Behoben
+- Einer Kennung aus einem Brett-Ereignis außerhalb von `.matches` wird nicht
+  gefolgt: das ist die Kennung des **Bretts**, nicht die eines Matches. Ohne
+  diese Sperre hätte das neue Abonnement die Anzeige abwürgen können
+
 ## [0.1.0-beta.12] - 2026-09-10
 
 Zwölfte Beta. Die Auftreffpunkte sitzen jetzt dort, wo sie bei Autodarts

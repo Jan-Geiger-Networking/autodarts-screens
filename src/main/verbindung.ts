@@ -8,7 +8,7 @@ import { isAbsolute, resolve } from 'node:path'
 import { verbindungszustandVerteilen, zustandVerteilen } from './fenster'
 import { konfigurationLesen } from './konfiguration'
 import { istAngemeldet } from '../autodarts/oauth'
-import { boardThema, KANAL_BOARDS, verbinden, type Verbindung } from '../autodarts/websocket'
+import { boardThemen, KANAL_BOARDS, verbinden, type Verbindung } from '../autodarts/websocket'
 import { standardAufzeichnungspfad } from '../autodarts/aufzeichnung'
 import { protokollieren } from '../autodarts/diagnose'
 import { anwenden, RUHEZUSTAND } from '../autodarts/adapter'
@@ -68,7 +68,7 @@ const STILLE_BIS_RUHEZUSTAND_MS = 5 * 60_000
 // die Ermittlung des Anfangsspielers, nach der der Herausgeber gefragt hat.
 const rohbeispieleProtokolliert = new Set<string>()
 /** Obergrenze fuer die Zahl der Beispiele, damit das Protokoll lesbar bleibt. */
-const ROHBEISPIELE_HOECHSTENS = 6
+const ROHBEISPIELE_HOECHSTENS = 12
 /** Obergrenze je Beispiel. */
 const ROHBEISPIEL_MAX_ZEICHEN = 12_000
 
@@ -82,7 +82,12 @@ function bauart(roh: unknown): string {
   >
   const typ = typeof nutz.type === 'string' ? nutz.type : 'ohne-type'
   const variante = typeof nutz.variant === 'string' ? nutz.variant : 'ohne-variant'
-  return `${typ}|${variante}`
+  // Der Themenzweck gehoert dazu: sonst faellt jedes Brett-Ereignis in
+  // denselben Topf ("ohne-type|ohne-variant") und nur das allererste wird
+  // roh protokolliert - die Wurfmeldungen des Bretts saehe man nie.
+  const thema = typeof umschlag.topic === 'string' ? umschlag.topic : ''
+  const zweck = thema.includes('.') ? thema.slice(thema.lastIndexOf('.') + 1) : 'ohne-thema'
+  return `${zweck}|${typ}|${variante}`
 }
 
 function rohbeispielProtokollieren(roh: unknown): void {
@@ -254,8 +259,10 @@ async function verbindungAufbauen(): Promise<void> {
     if (!wiedergabe) {
       const konfiguration = await konfigurationLesen()
       if (konfiguration.boardId) {
-        aktiveVerbindung.abonnieren(KANAL_BOARDS, boardThema(konfiguration.boardId))
-        void protokollieren(`Board abonniert: ${KANAL_BOARDS}/${boardThema(konfiguration.boardId)}`)
+        for (const thema of boardThemen(konfiguration.boardId)) {
+          aktiveVerbindung.abonnieren(KANAL_BOARDS, thema)
+        }
+        void protokollieren(`Board abonniert: ${boardThemen(konfiguration.boardId).join(', ')}`)
       } else {
         void protokollieren(
           'Kein Board-Abonnement: keine Board-Kennung in der Konfiguration - ohne sie kann die Anwendung kein Match finden. Board-Kennung im Control-Fenster setzen.',

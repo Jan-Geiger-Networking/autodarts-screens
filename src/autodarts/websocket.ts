@@ -32,9 +32,41 @@ const WS_ADRESSE = 'wss://api.autodarts.com/ms/v0/subscribe'
 export const KANAL_BOARDS = 'autodarts.boards'
 export const KANAL_MATCHES = 'autodarts.matches'
 
+// Zwecke, die fuer das eigene Brett abonniert werden.
+//
+// ".matches" sagt, wann ein Match beginnt und endet. ".state" und ".events"
+// sind dazugenommen, um eine offene Frage zu beantworten: der Herausgeber
+// ermittelt den Anfang IMMER ueber die Entfernung zum Bull, bei
+// ausgeschaltetem Bull-off von Autodarts. Es gibt dann kein Match und damit
+// auch keine Match-Ereignisse - die Wuerfe muessen, wenn ueberhaupt, ueber
+// den Brett-Kanal kommen. Ob sie das tun, ist unbelegt; deshalb wird hier
+// abonniert und protokolliert, aber noch nichts daraus abgeleitet. Ein
+// Abonnement, das der Server nicht kennt, beantwortet er mit einem
+// Fehlerereignis, das nur eine Zeile im Protokoll kostet.
+export const BOARD_ABO_ZWECKE = ['matches', 'state', 'events'] as const
+
 /** Thema, um die Match-Ereignisse eines Boards zu abonnieren. */
 export function boardThema(boardId: string): string {
-  return `${boardId}.matches`
+  return `${boardId}.${BOARD_ABO_ZWECKE[0]}`
+}
+
+/** Alle Themen des eigenen Bretts (siehe BOARD_ABO_ZWECKE). */
+export function boardThemen(boardId: string): string[] {
+  return BOARD_ABO_ZWECKE.map((zweck) => `${boardId}.${zweck}`)
+}
+
+/**
+ * Zweck eines Brett-Ereignisses - der Teil des Themas hinter dem letzten
+ * Punkt, also "matches", "state" oder "events". Liefert null, wenn das
+ * Ereignis nicht vom Brett-Kanal kommt.
+ */
+export function brettZweck(roh: unknown): string | null {
+  if (typeof roh !== 'object' || roh === null) return null
+  const o = roh as Record<string, unknown>
+  if (o.channel !== KANAL_BOARDS) return null
+  const thema = typeof o.topic === 'string' ? o.topic : ''
+  const punkt = thema.lastIndexOf('.')
+  return punkt === -1 ? '' : thema.slice(punkt + 1)
 }
 
 // Zwecke, die beim Erkennen eines Matches automatisch mitabonniert werden -
@@ -438,8 +470,19 @@ async function echteVerbindung(
     void protokollieren(ereignisZeileFuerProtokoll(roh))
 
     const matchId = matchIdAusEreignis(roh)
-    const brettArt = brettEreignisArt(roh)
+    const zweck = brettZweck(roh)
+    const brettArt = zweck === 'matches' ? brettEreignisArt(roh) : null
     if (brettArt !== null) void protokollieren(`Brett-Ereignis "${brettArt}" fuer Match ${matchId ?? '(ohne Kennung)'}`)
+
+    // Brett-Ereignisse ausserhalb von ".matches" tragen die Kennung des
+    // BRETTS, nicht die eines Matches. Ihr zu folgen wuerde das Match-Abo auf
+    // eine Brettkennung umstellen und die Anzeige abwuergen. Sie werden nur
+    // protokolliert und durchgereicht.
+    if (zweck !== null && zweck !== 'matches') {
+      schreiben?.(roh)
+      nutzerEreignis(roh)
+      return
+    }
 
     // Einem Brett-Ereignis, das ein ENDE meint, darf nicht gefolgt werden:
     // sonst abonniert die Anwendung genau das Match, das gerade weggeraeumt
