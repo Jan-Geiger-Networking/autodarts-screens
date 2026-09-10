@@ -11,6 +11,7 @@ import {
   RUHENDER_MATCHTAG,
   spielerSchluessel,
   spielplanErzeugen,
+  statistiken,
   tabelle,
   type MatchErgebnis,
   type Matchtag,
@@ -44,12 +45,37 @@ function matchtagMit(namen: string[]): Matchtag {
 }
 
 /** Traegt ein Ergebnis so ein, als waere es aus einem Autodarts-Match gekommen. */
-function partieGewinnen(matchtag: Matchtag, sieger: string, verlierer: string, legs: [number, number], nr: number) {
+function partieGewinnen(
+  matchtag: Matchtag,
+  sieger: string,
+  verlierer: string,
+  legs: [number, number],
+  nr: number,
+  werte?: {
+    average?: [number | null, number | null]
+    count180?: [number, number]
+    highestFinish?: [number | null, number | null]
+  },
+) {
   const ergebnis: MatchErgebnis = {
     matchId: `m${nr}`,
     spieler: [
-      { id: spielerSchluessel(sieger), name: sieger, legs: legs[0], average: null },
-      { id: spielerSchluessel(verlierer), name: verlierer, legs: legs[1], average: null },
+      {
+        id: spielerSchluessel(sieger),
+        name: sieger,
+        legs: legs[0],
+        average: werte?.average?.[0] ?? null,
+        count180: werte?.count180?.[0] ?? 0,
+        highestFinish: werte?.highestFinish?.[0] ?? null,
+      },
+      {
+        id: spielerSchluessel(verlierer),
+        name: verlierer,
+        legs: legs[1],
+        average: werte?.average?.[1] ?? null,
+        count180: werte?.count180?.[1] ?? 0,
+        highestFinish: werte?.highestFinish?.[1] ?? null,
+      },
     ],
     siegerId: spielerSchluessel(sieger),
   }
@@ -205,9 +231,9 @@ describe('aufwaermenUebernehmen', () => {
   const aufwaermen: MatchErgebnis = {
     matchId: 'warm-1',
     spieler: [
-      { id: spielerSchluessel('Anna'), name: 'Anna', legs: 0, average: 55 },
-      { id: spielerSchluessel('Bert'), name: 'Bert', legs: 0, average: 71 },
-      { id: spielerSchluessel('Cem'), name: 'Cem', legs: 0, average: 63 },
+      { id: spielerSchluessel('Anna'), name: 'Anna', legs: 0, average: 55, count180: 0, highestFinish: null },
+      { id: spielerSchluessel('Bert'), name: 'Bert', legs: 0, average: 71, count180: 1, highestFinish: null },
+      { id: spielerSchluessel('Cem'), name: 'Cem', legs: 0, average: 63, count180: 0, highestFinish: null },
     ],
     siegerId: null,
   }
@@ -266,8 +292,8 @@ describe('ergebnisUebernehmen', () => {
     const fremd: MatchErgebnis = {
       matchId: 'x',
       spieler: [
-        { id: spielerSchluessel('A'), name: 'A', legs: 3, average: null },
-        { id: spielerSchluessel('Gast'), name: 'Gast', legs: 1, average: null },
+        { id: spielerSchluessel('A'), name: 'A', legs: 3, average: null, count180: 0, highestFinish: null },
+        { id: spielerSchluessel('Gast'), name: 'Gast', legs: 1, average: null, count180: 0, highestFinish: null },
       ],
       siegerId: spielerSchluessel('A'),
     }
@@ -279,8 +305,8 @@ describe('ergebnisUebernehmen', () => {
     const abgebrochen: MatchErgebnis = {
       matchId: 'x',
       spieler: [
-        { id: spielerSchluessel('A'), name: 'A', legs: 1, average: null },
-        { id: spielerSchluessel('B'), name: 'B', legs: 1, average: null },
+        { id: spielerSchluessel('A'), name: 'A', legs: 1, average: null, count180: 0, highestFinish: null },
+        { id: spielerSchluessel('B'), name: 'B', legs: 1, average: null, count180: 0, highestFinish: null },
       ],
       siegerId: null,
     }
@@ -296,6 +322,8 @@ describe('ergebnisUebernehmen', () => {
         name,
         legs: name === 'A' ? 3 : 0,
         average: null,
+        count180: 0,
+        highestFinish: null,
       })),
       siegerId: spielerSchluessel('A'),
     }
@@ -441,5 +469,56 @@ describe('matchtagEinlesen', () => {
     const zurueck = matchtagEinlesen(roh)
     expect(zurueck.spieler).toHaveLength(2)
     expect(zurueck.paarungen).toHaveLength(1)
+  })
+})
+
+describe('statistiken', () => {
+  it('liefert ohne gespielte Partie keine Bestwerte statt Nullen', () => {
+    const leer = statistiken(matchtagMit(['A', 'B', 'C', 'D']))
+    expect(leer.bestesAverage).toBeNull()
+    expect(leer.meiste180).toBeNull()
+    expect(leer.hoechstesFinish).toBeNull()
+    expect(leer.gesamt180).toBe(0)
+    expect(leer.gespielt).toBe(0)
+    expect(leer.offen).toBe(6)
+  })
+
+  it('findet bestes Average, meiste 180er und hoechstes Finish', () => {
+    let m = matchtagMit(['A', 'B', 'C', 'D'])
+    m = partieGewinnen(m, 'A', 'B', [3, 1], 1, {
+      average: [82.5, 61.2],
+      count180: [2, 0],
+      highestFinish: [121, null],
+    })
+    m = partieGewinnen(m, 'C', 'D', [3, 0], 2, {
+      average: [90.1, 55],
+      count180: [1, 1],
+      highestFinish: [64, null],
+    })
+    const st = statistiken(m)
+    expect(st.bestesAverage?.spieler.name).toBe('C')
+    expect(st.bestesAverage?.wert).toBeCloseTo(90.1)
+    expect(st.meiste180?.spieler.name).toBe('A')
+    expect(st.meiste180?.wert).toBe(2)
+    expect(st.hoechstesFinish?.spieler.name).toBe('A')
+    expect(st.hoechstesFinish?.wert).toBe(121)
+    expect(st.gesamt180).toBe(4)
+    expect(st.gespielt).toBe(2)
+    expect(st.offen).toBe(4)
+  })
+
+  it('mittelt den Schnitt eines Spielers ueber seine Partien', () => {
+    let m = matchtagMit(['A', 'B', 'C', 'D'])
+    m = partieGewinnen(m, 'A', 'B', [3, 1], 1, { average: [80, 60] })
+    m = partieGewinnen(m, 'A', 'C', [3, 2], 2, { average: [60, 70] })
+    const schnitt = statistiken(m).schnitte.find((e) => e.spieler.name === 'A')!
+    expect(schnitt.wert).toBeCloseTo(70)
+  })
+
+  it('sortiert die Schnitte absteigend und laesst aus, wer nicht gespielt hat', () => {
+    let m = matchtagMit(['A', 'B', 'C', 'D'])
+    m = partieGewinnen(m, 'A', 'B', [3, 1], 1, { average: [80, 60] })
+    const schnitte = statistiken(m).schnitte
+    expect(schnitte.map((e) => e.spieler.name)).toEqual(['A', 'B'])
   })
 })

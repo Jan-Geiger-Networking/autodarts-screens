@@ -4,6 +4,7 @@ import type { MonitorEintrag } from '../../main/monitore'
 import type { Verbindungszustand } from '../../autodarts/websocket'
 import type { Aktualisierungszustand } from '../../main/aktualisierung'
 import { UeberPanel } from './UeberPanel'
+import { MatchtagPanel } from './MatchtagPanel'
 import '../shared/tokens.css'
 import './App.css'
 
@@ -249,6 +250,11 @@ export function App() {
             Spectator-Screen schließen
           </button>
         </div>
+      </fieldset>
+
+      <fieldset className="bereich">
+        <legend>Matchtag</legend>
+        <MatchtagPanel />
       </fieldset>
 
       <fieldset className="bereich">

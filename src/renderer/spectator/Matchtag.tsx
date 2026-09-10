@@ -1,0 +1,278 @@
+// Pausenbildschirm waehrend eines Matchtags.
+//
+// Loest den Vorspann ab, solange ein Turnier laeuft ("ab da aendert sich der
+// pausenbildschirm mit statistik einblendungen und die liste wer wie viele
+// punkte hat und am gewinnen ist"). Vier Folien im festen Takt, wie beim
+// Vorspann - harter Schnitt statt Ueberblendung, damit es nach Uebertragung
+// aussieht und nicht nach Diaschau:
+//
+//   1. JETZT       - welche Partie als naechstes einzurichten ist. Die
+//                    wichtigste Folie, deshalb die erste und die laengste.
+//   2. TABELLE     - wer wie viele Punkte hat und am Gewinnen ist.
+//   3. SPIELPLAN   - wer gegen wen, gespielt und noch offen.
+//   4. STATISTIK   - bestes Average, meiste 180er, hoechstes Finish.
+//
+// Sonderfaelle: die Aufwaermrunde bekommt eine eigene Folie (dort gibt es
+// noch keinen Spielplan), und ein entschiedener Matchtag beginnt mit dem
+// Sieger.
+//
+// Alle Zahlen kommen aus abgeschlossenen Partien (src/shared/matchtag.ts).
+// Wo es keine Grundlage gibt, faellt die Kachel weg, statt eine Null zu
+// zeigen, die nach Leistung aussieht.
+
+import { useEffect, useState } from 'react'
+import {
+  naechstePaarung,
+  spielerName,
+  statistiken,
+  tabelle,
+  type Matchtag as MatchtagStand,
+  type Paarung,
+} from '../../shared/matchtag'
+import { folienFuer } from './matchtagFolien'
+import logoWeiss from '../../../assets/logo-white.png'
+
+/** Standzeit einer Folie. Laenger als beim Vorspann: hier stehen Zahlen, die
+ * man lesen koennen muss, keine Schlagworte. */
+const TAKT_MS = 9000
+/** Die Folie "Jetzt" bleibt laenger - danach richtet jemand das Match ein. */
+const TAKT_JETZT_MS = 13000
+/** Dauer der Fahrt, muss zu den @keyframes in App.css passen. Bewusst
+ * langsam, wie beim Vorspann ("die geschwindigkeit der animation also
+ * transition muss langsamer werden das wichtig"). */
+const UEBERGANG_MS = 1400
+
+/** Der Matchtag-Stand aus dem Hauptprozess. */
+export function useMatchtag(): MatchtagStand | null {
+  const [stand, setStand] = useState<MatchtagStand | null>(null)
+  useEffect(() => {
+    // Im Vorfuehrmodus gibt es kein window.app - dann bleibt es bei null und
+    // der normale Vorspann laeuft weiter.
+    if (typeof window === 'undefined' || !window.app?.beiMatchtag) return
+    return window.app.beiMatchtag(setStand)
+  }, [])
+  return stand
+}
+
+/** Zahl mit einer Nachkommastelle, oder ein Strich, wenn es sie nicht gibt. */
+function zahl(wert: number | null | undefined, stellen = 1): string {
+  return typeof wert === 'number' && Number.isFinite(wert) ? wert.toFixed(stellen) : '–'
+}
+
+function VsZeile({ matchtag, paarung, gross }: { matchtag: MatchtagStand; paarung: Paarung; gross?: boolean }) {
+  const gespielt = paarung.siegerId !== null
+  return (
+    <div className={`mt-vs${gross ? ' mt-vs-gross' : ''}${gespielt ? ' ist-gespielt' : ''}`}>
+      <span className={`mt-vs-name${paarung.siegerId === paarung.aId ? ' ist-sieger' : ''}`}>
+        {spielerName(matchtag, paarung.aId)}
+      </span>
+      <span className="mt-vs-mitte">{gespielt ? `${paarung.legsA} : ${paarung.legsB}` : 'vs'}</span>
+      <span className={`mt-vs-name${paarung.siegerId === paarung.bId ? ' ist-sieger' : ''}`}>
+        {spielerName(matchtag, paarung.bId)}
+      </span>
+    </div>
+  )
+}
+
+function FolieJetzt({ matchtag }: { matchtag: MatchtagStand }) {
+  const naechste = naechstePaarung(matchtag)
+  if (!naechste) return null
+  const danach = matchtag.paarungen.filter((p) => p.siegerId === null && p.id !== naechste.id).slice(0, 3)
+  const stechen = matchtag.phase === 'stechen'
+
+  return (
+    <div className="mt-folie mt-folie-jetzt">
+      <span className="mt-eyebrow">{stechen ? 'Stechen um den Sieg' : 'Als Nächstes'}</span>
+      <VsZeile matchtag={matchtag} paarung={naechste} gross />
+      <p className="mt-hinweis">Match jetzt einrichten</p>
+      {danach.length > 0 && (
+        <div className="mt-danach">
+          <span className="mt-danach-titel">Danach</span>
+          {danach.map((p) => (
+            <span className="mt-danach-zeile" key={p.id}>
+              {spielerName(matchtag, p.aId)} <em>vs</em> {spielerName(matchtag, p.bId)}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FolieTabelle({ matchtag }: { matchtag: MatchtagStand }) {
+  const zeilen = tabelle(matchtag)
+  const fuehrend = zeilen[0]?.punkte ?? 0
+  return (
+    <div className="mt-folie mt-folie-tabelle">
+      <span className="mt-eyebrow">{matchtag.titel || 'Matchtag'} · Tabelle</span>
+      <table className="mt-tabelle">
+        <thead>
+          <tr>
+            <th className="mt-sp-platz">#</th>
+            <th className="mt-sp-name">Spieler</th>
+            <th>Pkt</th>
+            <th>Sp</th>
+            <th>S</th>
+            <th>N</th>
+            <th>Legs</th>
+            <th>+/–</th>
+          </tr>
+        </thead>
+        <tbody>
+          {zeilen.map((z) => (
+            <tr key={z.spieler.id} className={z.punkte === fuehrend && z.gespielt > 0 ? 'ist-fuehrend' : undefined}>
+              <td className="mt-sp-platz">{z.platz}</td>
+              <td className="mt-sp-name">{z.spieler.name}</td>
+              <td className="mt-punkte">{z.punkte}</td>
+              <td>{z.gespielt}</td>
+              <td>{z.siege}</td>
+              <td>{z.niederlagen}</td>
+              <td>
+                {z.legsFuer}:{z.legsGegen}
+              </td>
+              <td>{z.legDifferenz > 0 ? `+${z.legDifferenz}` : z.legDifferenz}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function FolieSpielplan({ matchtag }: { matchtag: MatchtagStand }) {
+  const offen = matchtag.paarungen.filter((p) => p.siegerId === null).length
+  return (
+    <div className="mt-folie mt-folie-spielplan">
+      <span className="mt-eyebrow">
+        Spielplan · {matchtag.paarungen.length - offen} von {matchtag.paarungen.length} gespielt
+      </span>
+      <div className="mt-plan">
+        {matchtag.paarungen.map((p) => (
+          <VsZeile matchtag={matchtag} paarung={p} key={p.id} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function FolieStatistik({ matchtag }: { matchtag: MatchtagStand }) {
+  const st = statistiken(matchtag)
+  return (
+    <div className="mt-folie mt-folie-statistik">
+      <span className="mt-eyebrow">Zahlen des Abends</span>
+      <div className="mt-kacheln">
+        {st.bestesAverage && (
+          <div className="mt-kachel">
+            <span className="mt-kachel-titel">Bestes Average</span>
+            <span className="mt-kachel-wert">{zahl(st.bestesAverage.wert)}</span>
+            <span className="mt-kachel-name">{st.bestesAverage.spieler.name}</span>
+          </div>
+        )}
+        {st.meiste180 && (
+          <div className="mt-kachel">
+            <span className="mt-kachel-titel">Meiste 180er</span>
+            <span className="mt-kachel-wert">{st.meiste180.wert}</span>
+            <span className="mt-kachel-name">{st.meiste180.spieler.name}</span>
+          </div>
+        )}
+        {st.hoechstesFinish && (
+          <div className="mt-kachel">
+            <span className="mt-kachel-titel">Höchstes Finish</span>
+            <span className="mt-kachel-wert">{st.hoechstesFinish.wert}</span>
+            <span className="mt-kachel-name">{st.hoechstesFinish.spieler.name}</span>
+          </div>
+        )}
+        {st.gesamt180 > 0 && (
+          <div className="mt-kachel">
+            <span className="mt-kachel-titel">180er gesamt</span>
+            <span className="mt-kachel-wert">{st.gesamt180}</span>
+            <span className="mt-kachel-name">alle zusammen</span>
+          </div>
+        )}
+      </div>
+      {st.schnitte.length > 0 && (
+        <div className="mt-schnitte">
+          <span className="mt-danach-titel">Schnitt über alle Partien</span>
+          {st.schnitte.slice(0, 6).map((e) => (
+            <span className="mt-schnitt-zeile" key={e.spieler.id}>
+              <span>{e.spieler.name}</span>
+              <span className="mt-schnitt-wert">{zahl(e.wert)}</span>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FolieAufwaermen({ matchtag }: { matchtag: MatchtagStand }) {
+  return (
+    <div className="mt-folie mt-folie-jetzt">
+      <span className="mt-eyebrow">{matchtag.titel || 'Matchtag'}</span>
+      <p className="mt-riesig">Aufwärmrunde</p>
+      <p className="mt-hinweis">Alle Mitspieler in ein Match — danach steht der Spielplan</p>
+    </div>
+  )
+}
+
+function FolieSieger({ matchtag }: { matchtag: MatchtagStand }) {
+  return (
+    <div className="mt-folie mt-folie-sieger">
+      <span className="mt-eyebrow">{matchtag.titel || 'Matchtag'} entschieden</span>
+      <p className="mt-riesig">{spielerName(matchtag, matchtag.siegerId ?? '')}</p>
+      <p className="mt-hinweis">Sieger des Abends</p>
+    </div>
+  )
+}
+
+export function Matchtag({ matchtag }: { matchtag: MatchtagStand }) {
+  const folien = folienFuer(matchtag)
+  const [index, setIndex] = useState(0)
+  const [faehrt, setFaehrt] = useState(false)
+
+  // Beginnt der Matchtag eine neue Phase (Aufwaermen -> Spielplan -> ...),
+  // aendert sich die Folienliste. Dann von vorn, statt in einem Index zu
+  // stehen, den es nicht mehr gibt.
+  const schluessel = folien.join('|')
+  useEffect(() => setIndex(0), [schluessel])
+
+  useEffect(() => {
+    if (folien.length <= 1) return
+    const art = folien[index % folien.length]
+    const standzeit = art === 'jetzt' ? TAKT_JETZT_MS : TAKT_MS
+    const fahrt = window.setTimeout(() => setFaehrt(true), standzeit)
+    const weiter = window.setTimeout(() => {
+      setFaehrt(false)
+      setIndex((i) => (i + 1) % folien.length)
+    }, standzeit + UEBERGANG_MS)
+    return () => {
+      window.clearTimeout(fahrt)
+      window.clearTimeout(weiter)
+    }
+  }, [index, schluessel, folien])
+
+  if (folien.length === 0) return null
+  const art = folien[index % folien.length]!
+
+  return (
+    <div className="bildschirm-matchtag">
+      <div className={`mt-buehne${faehrt ? ' faehrt-aus' : ''}`} key={`${art}-${index}`}>
+        {art === 'jetzt' && <FolieJetzt matchtag={matchtag} />}
+        {art === 'tabelle' && <FolieTabelle matchtag={matchtag} />}
+        {art === 'spielplan' && <FolieSpielplan matchtag={matchtag} />}
+        {art === 'statistik' && <FolieStatistik matchtag={matchtag} />}
+        {art === 'aufwaermen' && <FolieAufwaermen matchtag={matchtag} />}
+        {art === 'sieger' && <FolieSieger matchtag={matchtag} />}
+      </div>
+
+      {/* Dauerhaftes Signal oben rechts, wie im Vorspann: es sagt jedem im
+          Raum, dass gerade nicht gespielt wird. */}
+      <div className="mt-signal">
+        <span className="mt-signal-punkt" />
+        Spielpause
+      </div>
+
+      <img className="bug" src={logoWeiss} alt="JGNet" />
+    </div>
+  )
+}

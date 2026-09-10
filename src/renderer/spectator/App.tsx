@@ -5,6 +5,8 @@ import { ermittleBasis, szeneAusZustand, UEBERLAGERUNG_DAUER_MS, type Ueberlager
 import { useAusblenden } from './useAusblenden'
 import { statistikSeiteParam, useVorfuehrung, vorfuehrungAktiv, vorfuehrungEingefroren } from './vorfuehrung'
 import { Vorspann } from './Vorspann'
+import { Matchtag, useMatchtag } from './Matchtag'
+import { matchtagAktiv } from '../../shared/matchtag'
 import { averageAnzeige, checkoutQuote, finishAnzeige, initialen } from './formatierung'
 import { Dartscheibe } from '../shared/Dartscheibe'
 import { Anfangsermittlung } from '../shared/Anfangsermittlung'
@@ -33,6 +35,11 @@ export function App() {
   }, [vorfuehrung])
 
   const zustand = vorfuehrung ? vorfuehrZustand : echterZustand
+
+  // Laeuft ein Matchtag, tritt sein Pausenbildschirm an die Stelle des
+  // Vorspanns. Laeuft keiner, bleibt alles wie bisher.
+  const matchtag = useMatchtag()
+  const matchtagLaeuft = matchtag !== null && matchtagAktiv(matchtag)
 
   // Ueberlagerungs-Zustandsmaschine: genau eine Ueberlagerung gleichzeitig.
   // Ein neues Ereignis ersetzt eine noch laufende sofort (Abkuerzen statt
@@ -105,7 +112,7 @@ export function App() {
 
   return (
     <div className="bildschirm-zuschauer">
-      {anzeige === 'idle' && <Vorspann />}
+      {anzeige === 'idle' && (matchtagLaeuft && matchtag ? <Matchtag matchtag={matchtag} /> : <Vorspann />)}
 
       {anzeige === 'bullOff' && zustand && (
         <div className="bildschirm-anfang">

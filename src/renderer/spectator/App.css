@@ -1250,3 +1250,400 @@
   justify-content: center;
   background: radial-gradient(circle at 50% 45%, var(--jg-surface) 0%, var(--jg-bg) 65%);
 }
+
+/* ═══ Matchtag-Pausenbildschirm ═══════════════════════════════════════════
+   Loest den Vorspann ab, solange ein Turnier laeuft. Optik wie der Rest des
+   Zuschauer-Screens: dunkler Grund, ein Neongruen als einzige Signalfarbe,
+   Barlow Condensed. Alles in vh/vw, damit es auf 1080p und 4K gleich wirkt -
+   und gross genug, um quer durch den Raum gelesen zu werden. */
+
+.bildschirm-matchtag {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(4, 252, 76, 0.07) 0%, transparent 55%),
+    var(--jg-bg);
+}
+
+/* Die Buehne traegt die Fahrt. Harter Schnitt zwischen zwei Folien wie im
+   Vorspann: gerichtete Transforms, keine Ueberblendung. */
+.mt-buehne {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: mt-ein 1400ms var(--jg-ease) both;
+}
+
+.mt-buehne.faehrt-aus {
+  animation: mt-aus 1400ms var(--jg-ease) both;
+}
+
+@keyframes mt-ein {
+  from {
+    opacity: 0;
+    transform: translateY(4vh);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mt-aus {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4vh);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mt-buehne,
+  .mt-buehne.faehrt-aus {
+    animation: none;
+  }
+}
+
+.mt-folie {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2.4vh;
+  width: min(88vw, 150vh);
+  padding: 0 4vw;
+  text-align: center;
+}
+
+/* Ueberschriftzeile jeder Folie - klein, gesperrt, in der Signalfarbe. */
+.mt-eyebrow {
+  font-family: var(--jg-font-display);
+  font-size: 2.6vh;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--jg-accent);
+}
+
+.mt-riesig {
+  margin: 0;
+  font-family: var(--jg-font-display);
+  font-size: 11vh;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--jg-text);
+}
+
+.mt-hinweis {
+  margin: 0;
+  font-family: var(--jg-font-display);
+  font-size: 3vh;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--jg-muted);
+}
+
+/* Paarungszeile A gegen B */
+
+.mt-vs {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1.4vw;
+  width: 100%;
+}
+
+.mt-vs-name {
+  font-family: var(--jg-font-display);
+  font-size: 3.6vh;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--jg-text);
+}
+
+.mt-vs-name:first-child {
+  text-align: right;
+}
+
+.mt-vs-name:last-child {
+  text-align: left;
+}
+
+.mt-vs-mitte {
+  min-width: 6vw;
+  font-family: var(--jg-font-display);
+  font-size: 2.6vh;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--jg-muted);
+}
+
+/* Die naechste Partie steht gross - sie ist der Grund, warum jemand
+   hinschaut: danach wird das Match eingerichtet. */
+.mt-vs-gross .mt-vs-name {
+  font-size: 8.5vh;
+  line-height: 1.05;
+}
+
+.mt-vs-gross .mt-vs-mitte {
+  font-size: 4vh;
+  color: var(--jg-accent);
+}
+
+/* Gespielte Partien treten zurueck, der Sieger bleibt hell. */
+.mt-vs.ist-gespielt .mt-vs-name {
+  color: var(--jg-muted);
+}
+
+.mt-vs.ist-gespielt .mt-vs-mitte {
+  color: var(--jg-text);
+}
+
+.mt-vs-name.ist-sieger {
+  color: var(--jg-accent);
+}
+
+/* Folie: naechste Partie */
+
+.mt-folie-jetzt .mt-hinweis {
+  color: var(--jg-accent);
+}
+
+.mt-danach {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6vh;
+  margin-top: 2vh;
+}
+
+.mt-danach-titel {
+  font-family: var(--jg-font-display);
+  font-size: 2vh;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--jg-muted);
+}
+
+.mt-danach-zeile {
+  font-family: var(--jg-font-display);
+  font-size: 2.8vh;
+  letter-spacing: 0.04em;
+  color: var(--jg-muted-strong);
+}
+
+.mt-danach-zeile em {
+  font-style: normal;
+  color: var(--jg-muted);
+}
+
+/* Folie: Tabelle */
+
+.mt-tabelle {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--jg-font-display);
+  font-size: 3.4vh;
+}
+
+.mt-tabelle th {
+  padding: 0.8vh 1vw;
+  font-size: 2vh;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--jg-muted);
+  border-bottom: 0.2vh solid var(--jg-border-strong);
+  text-align: right;
+}
+
+.mt-tabelle td {
+  padding: 1vh 1vw;
+  border-bottom: 0.1vh solid var(--jg-border);
+  color: var(--jg-text);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.mt-tabelle .mt-sp-platz {
+  text-align: left;
+  width: 4vw;
+  color: var(--jg-muted);
+}
+
+.mt-tabelle .mt-sp-name {
+  text-align: left;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.mt-punkte {
+  font-weight: 800;
+  color: var(--jg-accent);
+}
+
+/* Wer fuehrt, bekommt eine Spur Untergrund - erkennbar, ohne zu schreien. */
+.mt-tabelle tr.ist-fuehrend td {
+  background: var(--jg-accent-dim);
+}
+
+.mt-tabelle tr.ist-fuehrend .mt-sp-name {
+  color: var(--jg-accent);
+}
+
+/* Folie: Spielplan */
+
+.mt-plan {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(28vw, 1fr));
+  gap: 1vh 3vw;
+  width: 100%;
+}
+
+.mt-plan .mt-vs {
+  padding: 0.9vh 1.2vw;
+  border-radius: 0.8vh;
+  background: rgba(15, 26, 46, 0.6);
+  border-left: 0.35vh solid var(--jg-accent-strong);
+}
+
+.mt-plan .mt-vs.ist-gespielt {
+  border-left-color: var(--jg-border-strong);
+  background: rgba(15, 26, 46, 0.25);
+}
+
+/* Folie: Statistik */
+
+.mt-kacheln {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18vw, 1fr));
+  gap: 2vh 2vw;
+  width: 100%;
+}
+
+.mt-kachel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4vh;
+  padding: 2.4vh 1.6vw;
+  border-radius: 1vh;
+  background: rgba(15, 26, 46, 0.6);
+  border-top: 0.35vh solid var(--jg-accent-strong);
+}
+
+.mt-kachel-titel {
+  font-family: var(--jg-font-display);
+  font-size: 2vh;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--jg-muted);
+}
+
+.mt-kachel-wert {
+  font-family: var(--jg-font-display);
+  font-size: 8vh;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--jg-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.mt-kachel-name {
+  font-family: var(--jg-font-display);
+  font-size: 2.6vh;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--jg-text);
+}
+
+.mt-schnitte {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5vh;
+  width: min(60vw, 90vh);
+  margin-top: 1vh;
+}
+
+.mt-schnitt-zeile {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--jg-font-display);
+  font-size: 2.8vh;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--jg-muted-strong);
+  border-bottom: 0.1vh solid var(--jg-border);
+  padding-bottom: 0.4vh;
+}
+
+.mt-schnitt-wert {
+  color: var(--jg-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Folie: Sieger */
+
+.mt-folie-sieger .mt-riesig {
+  color: var(--jg-accent);
+  text-shadow: 0 0 6vh var(--jg-accent-glow);
+  font-size: 14vh;
+}
+
+/* Dauerhaftes Signal oben rechts */
+
+.mt-signal {
+  position: absolute;
+  top: 2.5vh;
+  right: 2.5vh;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.8vh;
+  padding: 0.8vh 1.6vh;
+  border-radius: 0.6vh;
+  background: rgba(2, 6, 23, 0.7);
+  border: 0.15vh solid var(--jg-border-strong);
+  font-family: var(--jg-font-display);
+  font-size: 2.2vh;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--jg-muted-strong);
+}
+
+.mt-signal-punkt {
+  width: 1vh;
+  height: 1vh;
+  border-radius: 50%;
+  background: var(--jg-accent);
+  animation: mt-pulsen 2.4s ease-in-out infinite;
+}
+
+@keyframes mt-pulsen {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mt-signal-punkt {
+    animation: none;
+    opacity: 1;
+  }
+}

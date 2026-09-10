@@ -123,3 +123,58 @@ button:disabled {
   border-left: 2px solid var(--jg-akzent, #7ee787);
   border-radius: 2px;
 }
+
+/* Matchtag-Bedienteil */
+
+/* Die naechste Paarung ist die eine Zeile, die beim Einrichten zaehlt -
+   deshalb hebt sie sich vom uebrigen Hinweistext ab. */
+.matchtag-naechste {
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.4rem;
+  border-left: 3px solid var(--jg-accent);
+  background: var(--jg-accent-dim);
+  color: var(--jg-text);
+}
+
+.matchtag-naechste strong {
+  color: var(--jg-accent);
+}
+
+.matchtag-tabelle {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.6rem 0;
+  font-size: var(--jg-fs-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.matchtag-tabelle th {
+  text-align: left;
+  padding: 0.3rem 0.5rem;
+  font-weight: 600;
+  color: var(--jg-muted);
+  border-bottom: 1px solid var(--jg-border-strong);
+}
+
+.matchtag-tabelle td {
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--jg-border);
+  color: var(--jg-text);
+}
+
+.matchtag-tabelle th:not(:nth-child(2)),
+.matchtag-tabelle td:not(:nth-child(2)) {
+  text-align: right;
+  width: 3.5rem;
+}
+
+/* Knopf, der etwas unwiederbringlich wegwirft. Erscheint erst nach einem
+   ersten Klick und faellt nach fuenf Sekunden wieder zurueck. */
+.gefahr {
+  border-color: var(--jg-warning);
+  color: var(--jg-warning);
+}
+
+.gefahr:hover {
+  background: var(--jg-warning-dim);
+}
