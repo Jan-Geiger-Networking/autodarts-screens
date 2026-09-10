@@ -7,6 +7,7 @@ import {
 import { ipcRegistrieren } from "./ipc";
 import { konfigurationLesen } from "./konfiguration";
 import { verbindungBeenden, verbindungStarten } from "./verbindung";
+import { matchtagLaden } from "./matchtagDienst";
 import { aktualisierungStarten } from "./aktualisierung";
 import { checkoutWeg, setupWurf } from "../shared/checkout";
 import type { MatchState, Player, Segment } from "../shared/typen";
@@ -105,6 +106,11 @@ function testZustandStarten(): void {
 app.whenReady().then(async () => {
   ipcRegistrieren();
   konfigurationAktualisieren(await konfigurationLesen());
+  // Vor dem ersten Fenster: matchtagLaden() setzt den Stand, den
+  // fensterOeffnen() einem frisch geoeffneten Fenster nachreicht. Danach
+  // waere ein laufendes Turnier auf dem Zuschauer-Screen erst mit der
+  // naechsten Aenderung zu sehen.
+  await matchtagLaden();
   const controlFenster = fensterOeffnen("control");
 
   if (process.env.AD_TESTZUSTAND === "1") {

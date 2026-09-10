@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { darfKanalNutzen } from './ipc'
+import { darfKanalNutzen, matchtagBefehlPruefen } from './ipc'
 
 describe('darfKanalNutzen', () => {
   it('erlaubt dem Control-Fenster die eingeschraenkten Kanaele', () => {
@@ -72,5 +72,31 @@ describe('darfKanalNutzen', () => {
     expect(darfKanalNutzen('player', 'monitore:auflisten')).toBe(true)
     expect(darfKanalNutzen('spectator', 'monitore:auflisten')).toBe(true)
     expect(darfKanalNutzen(null, 'monitore:auflisten')).toBe(true)
+  })
+})
+
+describe('matchtagBefehlPruefen', () => {
+  it('nimmt einen Start samt Titel an', () => {
+    expect(matchtagBefehlPruefen({ art: 'starten', titel: 'Huettenabend' })).toEqual({
+      art: 'starten',
+      titel: 'Huettenabend',
+    })
+  })
+
+  it('nimmt einen Start ohne brauchbaren Titel mit leerem Titel an', () => {
+    expect(matchtagBefehlPruefen({ art: 'starten', titel: 42 })).toEqual({ art: 'starten', titel: '' })
+  })
+
+  it('nimmt das Zuruecknehmen an', () => {
+    expect(matchtagBefehlPruefen({ art: 'zuruecknehmen' })).toEqual({ art: 'zuruecknehmen' })
+  })
+
+  it('macht aus allem Unbekannten ein Beenden statt eines Absturzes', () => {
+    // Alles aus dem Renderer ist ungeprueft. Beenden ist die harmloseste
+    // Auslegung: es bricht hoechstens ein Turnier ab, das der Nutzer sofort
+    // wieder starten kann - es faelscht keinen Spielstand.
+    expect(matchtagBefehlPruefen(null)).toEqual({ art: 'beenden' })
+    expect(matchtagBefehlPruefen('starten')).toEqual({ art: 'beenden' })
+    expect(matchtagBefehlPruefen({ art: 'unbekannt' })).toEqual({ art: 'beenden' })
   })
 })

@@ -12,6 +12,7 @@ import { boardThemen, KANAL_BOARDS, verbinden, type Verbindung } from '../autoda
 import { standardAufzeichnungspfad } from '../autodarts/aufzeichnung'
 import { protokollieren } from '../autodarts/diagnose'
 import { anwenden, RUHEZUSTAND } from '../autodarts/adapter'
+import { matchZustandVerarbeiten } from './matchtagDienst'
 import type { MatchState } from '../shared/typen'
 
 // Die einzige offene Verbindung dieses Prozesses - gehalten, um sie beim
@@ -115,6 +116,9 @@ function zustandUebernehmen(neu: MatchState): void {
   matchZustand = neu
   zustandVerteilen(neu)
   stilleUeberwachen(neu)
+  // Laeuft ein Matchtag, wertet er ein beendetes Match als Partie. Laeuft
+  // keiner, kostet der Aufruf einen Vergleich (siehe matchtagDienst.ts).
+  matchZustandVerarbeiten(neu)
 
   if (neu.phase === 'finished') {
     if (ruhezustandTimer === null) {

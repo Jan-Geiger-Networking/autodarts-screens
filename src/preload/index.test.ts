@@ -43,6 +43,9 @@ const ERWARTETE_SCHLUESSEL = [
   'aktualisierungSuchen',
   'aktualisierungInstallieren',
   'neuerungen',
+  'beiMatchtag',
+  'matchtagLesen',
+  'matchtagBefehl',
 ].sort()
 
 describe('preload: exponierte window.app-Oberflaeche', () => {

@@ -20,6 +20,8 @@ import { verbindungBeenden, verbindungStarten } from './verbindung'
 import { abmelden, anmelden, fehlerZuMeldung, istAngemeldet, istAnmeldungAbbruch, type AnmeldungsErgebnis } from '../autodarts/oauth'
 import { kontoNameLaden, kontoNameVerwerfen, type AnmeldungsStatus } from '../autodarts/konto'
 import { diagnosePfad, protokollieren } from '../autodarts/diagnose'
+import { matchtagBefehlAusfuehren, matchtagStand, type MatchtagBefehl } from './matchtagDienst'
+import type { Matchtag } from '../shared/matchtag'
 
 const GUELTIGE_FENSTER_ARTEN: readonly FensterArt[] = ['control', 'player', 'spectator']
 
@@ -66,6 +68,15 @@ const NUR_CONTROL: ReadonlySet<string> = new Set([
   'aktualisierung:suchen',
   'aktualisierung:installieren',
   'changelog:neuerungen',
+  // Der Matchtag wird im Control-Fenster eingerichtet. matchtag:befehl
+  // HANDELT (startet oder beendet ein Turnier, nimmt ein Ergebnis zurueck) -
+  // aus dem Zuschauer-Renderer aufgerufen koennte ein Fehler dort einen
+  // laufenden Abend loeschen. matchtag:lesen steht aus demselben Grund hier
+  // wie diagnose:pfad: die Einrichtung gehoert dem Control-Fenster. Player-
+  // und Zuschauer-Screen bekommen den Stand ueber den Kanal 'matchtag',
+  // der nur vom Hauptprozess zum Renderer laeuft.
+  'matchtag:lesen',
+  'matchtag:befehl',
 ])
 
 /**
@@ -283,4 +294,32 @@ export function ipcRegistrieren(): void {
       return null
     }
   })
+
+  // Stand des Matchtags auf Anfrage - das Control-Fenster holt ihn beim
+  // Aufbau, ohne auf die naechste Aenderung zu warten.
+  ipcMain.handle('matchtag:lesen', (event): Matchtag => {
+    kanalPruefen(event, 'matchtag:lesen')
+    return matchtagStand()
+  })
+
+  // Turnier starten, beenden oder das letzte Ergebnis zuruecknehmen. Gibt den
+  // neuen Stand zurueck, damit das Control-Fenster nicht nachfragen muss.
+  ipcMain.handle('matchtag:befehl', (event, befehl: unknown): Promise<Matchtag> => {
+    kanalPruefen(event, 'matchtag:befehl')
+    return matchtagBefehlAusfuehren(matchtagBefehlPruefen(befehl))
+  })
+}
+
+/**
+ * Prueft einen Befehl aus dem Renderer. Alles, was ueber IPC kommt, ist
+ * ungeprueft - ein unbekannter Befehl wird zu 'beenden' statt zu einem
+ * Absturz im Hauptprozess. Reine Funktion, damit sie ohne Electron pruefbar
+ * ist (gleiches Muster wie darfKanalNutzen).
+ */
+export function matchtagBefehlPruefen(roh: unknown): MatchtagBefehl {
+  if (typeof roh !== 'object' || roh === null) return { art: 'beenden' }
+  const b = roh as Record<string, unknown>
+  if (b.art === 'starten') return { art: 'starten', titel: typeof b.titel === 'string' ? b.titel : '' }
+  if (b.art === 'zuruecknehmen') return { art: 'zuruecknehmen' }
+  return { art: 'beenden' }
 }

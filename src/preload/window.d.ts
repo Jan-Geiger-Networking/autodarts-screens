@@ -5,6 +5,8 @@ import type { Verbindungszustand } from '../autodarts/websocket'
 import type { AnmeldungsErgebnis } from '../autodarts/oauth'
 import type { AnmeldungsStatus } from '../autodarts/konto'
 import type { Aktualisierungszustand } from '../main/aktualisierung'
+import type { MatchtagBefehl } from '../main/matchtagDienst'
+import type { Matchtag } from '../shared/matchtag'
 
 export {}
 
@@ -31,6 +33,9 @@ declare global {
       aktualisierungSuchen: () => Promise<void>
       aktualisierungInstallieren: () => Promise<{ erfolg: boolean; meldung?: string }>
       neuerungen: () => Promise<string | null>
+      beiMatchtag: (rueckruf: (m: Matchtag) => void) => () => void
+      matchtagLesen: () => Promise<Matchtag>
+      matchtagBefehl: (befehl: MatchtagBefehl) => Promise<Matchtag>
     }
   }
 }

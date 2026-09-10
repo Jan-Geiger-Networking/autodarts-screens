@@ -6,6 +6,8 @@ import type { Verbindungszustand } from '../autodarts/websocket'
 import type { AnmeldungsErgebnis } from '../autodarts/oauth'
 import type { AnmeldungsStatus } from '../autodarts/konto'
 import type { Aktualisierungszustand } from '../main/aktualisierung'
+import type { MatchtagBefehl } from '../main/matchtagDienst'
+import type { Matchtag } from '../shared/matchtag'
 
 contextBridge.exposeInMainWorld('app', {
   // Synchron per sendSync statt eines Umgebungsvariablen-Rueckfalls: npm
@@ -82,4 +84,17 @@ contextBridge.exposeInMainWorld('app', {
   // Der Changelog-Abschnitt der laufenden Version, einmalig nach einer
   // Aktualisierung - sonst null.
   neuerungen: (): Promise<string | null> => ipcRenderer.invoke('changelog:neuerungen'),
+
+  // Stand des Matchtags, laufend verteilt (siehe matchtagVerteilen in
+  // src/main/fenster.ts). Anders als der Verbindungszustand geht er an ALLE
+  // Fenster: der Zuschauer-Screen zeigt Tabelle und Spielplan, der
+  // Player-Screen die naechste Paarung.
+  beiMatchtag(rueckruf: (m: Matchtag) => void): () => void {
+    const listener = (_event: Electron.IpcRendererEvent, matchtag: Matchtag) => rueckruf(matchtag)
+    ipcRenderer.on('matchtag', listener)
+    return () => ipcRenderer.removeListener('matchtag', listener)
+  },
+
+  matchtagLesen: (): Promise<Matchtag> => ipcRenderer.invoke('matchtag:lesen'),
+  matchtagBefehl: (befehl: MatchtagBefehl): Promise<Matchtag> => ipcRenderer.invoke('matchtag:befehl', befehl),
 })

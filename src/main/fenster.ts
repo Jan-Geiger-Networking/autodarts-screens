@@ -4,6 +4,7 @@
 import { BrowserWindow, shell } from 'electron'
 import { join } from 'node:path'
 import type { FensterArt, MatchState } from '../shared/typen'
+import type { Matchtag } from '../shared/matchtag'
 import type { Verbindungszustand } from '../autodarts/websocket'
 // Nur der Typ: aktualisierung.ts importiert umgekehrt aktualisierungszustand-
 // Verteilen aus dieser Datei. Ein Typimport verschwindet beim Uebersetzen,
@@ -33,6 +34,11 @@ export function konfigurationAktualisieren(k: Konfiguration): void {
 // haengen bleiben - Design-Spec Abschnitt 14: "Im Zweifel zeigt die
 // Anwendung den letzten bekannten guten Zustand".
 let letzterZustand: MatchState | null = null
+
+// Derselbe Gedanke fuer den Matchtag: ein frisch geoeffneter Zuschauer-Screen
+// wuesste sonst bis zur naechsten Aenderung nichts von einem laufenden
+// Turnier und zeigte den normalen Pausenbildschirm.
+let letzterMatchtag: Matchtag | null = null
 
 function preloadPfad(): string {
   return join(import.meta.dirname, '../preload/index.cjs')
@@ -119,12 +125,13 @@ export function fensterOeffnen(art: FensterArt): BrowserWindow {
   // registriert), den letzten bekannten Zustand einmalig nachliefern - ein
   // frisch geoeffnetes Fenster hat sonst keinen Zustand, bis das naechste
   // echte Ereignis eintrifft.
-  if (letzterZustand) {
+  if (letzterZustand || letzterMatchtag) {
     const zustandBeimOeffnen = letzterZustand
+    const matchtagBeimOeffnen = letzterMatchtag
     neues.webContents.once('did-finish-load', () => {
-      if (!neues.isDestroyed() && !neues.webContents.isDestroyed()) {
-        neues.webContents.send('zustand', zustandBeimOeffnen)
-      }
+      if (neues.isDestroyed() || neues.webContents.isDestroyed()) return
+      if (zustandBeimOeffnen) neues.webContents.send('zustand', zustandBeimOeffnen)
+      if (matchtagBeimOeffnen) neues.webContents.send('matchtag', matchtagBeimOeffnen)
     })
   }
 
@@ -161,6 +168,24 @@ export function zustandVerteilen(z: MatchState): void {
   for (const fensterInstanz of fenster.values()) {
     if (!fensterInstanz.isDestroyed() && !fensterInstanz.webContents.isDestroyed()) {
       fensterInstanz.webContents.send('zustand', z)
+    }
+  }
+}
+
+/**
+ * Schickt den Stand des Matchtags an alle offenen Fenster. Gleiches Muster
+ * wie zustandVerteilen: nur vom Hauptprozess zum Renderer, nie als Kanal,
+ * den ein Renderer aufrufen koennte.
+ *
+ * Alle Fenster, nicht nur der Zuschauer-Screen: das Control-Fenster zeigt
+ * Tabelle und Spielplan zum Einrichten der naechsten Partie, und der
+ * Player-Screen nennt in der Pause die naechste Paarung.
+ */
+export function matchtagVerteilen(m: Matchtag): void {
+  letzterMatchtag = m
+  for (const fensterInstanz of fenster.values()) {
+    if (!fensterInstanz.isDestroyed() && !fensterInstanz.webContents.isDestroyed()) {
+      fensterInstanz.webContents.send('matchtag', m)
     }
   }
 }
