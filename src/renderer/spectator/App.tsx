@@ -11,6 +11,16 @@ import './App.css'
 type BigMoment = Extract<Ueberlagerung, { art: 'bigMoment' }>
 type MatchWin = Extract<Ueberlagerung, { art: 'matchWin' }>
 
+// Muss zu den clip-path-Werten von .spielerkarte-links/-rechts in App.css
+// passen (Keil-Zuschnitt: 97%/91% der jeweils eigenen Tafelbreite). Die
+// Signalkante ist ein einzelnes Element, das genau diese geschertem
+// Innenkante nachzeichnet - links oder rechts, je nach activePlayerId.
+// Beide Polygone haben dieselbe Punktzahl, damit der Browser beim Wechsel
+// zwischen ihnen interpoliert statt hart umzuschalten: das ist die eine
+// bewegte Fahrt quer über die Mitte, kein zweites Element, keine Ueberblendung.
+const SIGNALKANTE_LINKS = 'polygon(48% 0%, 49% 0%, 46% 100%, 45% 100%)'
+const SIGNALKANTE_RECHTS = 'polygon(52% 0%, 51% 0%, 54% 100%, 55% 100%)'
+
 export function App() {
   // Vorfuehrmodus (?vorfuehrung in der Adresse) ersetzt window.app komplett -
   // der Screen laesst sich so ohne Hauptprozess begutachten, siehe
@@ -145,7 +155,7 @@ function Spielstand({
           scoreB={scoreVon(players[1]!.id)}
           activePlayerId={activePlayerId}
           bust={zustand.bust}
-          checkoutMoeglich={zustand.checkout !== null}
+          checkout={zustand.checkout}
           currentThrow={zustand.currentThrow}
           currentThrowTotal={zustand.currentThrowTotal}
           hervorgehobenerGewinner={hervorgehobenerGewinner}
@@ -174,7 +184,7 @@ function ZweiSpielerReihe({
   scoreB,
   activePlayerId,
   bust,
-  checkoutMoeglich,
+  checkout,
   currentThrow,
   currentThrowTotal,
   hervorgehobenerGewinner,
@@ -185,7 +195,7 @@ function ZweiSpielerReihe({
   scoreB: PlayerScore | undefined
   activePlayerId: string | null
   bust: boolean
-  checkoutMoeglich: boolean
+  checkout: string[] | null
   currentThrow: Segment[]
   currentThrowTotal: number
   hervorgehobenerGewinner: string | undefined
@@ -200,7 +210,7 @@ function ZweiSpielerReihe({
         score={scoreA}
         aktiv={activePlayerId === spielerA.id}
         bust={activePlayerId === spielerA.id && bust}
-        checkoutMoeglich={activePlayerId === spielerA.id && checkoutMoeglich}
+        checkoutWeg={activePlayerId === spielerA.id ? checkout : null}
         gewonnenesLeg={hervorgehobenerGewinner === spielerA.id}
         currentThrow={activePlayerId === spielerA.id ? currentThrow : []}
         currentThrowTotal={activePlayerId === spielerA.id ? currentThrowTotal : 0}
@@ -214,17 +224,17 @@ function ZweiSpielerReihe({
         score={scoreB}
         aktiv={activePlayerId === spielerB.id}
         bust={activePlayerId === spielerB.id && bust}
-        checkoutMoeglich={activePlayerId === spielerB.id && checkoutMoeglich}
+        checkoutWeg={activePlayerId === spielerB.id ? checkout : null}
         gewonnenesLeg={hervorgehobenerGewinner === spielerB.id}
         currentThrow={activePlayerId === spielerB.id ? currentThrow : []}
         currentThrowTotal={activePlayerId === spielerB.id ? currentThrowTotal : 0}
       />
 
-      {/* Der eine bewusste bewegte Moment im ganzen Screen: diese Kante
-          bindet direkt an activePlayerId und faehrt bei jedem Wechsel per
-          CSS-Transition hart abgebremst quer ueber die Mitte - kein
-          Ueberblenden, kein zweites Element. */}
-      <div className="signalkante" style={{ transform: `translateX(${aktivIndex * 100}%)` }} />
+      {/* Der eine bewusste bewegte Moment im ganzen Screen: zeichnet die
+          geschertem Innenkante der aktiven Tafel nach und faehrt bei jedem
+          Wechsel per Formuebergang (clip-path) quer ueber die Mitte - ein
+          Objekt, kein Ueberblenden. */}
+      <div className="signalkante" style={{ clipPath: aktivIndex === 0 ? SIGNALKANTE_LINKS : SIGNALKANTE_RECHTS }} />
     </div>
   )
 }
@@ -235,16 +245,19 @@ type SpielerkarteProps = {
   score: PlayerScore | undefined
   aktiv: boolean
   bust: boolean
-  checkoutMoeglich: boolean
+  checkoutWeg: string[] | null
   gewonnenesLeg: boolean
   currentThrow: Segment[]
   currentThrowTotal: number
 }
 
-function Spielerkarte({ seite, spieler, score, aktiv, bust, checkoutMoeglich, gewonnenesLeg, currentThrow, currentThrowTotal }: SpielerkarteProps) {
+function Spielerkarte({ seite, spieler, score, aktiv, bust, checkoutWeg, gewonnenesLeg, currentThrow, currentThrowTotal }: SpielerkarteProps) {
   const rest = score?.remaining ?? 0
-  const restKlasse = bust ? ' bust' : checkoutMoeglich ? ' checkout' : ''
   const klassen = ['spielerkarte', `spielerkarte-${seite}`, aktiv && 'aktiv', gewonnenesLeg && 'leg-gewonnen'].filter(Boolean).join(' ')
+  // Immer drei Steckplaetze zeigen, auch wenn der jeweilige Aufnahmezug
+  // weniger Darts hatte (z.B. ein Finish mit nur einem Dart) - so ist auf
+  // den ersten Blick klar, dass hier grundsaetzlich zu dritt geworfen wird.
+  const wurfSlots = [0, 1, 2].map((i) => currentThrow[i]?.name ?? null)
 
   return (
     <div className={klassen}>
@@ -255,17 +268,29 @@ function Spielerkarte({ seite, spieler, score, aktiv, bust, checkoutMoeglich, ge
           {spieler.country && <span className="spielerland">{spieler.country}</span>}
         </div>
       </div>
-      <div className={`spielerkarte-rest${restKlasse}`}>{rest}</div>
-      {currentThrow.length > 0 && (
-        <div className="spielerkarte-wurf">
-          {currentThrow.map((dart, i) => (
-            <span className="wurf-dart" key={i}>
-              {dart.name}
-            </span>
-          ))}
-          <span className="wurf-summe">{currentThrowTotal}</span>
-        </div>
-      )}
+
+      <div className="spielerkarte-rest-bereich">
+        <div className={`spielerkarte-rest${bust ? ' bust' : ''}`}>{rest}</div>
+      </div>
+
+      <div className="spielerkarte-fuss">
+        {/* Gruen faerbt hier ausschliesslich den Checkout-Weg ein, sonst
+            nichts - die Rest-Punktzahl oben bleibt immer --jg-text/--jg-warning. */}
+        {checkoutWeg && <div className="spielerkarte-checkout">{checkoutWeg.join(' · ')}</div>}
+        {currentThrow.length > 0 && (
+          <div className="spielerkarte-wurf">
+            <div className="wurf-darts">
+              {wurfSlots.map((name, i) => (
+                <span className={`wurf-dart${name ? '' : ' leer'}`} key={i}>
+                  {name ?? '–'}
+                </span>
+              ))}
+            </div>
+            <span className="wurf-gleich">=</span>
+            <span className="wurf-summe">{currentThrowTotal}</span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

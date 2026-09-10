@@ -105,26 +105,35 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 1.6vh;
-  background: var(--jg-surface-hi);
-  padding: 4vh 5vw 5vh;
+  background: var(--zs-tafel);
+  padding: 3vh 5vw;
   position: relative;
-  /* Weicher Schlagschatten ist verboten, aber ohne irgendeine Kante geht die
-     Tafel im fast gleich dunklen Hintergrund unter - ein schmaler, harter
-     Lichtsaum entlang des Keil-Zuschnitts selbst (drop-shadow folgt dem
-     clip-path, anders als box-shadow) hebt sie sichtbar ab. */
-  filter: drop-shadow(0 0 0.5vh rgba(148, 163, 184, 0.3));
+}
+
+/* --jg-surface/--jg-surface-hi liegen farblich so nah an --jg-bg (2/6/23 vs.
+   10/19/36 vs. 15/26/46), dass die Tafeln im Bildschirmfoto im Hintergrund
+   verschwanden statt als Flaechen erkennbar zu sein - mit ausdruecklicher
+   Erlaubnis, hier vom Token abzuweichen: zwei eigene, sichtbar hellere Werte
+   im selben Blaustich (gleiches Verhaeltnis R:G:B wie --jg-bg, nur angehoben).
+   Wer am Wurf ist, zeigt sich an der helleren Flaeche - nicht an der
+   Rest-Punktzahl, die bleibt immer --jg-text/--jg-warning. */
+:root {
+  --zs-tafel: #16223c;
+  --zs-tafel-aktiv: #202f52;
+}
+
+.spielerkarte.aktiv {
+  background: var(--zs-tafel-aktiv);
 }
 
 .spielerkarte-links {
-  clip-path: polygon(0 0, 95% 0, 88% 100%, 0 100%);
-  padding-right: 8vw;
+  clip-path: polygon(0 0, 97% 0, 91% 100%, 0 100%);
+  padding-right: 6vw;
 }
 
 .spielerkarte-rechts {
-  clip-path: polygon(5% 0, 100% 0, 100% 100%, 12% 100%);
-  padding-left: 8vw;
+  clip-path: polygon(3% 0, 100% 0, 100% 100%, 9% 100%);
+  padding-left: 6vw;
   align-items: flex-end;
   text-align: right;
 }
@@ -138,14 +147,15 @@
 }
 
 .spielerkarte-kopf {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 1.6vw;
 }
 
 .spielerfoto {
-  width: 9vh;
-  height: 9vh;
+  width: 10vh;
+  height: 10vh;
   flex: 0 0 auto;
   object-fit: cover;
   border-radius: 2px;
@@ -192,27 +202,48 @@
   color: var(--jg-muted);
 }
 
+/* Rest-Punktzahl ist IMMER --jg-text, bei aktivem wie inaktivem Spieler -
+   Gruen ist Signal (siehe .signalkante und .spielerkarte-checkout), nie
+   Dekoration auf der groessten Flaeche des Screens. Nur Bust faerbt rot. */
+.spielerkarte-rest-bereich {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+}
+
 .spielerkarte-rest {
-  font-size: 24vh;
+  font-size: 26vh;
   font-weight: 800;
   line-height: 0.85;
   color: var(--jg-text);
   transition: color 150ms var(--jg-ease);
 }
 
-.spielerkarte-rest.checkout {
-  color: var(--jg-accent);
-}
-
 .spielerkarte-rest.bust {
   color: var(--jg-warning);
 }
 
+.spielerkarte-fuss {
+  flex: 0 0 auto;
+  min-height: 11vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 1vh;
+}
+
+.spielerkarte-checkout {
+  font-size: 2.6vh;
+  letter-spacing: 0.05em;
+  color: var(--jg-accent);
+}
+
 .spielerkarte-wurf {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 1vw;
-  font-size: 2.6vh;
+  font-size: 3.2vh;
   color: var(--jg-muted-strong);
 }
 
@@ -220,20 +251,40 @@
   flex-direction: row-reverse;
 }
 
-.wurf-dart {
-  min-width: 2ch;
+.wurf-darts {
+  display: flex;
+  gap: 0.6vw;
 }
 
-.wurf-summe {
+.wurf-dart {
+  min-width: 2ch;
+  text-align: center;
+  padding: 0.05em 0.4em;
+  border: 1px solid var(--jg-border-strong);
+}
+
+.wurf-dart.leer {
+  color: var(--jg-border-strong);
+  border-color: var(--jg-border);
+}
+
+.wurf-gleich {
   color: var(--jg-muted);
 }
 
+.wurf-summe {
+  color: var(--jg-text);
+  font-weight: 700;
+}
+
 /* Mittelanzeige: Leg- und Satzstand, amber - siehe Abschnitt 12
-   (Farbrolle: Amber ausschliesslich fuer Leg-/Satzstand und 180er). */
+   (Farbrolle: Amber ausschliesslich fuer Leg-/Satzstand und 180er). Sitzt
+   im schmalen Zwischenraum der beiden Tafeln und darf dabei ruhig etwas
+   auf sie uebergreifen (eigener Hintergrund, hoechster z-index). */
 .mittelanzeige {
   position: absolute;
   left: 50%;
-  top: 46%;
+  top: 50%;
   transform: translate(-50%, -50%);
   z-index: 4;
   display: flex;
@@ -262,19 +313,20 @@
   color: var(--jg-muted);
 }
 
-/* Die eine bewegte Signalkante: bindet an activePlayerId, faehrt bei jedem
-   Wechsel per transform quer ueber die Mitte, bremst hart ab. Alles andere
-   auf dem Screen bleibt dabei ruhig. */
+/* Die eine bewegte Signalkante: zeichnet die geschertem Innenkante der
+   aktiven Tafel nach (siehe SIGNALKANTE_LINKS/RECHTS in App.tsx, muss zum
+   Keil-Zuschnitt oben passen) und faehrt bei jedem Wechsel per
+   clip-path-Uebergang quer ueber die Mitte - kraeftig genug, um sie aus
+   einigen Metern Entfernung zu sehen, aber ohne dass sonst etwas auf dem
+   Screen mitzappelt. */
 .signalkante {
   position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 50%;
-  height: 0.7vh;
+  inset: 0;
   background: var(--jg-accent);
-  box-shadow: 0 0 1.6vh var(--jg-accent-glow);
-  transition: transform 700ms var(--jg-ease);
+  filter: drop-shadow(0 0 0.4vh var(--jg-accent-glow));
+  transition: clip-path 700ms var(--jg-ease);
   z-index: 3;
+  pointer-events: none;
 }
 
 /* ─── Raster ab drei Spielern ─────────────────────────────────────── */
@@ -384,8 +436,10 @@
 
 /* ─── Vollbild-Einblendungen ──────────────────────────────────────────
    Fahren als geschlossene Flaeche von unten herein und wieder hinaus -
-   gerichtete Fahrt, keine Ueberblendung. Legen sich ueber das Scoreboard,
-   ohne es zu ersetzen. */
+   gerichtete Fahrt, keine Ueberblendung. Legen sich ueber das Scoreboard und
+   dunkeln es ab, statt es ganz zu verdecken (Hintergrund mit Alphakanal,
+   kein deckendes --jg-bg) - so bleibt erkennbar, dass das eine Einblendung
+   UEBER dem laufenden Spiel ist und kein eigener Bildschirm. */
 
 .vollbild {
   position: absolute;
@@ -396,7 +450,7 @@
   align-items: center;
   justify-content: center;
   gap: 2vh;
-  background: var(--jg-bg);
+  background: rgba(2, 6, 23, 0.9);
   transform: translateY(100%);
   transition: transform 450ms var(--jg-ease);
 }
@@ -406,7 +460,7 @@
 }
 
 .big-moment-zahl {
-  font-size: 32vh;
+  font-size: 60vh;
   font-weight: 800;
   line-height: 0.85;
 }
@@ -420,7 +474,8 @@
 }
 
 .big-moment-name {
-  font-size: 4vh;
+  font-size: 9vh;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--jg-text);

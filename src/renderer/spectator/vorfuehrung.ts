@@ -21,23 +21,15 @@ function dartsAusWeg(weg: string[] | null): Segment[] {
   return (weg ?? []).map(segmentAusName)
 }
 
-// Kleines eingebettetes Bild statt einer echten URL: der Vorfuehrmodus muss
-// wie die Anwendung selbst ohne Internetzugang laufen. Zeigt gleichzeitig,
-// dass Player.photoPath tatsaechlich als <img> gerendert wird - Jan bleibt
-// ohne Bild, um den Initialen-Fallback zu zeigen.
-const FOTO_MARKUS =
-  'data:image/svg+xml;utf8,' +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">' +
-      '<rect width="200" height="200" fill="#0f1a2e"/>' +
-      '<circle cx="100" cy="78" r="42" fill="#04FC4C"/>' +
-      '<rect x="38" y="128" width="124" height="60" rx="4" fill="#04FC4C"/>' +
-      '</svg>',
-  )
-
+// Keiner der beiden Demo-Spieler bekommt ein photoPath/avatarUrl: beide
+// zeigen also den Initialen-Fallback. Ein fruehrer Testlauf gab Markus ein
+// eingebettetes Platzhalterbild (ein allgemeines Personensymbol) - das sah
+// im Bildschirmfoto wie eine ZWEITE, andere Fallback-Darstellung neben Jans
+// Initialen-Kasten aus, obwohl der Code nur einen Fallback kennt. Ohne echte
+// Fotos zeigt die Vorfuehrung diesen einen Fallback jetzt eindeutig.
 const SPIELER: Player[] = [
   { id: 'p1', autodartsName: 'jan_de', displayName: 'Jan', country: 'DE' },
-  { id: 'p2', autodartsName: 'markus_de', displayName: 'Markus', country: 'DE', photoPath: FOTO_MARKUS },
+  { id: 'p2', autodartsName: 'markus_de', displayName: 'Markus', country: 'DE' },
 ]
 
 type Basis = Omit<MatchState, 'checkout' | 'checkoutHint'>
