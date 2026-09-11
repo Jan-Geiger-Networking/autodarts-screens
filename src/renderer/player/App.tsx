@@ -270,6 +270,7 @@ export function App() {
   const letzteAufnahme = [...zustand.legHistory].reverse().find((e) => e.darts.length > 0)
   const scheibenDarts = zustand.currentThrow.length > 0 ? zustand.currentThrow : (letzteAufnahme?.darts ?? [])
   const scheibeVerblasst = zustand.currentThrow.length === 0
+  const vorschlag = zustand.checkout ?? []
 
   const tafel = (spieler: Player) => (
     <Spielertafel
@@ -294,14 +295,27 @@ export function App() {
       </div>
 
       {/* Die drei Darts der laufenden Aufnahme mit ihrer Summe - im Vorbild
-          die Leiste oben in der Mitte. */}
+          die Leiste oben in der Mitte, hier ueber die ganze Breite und so
+          gross, dass sie aus dem Raum heraus zu lesen ist ("die soll viel
+          groesser werden ... das man das von weitem lesen kann").
+          Was noch nicht geworfen ist, traegt den Vorschlag in der
+          Signalfarbe - dieselbe Sprache wie in der JGN-Aufteilung: weiss ist
+          gefallen, gruen ist gemeint. */}
       <div className="wurfleiste">
         {[0, 1, 2].map((i) => {
           const dart = zustand.currentThrow[i]
+          // Gibt es einen Checkout-Weg, fuellt er alle noch offenen Plaetze.
+          // Sonst steht der Aufbau-Hinweis auf dem naechsten Platz - mehr
+          // sagt er nicht, und mehr soll er auch nicht vortaeuschen.
+          const ausWeg = vorschlag[i - zustand.currentThrow.length] ?? null
+          const empfehlung = dart ? null : (ausWeg ?? (i === zustand.currentThrow.length ? zustand.checkoutHint : null))
           return (
-            <span className={`wurfplatz${dart ? ' belegt' : ''}`} key={i}>
+            <span
+              className={`wurfplatz${dart ? ' belegt' : ''}${!dart && empfehlung ? ' ist-empfehlung' : ''}`}
+              key={i}
+            >
               <DartSymbol gefuellt={Boolean(dart)} />
-              <span className="wurfplatz-name">{dart?.name ?? ''}</span>
+              <span className="wurfplatz-name">{dart?.name ?? empfehlung ?? '–'}</span>
             </span>
           )
         })}
@@ -310,7 +324,11 @@ export function App() {
         </span>
       </div>
 
-      <div className="spielflaeche">
+      {/* Die Spielerzahl steht als Klasse am Raster: ab fuenf Tafeln muss der
+          Inhalt kleiner werden, sonst laeuft die Spalte aus dem Bild
+          ("bei 5 war im spieler bildschirm was abgeschnitten"). Die Scheibe
+          bleibt davon unberuehrt - sie haengt an min(72vh, 40vw). */}
+      <div className={`spielflaeche spieler-${Math.min(zustand.players.length, 8)}`}>
         <div className="tafelspalte">{links.map(tafel)}</div>
 
         <div className="scheibenfeld">

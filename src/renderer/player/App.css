@@ -186,14 +186,23 @@
 
 /* ─── Laufende Aufnahme ─────────────────────────────────────────────── */
 
+/* Die Leiste ist das, was der Werfer aus zwei Metern Entfernung liest:
+   drei Plaetze und die Summe, ueber die ganze Breite und so gross, wie es
+   ohne Verkleinern der Scheibe geht. Die Scheibe haengt an min(72vh, 40vw)
+   und nicht am Rest der Hoehe - die Leiste kann also wachsen, ohne ihr etwas
+   wegzunehmen. */
 .wurfleiste {
   align-self: center;
-  margin-top: -3.5vh;
+  /* Kein Hochziehen mehr ueber die Einstellungszeile: die Leiste ist breit
+     genug, um sie sonst zu verdecken. */
+  margin-top: 0.6vh;
   display: flex;
   align-items: center;
-  gap: 1.6vw;
-  padding: 1vh 1.6vw;
-  border-radius: 1.4vh;
+  justify-content: center;
+  width: 92vw;
+  gap: 2vw;
+  padding: 1vh 2.5vw;
+  border-radius: 1.8vh;
   background: var(--jg-surface);
   border: 1px solid var(--jg-border-strong);
 }
@@ -202,20 +211,33 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.4vh;
-  min-width: 5.5vw;
+  gap: 0.2vh;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .wurfplatz-name {
-  font-size: 2vh;
-  font-weight: 700;
+  font-size: 7vh;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.01em;
   color: var(--jg-text);
-  min-height: 2.4vh;
+  min-height: 7.2vh;
+}
+
+/* Noch nicht geworfen, aber vorgeschlagen: Signalfarbe. Gleiche Bedeutung
+   wie in der JGN-Aufteilung - weiss ist gefallen, gruen ist gemeint. */
+.wurfplatz.ist-empfehlung .wurfplatz-name {
+  color: var(--jg-accent);
+}
+
+.wurfplatz:not(.belegt):not(.ist-empfehlung) .wurfplatz-name {
+  color: var(--jg-muted);
 }
 
 .dartsymbol {
-  width: 4vw;
-  max-width: 5.5vh;
+  width: 5vw;
+  max-width: 3.4vh;
   height: auto;
   fill: none;
   stroke: var(--jg-border-strong);
@@ -228,18 +250,24 @@
   stroke: var(--jg-text);
 }
 
+.wurfplatz.ist-empfehlung .dartsymbol {
+  stroke: var(--jg-accent-dim);
+}
+
 .wurfsumme {
-  padding-left: 1.4vw;
+  padding-left: 2vw;
   border-left: 1px solid var(--jg-border-strong);
-  font-size: 4.4vh;
+  font-size: 9vh;
+  line-height: 1;
   font-weight: 800;
-  min-width: 4.5vw;
+  flex: 0 0 auto;
+  min-width: 12vw;
   text-align: center;
 }
 
 .wurfsumme.bust {
   color: var(--jg-warning);
-  font-size: 3vh;
+  font-size: 6vh;
 }
 
 /* ─── Spielflaeche: Tafel | Scheibe | Tafel ─────────────────────────── */
@@ -248,7 +276,10 @@
   flex: 1;
   min-height: 0;
   display: flex;
-  align-items: center;
+  /* stretch statt center: die Spalten bekommen die volle Hoehe des Rasters,
+     damit die Tafeln darin schrumpfen koennen statt aus dem Bild zu laufen.
+     Die Scheibe bleibt mittig - sie zentriert sich in ihrem eigenen Feld. */
+  align-items: stretch;
   justify-content: center;
   gap: 2vw;
   padding: 1.5vh 2vw 3vh;
@@ -259,6 +290,7 @@
 .tafelspalte {
   flex: 0 1 26vw;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -291,6 +323,11 @@
 .tafel {
   border-radius: 1.6vh;
   overflow: hidden;
+  /* Darf schrumpfen: bei vielen Spielern teilen sich drei Tafeln eine
+     Spalte, und dann ist eine kleinere Tafel besser als eine
+     abgeschnittene. */
+  min-height: 0;
+  flex: 0 1 auto;
   background: var(--jg-surface);
   border: 1px solid var(--jg-border-strong);
   padding: 1.4vh 1.4vw 0;
@@ -478,6 +515,10 @@
   border-top: 1px solid var(--jg-border-strong);
   background: var(--jg-bg);
   height: 20.6vh;
+  /* Das erste, was bei Platzmangel nachgibt - deshalb schrumpfbar und ohne
+     Mindesthoehe. */
+  flex: 0 1 auto;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -1226,4 +1267,80 @@
   .spielerslide-bahn.faehrt-aus {
     transform: translateX(-102%);
   }
+}
+
+
+/* ─── Viele Spieler: Tafeln kleiner statt abgeschnitten ───────────────
+   Zwei Spalten teilen sich die Hoehe. Ab drei Tafeln je Spalte passt der
+   volle Aufbau nicht mehr - dann schrumpfen Zahl und Abstaende, und ab
+   sieben faellt der Verlauf ganz weg. Die Reihenfolge der Opfer ist die
+   umgekehrte Reihenfolge der Wichtigkeit: zuerst der Verlauf, dann die
+   Nebenzahlen, die Rest-Punktzahl zuletzt. */
+
+.spielflaeche.spieler-5 .tafel,
+.spielflaeche.spieler-6 .tafel {
+  padding: 1vh 1.1vw 0;
+  gap: 0.4vh;
+}
+
+.spielflaeche.spieler-5 .tafel-rest,
+.spielflaeche.spieler-6 .tafel-rest {
+  font-size: 7vh;
+}
+
+.spielflaeche.spieler-5 .tafel-avatar,
+.spielflaeche.spieler-6 .tafel-avatar {
+  width: 3vh;
+  height: 3vh;
+  font-size: 1.3vh;
+}
+
+.spielflaeche.spieler-5 .tafel-name,
+.spielflaeche.spieler-6 .tafel-name {
+  font-size: 2vh;
+}
+
+.spielflaeche.spieler-5 .tafel-checkout,
+.spielflaeche.spieler-6 .tafel-checkout {
+  min-height: 3.4vh;
+}
+
+.spielflaeche.spieler-5 .checkout-wurf,
+.spielflaeche.spieler-6 .checkout-wurf {
+  font-size: 2vh;
+  padding: 0.4vh 0.8vw;
+}
+
+
+.spielflaeche.spieler-7 .tafel,
+.spielflaeche.spieler-8 .tafel {
+  padding: 0.8vh 1vw 0;
+  gap: 0.3vh;
+}
+
+.spielflaeche.spieler-7 .tafel-rest,
+.spielflaeche.spieler-8 .tafel-rest {
+  font-size: 5.5vh;
+}
+
+.spielflaeche.spieler-7 .tafel-avatar,
+.spielflaeche.spieler-8 .tafel-avatar {
+  display: none;
+}
+
+.spielflaeche.spieler-7 .tafel-name,
+.spielflaeche.spieler-8 .tafel-name {
+  font-size: 1.8vh;
+}
+
+/* Ab fuenf Spielern faellt der Verlauf ganz weg: geschrumpft bliebe nur ein
+   angeschnittener Streifen, und der sieht nach Fehler aus. Er steht ohnehin
+   auf dem Zuschauer-Screen. */
+.spielflaeche.spieler-5 .verlauf,
+.spielflaeche.spieler-6 .verlauf,
+.spielflaeche.spieler-7 .verlauf,
+.spielflaeche.spieler-8 .verlauf,
+.spielflaeche.spieler-7 .tafel-schnitte,
+.spielflaeche.spieler-8 .tafel-schnitte {
+  display: none;
 }
