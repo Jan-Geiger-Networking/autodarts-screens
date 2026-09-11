@@ -698,6 +698,14 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
       count180,
       highestFinish,
       dartsGesamt: ersteZahl(matchStats, ['dartsThrown'], `stats[${index}].matchStats.dartsThrown`) ?? dartsGesamt,
+      // Diese fuenf fuehrt nur der Server - ohne ihn bleiben sie leer, statt
+      // aus dem eigenen Verlauf geschaetzt zu werden. Ein geschaetzter
+      // First-9-Average waere schlechter als gar keiner.
+      first9Average: ersteZahl(matchStats, ['first9Average'], ''),
+      plus60: ersteZahl(matchStats, ['plus60'], '') ?? 0,
+      plus100: ersteZahl(matchStats, ['plus100'], '') ?? 0,
+      plus140: ersteZahl(matchStats, ['plus140'], '') ?? 0,
+      checkoutProzent: ersteZahl(matchStats, ['checkoutPercent'], ''),
       punkteGesamt,
       legAverage,
       legDarts,
@@ -746,7 +754,9 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
   // Laenge allein: der erste Dart einer neuen Aufnahme verkuerzt die Liste
   // (3 -> 1), waere also ueber die Laenge nicht als neu zu erkennen.
   const letzterDart = currentThrow[currentThrow.length - 1]
-  const missGeworfen = letzterDart?.value === 0 && !gleicheWurfliste(currentThrow, zustand.currentThrow)
+  const neuerDart = !gleicheWurfliste(currentThrow, zustand.currentThrow)
+  const missGeworfen = letzterDart?.value === 0 && neuerDart
+  const bullseyeGeworfen = letzterDart?.value === 25 && letzterDart.multiplier === 2 && neuerDart
 
   let ereignis: MatchEvent
   if (matchGeradeGewonnen) {
@@ -762,6 +772,8 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
         : { seq, kind: 'legWon', playerId: legGewinnerId ?? activePlayerId ?? '' }
   } else if (currentThrowTotal === 180 && !bust) {
     ereignis = { seq, kind: 'oneEighty', playerId: activePlayerId ?? '' }
+  } else if (bullseyeGeworfen) {
+    ereignis = { seq, kind: 'bullseye', playerId: activePlayerId ?? '' }
   } else if (missGeworfen) {
     ereignis = { seq, kind: 'miss', playerId: activePlayerId ?? '' }
   } else if (spielerWechsel) {

@@ -250,6 +250,21 @@ export function App() {
             Spectator-Screen schließen
           </button>
         </div>
+        <label className="feld">
+          Layout des Player-Screens
+          <select
+            value={konfiguration?.playerLayout ?? 'default'}
+            onChange={(e) => konfigurationAendern({ playerLayout: e.target.value === 'jgn' ? 'jgn' : 'default' })}
+          >
+            <option value="default">Default — wie die Autodarts-Ansicht</option>
+            <option value="jgn">JGN Optimized — Spielerliste klein, Punktzahl groß</option>
+          </select>
+        </label>
+        <p className="hinweis">
+          „JGN Optimized" zeigt die Mitspieler nur mit Name und Punktzahl oben links und macht dafür die Punktzahl des
+          Spielers am Wurf, seine Aufnahmen und die drei Pfeile so groß wie möglich. Die Änderung greift sofort.
+        </p>
+
         <label className="feld feld-kasten">
           <input
             type="checkbox"

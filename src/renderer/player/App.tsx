@@ -19,6 +19,7 @@ import standbyVideo from '../../../assets/standby-darts.mp4'
 import { Dartscheibe } from '../shared/Dartscheibe'
 import { Anfangsermittlung } from '../shared/Anfangsermittlung'
 import { Einblendung } from './Einblendung'
+import { LayoutJgn } from './LayoutJgn'
 import { spielerAufteilen } from '../spectator/aufteilung'
 import { legStatistik } from '../spectator/statistik'
 import { useVorfuehrung, vorfuehrungAktiv } from '../spectator/vorfuehrung'
@@ -171,6 +172,18 @@ export function App() {
 
   const zustand = vorfuehrung ? vorfuehrZustand : echterZustand
 
+  // Welches Layout gezeigt wird, steht in der Konfiguration und wird vom
+  // Hauptprozess an alle Fenster verteilt. Im Vorfuehrmodus (kein
+  // window.app) waehlt ?layout=jgn - sonst liesse sich die neue Fassung
+  // ohne Scheibe gar nicht ansehen.
+  const [layout, setLayout] = useState<'default' | 'jgn'>(
+    new URLSearchParams(window.location.search).get('layout') === 'jgn' ? 'jgn' : 'default',
+  )
+  useEffect(() => {
+    if (vorfuehrung || !window.app?.beiKonfiguration) return
+    return window.app.beiKonfiguration((k) => setLayout(k.playerLayout === 'jgn' ? 'jgn' : 'default'))
+  }, [vorfuehrung])
+
   // Kein Zustand, Ruhezustand oder kein Spieler bekannt: nur das Logo auf
   // dunklem Grund. Kein Blinken, keine Bewegung - dieser Bildschirm haengt
   // neben der Scheibe und darf niemanden beim Werfen stoeren.
@@ -227,6 +240,8 @@ export function App() {
       </div>
     )
   }
+
+  if (layout === 'jgn') return <LayoutJgn zustand={zustand} />
 
   const { links, rechts } = spielerAufteilen(zustand.players)
   const scoreVon = (id: string) => zustand.scores.find((s) => s.playerId === id)

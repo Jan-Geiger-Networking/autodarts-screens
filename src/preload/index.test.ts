@@ -44,6 +44,7 @@ const ERWARTETE_SCHLUESSEL = [
   'aktualisierungInstallieren',
   'neuerungen',
   'beiMatchtag',
+  'beiKonfiguration',
   'matchtagLesen',
   'matchtagBefehl',
 ].sort()

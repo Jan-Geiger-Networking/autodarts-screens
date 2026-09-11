@@ -714,3 +714,344 @@
     display: none;
   }
 }
+
+/* Player-Screen, Fassung "JGN Optimized"
+   Links alles, was der Werfer ansieht, rechts Scheibe und Ereignisse. Alle
+   Masse in vh/vw, damit die Aufteilung auf 1080p und 4K gleich wirkt. */
+
+.jgn {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 2vh 2vw;
+  width: 100vw;
+  height: 100vh;
+  padding: 2.5vh 2.5vw;
+  box-sizing: border-box;
+  background: radial-gradient(circle at 70% 40%, var(--jg-surface) 0%, var(--jg-bg) 70%);
+  overflow: hidden;
+}
+
+.jgn-links,
+.jgn-rechts {
+  display: flex;
+  flex-direction: column;
+  gap: 2vh;
+  min-height: 0;
+}
+
+/* Spielerliste: zwei Spalten, damit auch acht Personen hineinpassen. Die
+   Liste waechst nach unten, der Block darunter bekommt entsprechend weniger
+   Platz - genau in dieser Reihenfolge, weil bei fuenf Spielern vorher etwas
+   abgeschnitten wurde. */
+
+.jgn-stack {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6vh 0.8vw;
+  flex: 0 0 auto;
+}
+
+/* Bei zwei Spielern ist eine zweite Spalte Platzverschwendung. */
+.jgn-stack-2 {
+  grid-template-columns: 1fr;
+}
+
+.jgn-stack-eintrag {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8vw;
+  padding: 0.9vh 1vw;
+  border-radius: 0.6vh;
+  background: rgba(15, 26, 46, 0.55);
+  border-left: 0.35vh solid transparent;
+  min-width: 0;
+}
+
+.jgn-stack-eintrag.ist-aktiv {
+  background: var(--jg-accent-dim);
+  border-left-color: var(--jg-accent);
+}
+
+.jgn-stack-name {
+  font-family: var(--jg-font-display);
+  font-size: 2.6vh;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--jg-muted-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.jgn-stack-eintrag.ist-aktiv .jgn-stack-name {
+  color: var(--jg-text);
+}
+
+.jgn-stack-score {
+  flex: 0 0 auto;
+  font-family: var(--jg-font-display);
+  font-size: 3.2vh;
+  font-weight: 800;
+  color: var(--jg-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.jgn-stack-eintrag.ist-aktiv .jgn-stack-score {
+  color: var(--jg-accent);
+}
+
+/* Der Spieler am Wurf: nimmt den ganzen uebrigen Platz. Die Punktzahl ist
+   das Groesste auf dem Bildschirm - sie ist der Grund, warum er dort haengt. */
+
+.jgn-aktiv {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Mittig statt oben: sonst steht der Block oben und darunter klafft eine
+     leere Flaeche, die wie ein Fehler aussieht. */
+  justify-content: center;
+  gap: 0.5vh;
+  padding: 1.5vh 1.5vw;
+  border-radius: 1vh;
+  background: rgba(10, 19, 36, 0.75);
+  border: 0.2vh solid var(--jg-border-strong);
+  overflow: hidden;
+}
+
+.jgn-aktiv-name {
+  font-family: var(--jg-font-display);
+  font-size: 4vh;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--jg-accent);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jgn-aktiv-score {
+  font-family: var(--jg-font-display);
+  font-size: 22vh;
+  font-weight: 800;
+  line-height: 0.95;
+  color: var(--jg-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.jgn-aktiv-score.ist-bust {
+  font-size: 12vh;
+  color: var(--jg-warning);
+}
+
+/* Ab fuenf Spielern ist die Liste darueber hoeher - dann wird die Punktzahl
+   kleiner, statt den Block nach unten aus dem Bild zu schieben. */
+.jgn-stack-5 ~ .jgn-aktiv .jgn-aktiv-score,
+.jgn-stack-6 ~ .jgn-aktiv .jgn-aktiv-score {
+  font-size: 19vh;
+}
+
+.jgn-stack-7 ~ .jgn-aktiv .jgn-aktiv-score,
+.jgn-stack-8 ~ .jgn-aktiv .jgn-aktiv-score {
+  font-size: 16vh;
+}
+
+.jgn-aufnahmen {
+  width: 100%;
+  max-width: 22vw;
+  border-collapse: collapse;
+  font-family: var(--jg-font-display);
+  font-size: 2.8vh;
+  font-variant-numeric: tabular-nums;
+  margin-top: 0.5vh;
+}
+
+.jgn-aufnahmen td {
+  padding: 0.35vh 0.8vw;
+  border-bottom: 0.1vh solid var(--jg-border);
+  color: var(--jg-muted-strong);
+}
+
+.jgn-aufnahme-punkte {
+  text-align: left;
+  font-weight: 700;
+  color: var(--jg-text);
+}
+
+.jgn-aufnahme-rest {
+  text-align: right;
+}
+
+.jgn-aufnahmen tr.ist-bust .jgn-aufnahme-punkte {
+  color: var(--jg-warning);
+}
+
+.jgn-aufnahmen-leer {
+  margin: 1vh 0 0;
+  font-family: var(--jg-font-display);
+  font-size: 2.2vh;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--jg-muted);
+}
+
+/* Die drei Pfeile: geworfen weiss, empfohlen in der Signalfarbe. Der
+   Unterschied entscheidet, ob die Anzeige benutzbar ist. */
+
+.jgn-pfeile {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1vw;
+}
+
+.jgn-pfeil {
+  padding: 1.4vh 0.5vw;
+  border-radius: 0.8vh;
+  text-align: center;
+  font-family: var(--jg-font-display);
+  font-size: 5vh;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  background: rgba(15, 26, 46, 0.6);
+  border: 0.2vh solid var(--jg-border);
+}
+
+.jgn-pfeil.ist-geworfen {
+  color: #ffffff;
+  border-color: var(--jg-border-strong);
+}
+
+.jgn-pfeil.ist-empfehlung {
+  color: var(--jg-accent);
+  border-color: var(--jg-accent-strong);
+  /* Gestrichelt: es ist ein Vorschlag, kein Ergebnis. */
+  border-style: dashed;
+}
+
+.jgn-pfeil.ist-leer {
+  color: var(--jg-muted);
+}
+
+/* Rechte Seite: Logofeld und Scheibe */
+
+.jgn-logofeld {
+  flex: 0 0 auto;
+  height: 16vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3vh;
+  border-radius: 1vh;
+  background: rgba(10, 19, 36, 0.6);
+  border: 0.2vh solid var(--jg-border);
+  overflow: hidden;
+}
+
+.jgn-logo {
+  height: 10vh;
+  width: auto;
+}
+
+/* Sobald etwas passiert, tritt die Einblendung an die Stelle des Logos. */
+.jgn-ereignis {
+  border-color: var(--jg-accent-strong);
+  box-shadow: 0 0 4vh 0.5vh var(--jg-accent-glow);
+}
+
+.jgn-ereignis-oben {
+  font-family: var(--jg-font-display);
+  font-size: 2.4vh;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--jg-muted-strong);
+}
+
+.jgn-ereignis-gross {
+  font-family: var(--jg-font-display);
+  font-size: 9vh;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--jg-accent);
+}
+
+/* Der Spielerwechsel ist der haeufigste Anlass - er bleibt der ruhigste. */
+.jgn-ereignis-playerChange {
+  box-shadow: none;
+  border-color: var(--jg-border-strong);
+}
+
+.jgn-ereignis-playerChange .jgn-ereignis-gross {
+  font-size: 6vh;
+  color: var(--jg-text);
+}
+
+/* Ein Miss hat nichts zu feiern. */
+.jgn-ereignis-miss {
+  border-color: var(--jg-warning);
+  box-shadow: 0 0 4vh 0.5vh var(--jg-warning-dim);
+}
+
+.jgn-ereignis-miss .jgn-ereignis-gross {
+  color: var(--jg-warning);
+}
+
+.jgn-ereignis.ist-sichtbar {
+  animation: jgn-ereignis-ein 420ms var(--jg-ease) both;
+}
+
+.jgn-ereignis.faehrt-aus {
+  animation: jgn-ereignis-aus 420ms var(--jg-ease) both;
+}
+
+@keyframes jgn-ereignis-ein {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes jgn-ereignis-aus {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jgn-ereignis.ist-sichtbar,
+  .jgn-ereignis.faehrt-aus {
+    animation: none;
+  }
+}
+
+.jgn-scheibenfeld {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jgn-scheibenfeld .dartscheibe {
+  width: min(100%, 70vh);
+  height: min(100%, 70vh);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 0.3vh var(--jg-accent-strong),
+    0 0 4vh 1vh var(--jg-accent-glow);
+}

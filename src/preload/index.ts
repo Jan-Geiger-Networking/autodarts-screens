@@ -95,6 +95,15 @@ contextBridge.exposeInMainWorld('app', {
     return () => ipcRenderer.removeListener('matchtag', listener)
   },
 
+  // Die Konfiguration, laufend verteilt (siehe konfigurationAktualisieren in
+  // src/main/fenster.ts). Der Player-Screen liest daraus sein Layout; der
+  // Abruf-Kanal bleibt dem Control-Fenster vorbehalten.
+  beiKonfiguration(rueckruf: (k: Konfiguration) => void): () => void {
+    const listener = (_event: Electron.IpcRendererEvent, k: Konfiguration) => rueckruf(k)
+    ipcRenderer.on('konfiguration', listener)
+    return () => ipcRenderer.removeListener('konfiguration', listener)
+  },
+
   matchtagLesen: (): Promise<Matchtag> => ipcRenderer.invoke('matchtag:lesen'),
   matchtagBefehl: (befehl: MatchtagBefehl): Promise<Matchtag> => ipcRenderer.invoke('matchtag:befehl', befehl),
 })

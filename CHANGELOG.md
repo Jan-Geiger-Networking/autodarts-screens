@@ -4,6 +4,37 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.19] - 2026-09-11
+
+Neunzehnte Beta. Zweites Player-Layout, mehr Platz für mehr Spieler.
+
+### Neu
+- **Player-Layout „JGN Optimized".** Nach der Skizze des Herausgebers: die
+  Mitspieler stehen oben links nur mit Name und Punktzahl, zweispaltig und
+  bis acht Personen; darunter der Spieler am Wurf mit sehr großer Punktzahl
+  und seinen Aufnahmen; ganz unten die drei Pfeile — geworfen in Weiß, die
+  Empfehlung in der Signalfarbe. Rechts das Herkunftszeichen, das bei einem
+  Ereignis der Einblendung Platz macht, darunter die Scheibe. Umschaltbar im
+  Control-Fenster; „Default" bleibt voreingestellt
+- **Bullseye als eigenes Ereignis.** Ein Dart im inneren Bull wird auf beiden
+  Screens eingeblendet
+- **Dritte Statistikseite „Scoring"** auf dem Zuschauer-Screen: First 9, 60+,
+  100+, 140+ und 180er. Alle Zahlen kommen aus den Serverdaten
+- Die Checkout-Quote nimmt jetzt den Wert des Servers, wenn er vorliegt — er
+  zählt auch, was vor dem Start dieser Anwendung geworfen wurde
+
+### Behoben
+- **Ab fünf Spielern war auf beiden Screens etwas abgeschnitten.** Auf dem
+  Zuschauer-Screen stand die unterste Spielerkarte halb außerhalb des Bildes
+  und die Statistikleiste lief über den Rand hinaus; beides skaliert jetzt
+  bis acht Spieler mit
+- Die Scheibe auf dem Zuschauer-Screen ist dunkel statt cremefarben
+
+### Geändert
+- Der Vorführmodus kennt `?spieler=N` (2 bis 8) und `?layout=jgn` — ohne die
+  beiden ließe sich weder die Skalierung noch das neue Layout ohne Scheibe
+  begutachten
+
 ## [0.1.0-beta.18] - 2026-09-11
 
 Achtzehnte Beta.

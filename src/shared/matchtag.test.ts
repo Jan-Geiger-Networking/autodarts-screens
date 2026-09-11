@@ -192,6 +192,11 @@ describe('ergebnisAusZustand', () => {
       bullAbstand: null,
       dartsGesamt: 0,
       punkteGesamt: 0,
+      first9Average: null,
+      plus60: 0,
+      plus100: 0,
+      plus140: 0,
+      checkoutProzent: null,
     }))
     return {
       phase,

@@ -66,6 +66,19 @@ export type PlayerScore = {
   dartsGesamt: number
   /** Erzielte Punkte im ganzen Match, ohne Bust-Aufnahmen (die zaehlen 0). */
   punkteGesamt: number
+  /**
+   * Weitere Zahlen, die Autodarts in stats[i].matchStats fuehrt (belegt aus
+   * einem Diagnoseprotokoll vom 10.09.2026, siehe docs/autodarts-api.md).
+   * null bzw. 0, solange der Server nichts liefert - hier wird nichts
+   * geschaetzt.
+   */
+  first9Average: number | null
+  /** Aufnahmen ueber 60, ueber 100 und ueber 140 Punkten im ganzen Match. */
+  plus60: number
+  plus100: number
+  plus140: number
+  /** Checkout-Quote des Servers in Prozent. */
+  checkoutProzent: number | null
 }
 
 export type MatchState = {
@@ -103,6 +116,8 @@ export type MatchEvent = { seq: number } & (
   | { kind: 'oneEighty'; playerId: string }
   /** Ein Dart ausserhalb der Scheibe. Wird nur ganz kurz gezeigt. */
   | { kind: 'miss'; playerId: string }
+  /** Ein Dart im inneren Bull. */
+  | { kind: 'bullseye'; playerId: string }
   | { kind: 'highFinish'; playerId: string; score: number }
   | { kind: 'legWon'; playerId: string }
   | { kind: 'matchWon'; playerId: string }

@@ -94,3 +94,23 @@
   }
 }
 
+
+/* Dunkle Fassung fuer den Zuschauer-Screen: die hellen Felder werden fast
+   schwarz. Sie bleiben eine Spur heller als die dunklen, sonst waere die
+   Sektorteilung weg und die Scheibe nur noch eine schwarze Flaeche. Die
+   Ringe in Rot und Gruen tragen die Ablesbarkeit.
+
+   Die Treffermarkierung bekommt dafuer mehr Kontrast: auf fast schwarzem
+   Grund braucht sie einen hellen Kern statt eines weissen Punktes mit
+   dunklem Rand. */
+.dartscheibe-dunkel .feld-hell {
+  fill: #1c1f26;
+}
+
+.dartscheibe-dunkel .feld-dunkel {
+  fill: #08090c;
+}
+
+.dartscheibe-dunkel .scheibe-rand {
+  fill: #050608;
+}

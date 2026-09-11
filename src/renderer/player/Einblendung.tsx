@@ -50,14 +50,14 @@ function nameVon(zustand: MatchState, spielerId: string): string {
 }
 
 /** Zeile und Beiwort je Anlass. */
-function texte(zustand: MatchState, u: Ueberlagerung): { oben: string; gross: string; unten?: string } {
+export function texte(zustand: MatchState, u: Ueberlagerung): { oben: string; gross: string; unten?: string } {
   switch (u.art) {
     case 'playerChange':
       return { oben: 'Am Wurf', gross: nameVon(zustand, u.zuSpielerId) }
     case 'bigMoment':
-      return u.anlass === 'oneEighty'
-        ? { oben: nameVon(zustand, u.spielerId), gross: '180' }
-        : { oben: nameVon(zustand, u.spielerId), gross: 'High Finish' }
+      if (u.anlass === 'oneEighty') return { oben: nameVon(zustand, u.spielerId), gross: '180' }
+      if (u.anlass === 'bullseye') return { oben: nameVon(zustand, u.spielerId), gross: 'Bullseye' }
+      return { oben: nameVon(zustand, u.spielerId), gross: 'High Finish' }
     case 'miss':
       return { oben: nameVon(zustand, u.spielerId), gross: 'Miss' }
     case 'legWin':
@@ -67,7 +67,15 @@ function texte(zustand: MatchState, u: Ueberlagerung): { oben: string; gross: st
   }
 }
 
-export function Einblendung({ zustand }: { zustand: MatchState }) {
+/**
+ * Die gerade zu zeigende Einblendung, samt Ein- und Ausfahrt.
+ *
+ * Als Hook herausgezogen, weil das JGN-Layout dieselbe Ableitung braucht,
+ * sie aber an anderer Stelle zeigt (im Logofeld statt ueber der Scheibe).
+ * Zwei Ableitungen desselben Ereignisses waeren zwei Gelegenheiten,
+ * auseinanderzulaufen.
+ */
+export function useEinblendung(zustand: MatchState): { anzeige: Anzeige | null; sichtbar: boolean } {
   // Die zuletzt verarbeitete Ereignisnummer. Als Ref, nicht als State: sie
   // darf kein Neuzeichnen ausloesen, sonst liefe die Einblendung zweimal.
   const verarbeitet = useRef(-1)
@@ -91,10 +99,8 @@ export function Einblendung({ zustand }: { zustand: MatchState }) {
     if (!anzeige || !sichtbar) return
     // Im auf einen Schritt eingefrorenen Vorfuehrmodus ist das Anhalten
     // dieses Moments der Zweck (Bildschirmfoto) - dann nicht verbergen.
-    // Gleiches Verhalten wie im Zuschauer-Screen (App.tsx).
     if (vorfuehrungEingefroren()) return
-    const dauer = DAUER_MS[anzeige.ueberlagerung.art]
-    const aus = window.setTimeout(() => setSichtbar(false), dauer)
+    const aus = window.setTimeout(() => setSichtbar(false), DAUER_MS[anzeige.ueberlagerung.art])
     return () => window.clearTimeout(aus)
   }, [anzeige, sichtbar])
 
@@ -104,6 +110,11 @@ export function Einblendung({ zustand }: { zustand: MatchState }) {
     return () => window.clearTimeout(weg)
   }, [sichtbar, anzeige])
 
+  return { anzeige, sichtbar }
+}
+
+export function Einblendung({ zustand }: { zustand: MatchState }) {
+  const { anzeige, sichtbar } = useEinblendung(zustand)
   if (!anzeige) return null
 
   const u = anzeige.ueberlagerung

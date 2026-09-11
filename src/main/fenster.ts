@@ -27,6 +27,15 @@ let aktuelleKonfiguration: Konfiguration = standardKonfiguration
 
 export function konfigurationAktualisieren(k: Konfiguration): void {
   aktuelleKonfiguration = k
+  // An alle Fenster weiterreichen: der Player-Screen braucht daraus das
+  // gewaehlte Layout. Der Kanal 'konfiguration:lesen' steht ihm nicht offen
+  // (er gehoert dem Control-Fenster), und das ist richtig so - hier laeuft es
+  // nur vom Hauptprozess zum Renderer.
+  for (const fensterInstanz of fenster.values()) {
+    if (!fensterInstanz.isDestroyed() && !fensterInstanz.webContents.isDestroyed()) {
+      fensterInstanz.webContents.send('konfiguration', k)
+    }
+  }
 }
 
 // Letzter an alle Fenster verteilter MatchState. Wer den Player- oder
@@ -250,13 +259,15 @@ export function fensterOeffnen(art: FensterArt): BrowserWindow {
   // registriert), den letzten bekannten Zustand einmalig nachliefern - ein
   // frisch geoeffnetes Fenster hat sonst keinen Zustand, bis das naechste
   // echte Ereignis eintrifft.
-  if (letzterZustand || letzterMatchtag) {
+  {
     const zustandBeimOeffnen = letzterZustand
     const matchtagBeimOeffnen = letzterMatchtag
+    const konfigurationBeimOeffnen = aktuelleKonfiguration
     neues.webContents.once('did-finish-load', () => {
       if (neues.isDestroyed() || neues.webContents.isDestroyed()) return
       if (zustandBeimOeffnen) neues.webContents.send('zustand', zustandBeimOeffnen)
       if (matchtagBeimOeffnen) neues.webContents.send('matchtag', matchtagBeimOeffnen)
+      neues.webContents.send('konfiguration', konfigurationBeimOeffnen)
     })
   }
 

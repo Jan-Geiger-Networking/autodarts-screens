@@ -34,6 +34,7 @@ declare global {
       aktualisierungInstallieren: () => Promise<{ erfolg: boolean; meldung?: string }>
       neuerungen: () => Promise<string | null>
       beiMatchtag: (rueckruf: (m: Matchtag) => void) => () => void
+      beiKonfiguration: (rueckruf: (k: Konfiguration) => void) => () => void
       matchtagLesen: () => Promise<Matchtag>
       matchtagBefehl: (befehl: MatchtagBefehl) => Promise<Matchtag>
     }

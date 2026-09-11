@@ -10,7 +10,7 @@ export type BasisSzene = 'idle' | 'bullOff' | 'intro' | 'scoreboard'
 
 export type Ueberlagerung =
   | { art: 'playerChange'; seq: number; zuSpielerId: string }
-  | { art: 'bigMoment'; seq: number; anlass: 'oneEighty' | 'highFinish'; spielerId: string }
+  | { art: 'bigMoment'; seq: number; anlass: 'oneEighty' | 'highFinish' | 'bullseye'; spielerId: string }
   | { art: 'miss'; seq: number; spielerId: string }
   | { art: 'legWin'; seq: number; spielerId: string }
   | { art: 'matchWin'; seq: number; spielerId: string }
@@ -53,6 +53,8 @@ function ueberlagerungAusEreignis(ereignis: MatchEvent): Ueberlagerung | null {
       return { art: 'playerChange', seq: ereignis.seq, zuSpielerId: ereignis.toPlayerId }
     case 'oneEighty':
       return { art: 'bigMoment', seq: ereignis.seq, anlass: 'oneEighty', spielerId: ereignis.playerId }
+    case 'bullseye':
+      return { art: 'bigMoment', seq: ereignis.seq, anlass: 'bullseye', spielerId: ereignis.playerId }
     case 'miss':
       return { art: 'miss', seq: ereignis.seq, spielerId: ereignis.playerId }
     case 'highFinish':

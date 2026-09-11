@@ -387,7 +387,7 @@ function Mittelanzeige({
       </div>
       {/* Zeigt den laufenden Wurf dort, wo er auf der Scheibe gelandet ist -
           die Frage "wo ging der Wurf hin" beantwortet keine Zahlenreihe. */}
-      <Dartscheibe darts={darts} verblasst={verblasst} />
+      <Dartscheibe darts={darts} verblasst={verblasst} dunkel />
     </div>
   )
 }
@@ -435,10 +435,10 @@ function SpielerSpalten({
   )
 
   return (
-    <div className="spielspalten">
+    <div className={`spielspalten spielspalten-${Math.min(links.length + rechts.length, 8)}`}>
       {spalte(links, 'links')}
       <div className="spielmitte">
-        <Dartscheibe darts={darts} verblasst={verblasst} />
+        <Dartscheibe darts={darts} verblasst={verblasst} dunkel />
       </div>
       {spalte(rechts, 'rechts')}
     </div>
@@ -464,10 +464,36 @@ function Statistikleiste({ zustand }: { zustand: MatchState }) {
         const score = scores.find((s) => s.playerId === id)
         return [
           { label: 'Average', wert: averageAnzeige(score?.average3 ?? null) },
-          { label: 'Checkout', wert: score ? checkoutQuote(score) : '—' },
+          {
+            label: 'Checkout',
+            // Die Quote des Servers geht vor: sie zaehlt auch, was vor dem
+            // Start dieser Anwendung geworfen wurde.
+            wert:
+              score?.checkoutProzent !== null && score?.checkoutProzent !== undefined
+                ? `${Math.round(score.checkoutProzent)}%`
+                : score
+                  ? checkoutQuote(score)
+                  : '—',
+          },
           { label: '180er', wert: String(score?.count180 ?? 0) },
           { label: 'Höchstes Finish', wert: finishAnzeige(score?.highestFinish ?? null) },
           { label: 'Darts', wert: String(score?.dartsGesamt ?? 0) },
+        ]
+      },
+    },
+    {
+      // Dritte Seite aus den Zahlen, die Autodarts selbst fuehrt. Sie sagen
+      // mehr ueber die Verfassung eines Spielers als der Average allein:
+      // wie er ins Leg startet und wie oft er hoch aufnimmt.
+      titel: 'Scoring',
+      werte: (id) => {
+        const score = scores.find((s) => s.playerId === id)
+        return [
+          { label: 'First 9', wert: averageAnzeige(score?.first9Average ?? null) },
+          { label: '60+', wert: String(score?.plus60 ?? 0) },
+          { label: '100+', wert: String(score?.plus100 ?? 0) },
+          { label: '140+', wert: String(score?.plus140 ?? 0) },
+          { label: '180er', wert: String(score?.count180 ?? 0) },
         ]
       },
     },
@@ -517,7 +543,7 @@ function Statistikleiste({ zustand }: { zustand: MatchState }) {
 
       {/* key auf den Seitenindex: React ersetzt den Block beim Umblaettern,
           damit die Einblendung jedes Mal neu laeuft statt nur einmal. */}
-      <div className="statistikseite" key={seiteIndex}>
+      <div className={`statistikseite statistikseite-${Math.min(players.length, 8)}`} key={seiteIndex}>
         {players.map((spieler) => (
           <div className={`statistikblock${spieler.id === activePlayerId ? ' aktiv' : ''}`} key={spieler.id}>
             <span className="statistikblock-name">{spieler.displayName}</span>
@@ -553,6 +579,9 @@ function Wert({ label, wert }: { label: string; wert: string }) {
 }
 
 function findeAbschlussWurf(zustand: MatchState, ueberlagerung: BigMoment): LegEntry | undefined {
+  // Das Bullseye gehoert zu keiner abgeschlossenen Aufnahme - es faellt
+  // mitten im Zug an, deshalb gibt es dafuer keinen Verlaufseintrag.
+  if (ueberlagerung.anlass === 'bullseye') return undefined
   const treffer =
     ueberlagerung.anlass === 'oneEighty'
       ? (e: LegEntry) => e.playerId === ueberlagerung.spielerId && e.scored === 180
@@ -571,7 +600,12 @@ function BigMomentSchicht({ ueberlagerung, sichtbar, zustand }: { ueberlagerung:
 
   const spieler = zustand.players.find((p) => p.id === ueberlagerung.spielerId)
   const eintrag = findeAbschlussWurf(zustand, ueberlagerung)
-  const zahl = ueberlagerung.anlass === 'oneEighty' ? '180' : finishAnzeige(eintrag?.scored ?? null)
+  const zahl =
+    ueberlagerung.anlass === 'oneEighty'
+      ? '180'
+      : ueberlagerung.anlass === 'bullseye'
+        ? 'Bullseye'
+        : finishAnzeige(eintrag?.scored ?? null)
 
   return (
     <div className={`vollbild big-moment big-moment-${ueberlagerung.anlass}${sichtbar ? ' zeigen' : ''}`}>

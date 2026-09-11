@@ -44,6 +44,15 @@ export type Konfiguration = {
    */
   playerOffen: boolean
   spectatorOffen: boolean
+  /**
+   * Welches Layout der Player-Screen zeigt.
+   *
+   * 'default' ist die Ansicht nach dem Vorbild von Autodarts (zwei Tafeln,
+   * Scheibe in der Mitte). 'jgn' ist die auf das Werfen hin entworfene
+   * Fassung: Spielerliste klein oben links, der Spieler am Wurf gross
+   * darunter, Scheibe und Ereignisse rechts.
+   */
+  playerLayout: 'default' | 'jgn'
 }
 
 export const standardKonfiguration: Konfiguration = {
@@ -57,6 +66,7 @@ export const standardKonfiguration: Konfiguration = {
   autostart: false,
   playerOffen: false,
   spectatorOffen: false,
+  playerLayout: 'default',
 }
 
 // roh kommt aus einer Datei und ist deshalb ungeprueft. Unbekannte Felder
@@ -93,6 +103,7 @@ export function zusammenfuehren(roh: unknown): Konfiguration {
     playerOffen: typeof quelle.playerOffen === 'boolean' ? quelle.playerOffen : standardKonfiguration.playerOffen,
     spectatorOffen:
       typeof quelle.spectatorOffen === 'boolean' ? quelle.spectatorOffen : standardKonfiguration.spectatorOffen,
+    playerLayout: quelle.playerLayout === 'jgn' ? 'jgn' : standardKonfiguration.playerLayout,
   }
 }
 

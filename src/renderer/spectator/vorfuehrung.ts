@@ -7,7 +7,7 @@
 // braucht denselben Weg zum Nachsehen, ganz ohne laufende Autodarts-Verbindung.
 
 import { useEffect, useState } from "react";
-import type { LegEntry, MatchState, Player, Segment } from "../../shared/typen";
+import type { LegEntry, MatchState, Player, PlayerScore, Segment } from "../../shared/typen";
 import {
   ergebnisUebernehmen,
   matchtagStarten,
@@ -121,6 +121,11 @@ const scoreLeer = (playerId: string) => ({
   bullAbstand: null,
   dartsGesamt: 0,
   punkteGesamt: 0,
+  first9Average: null,
+  plus60: 0,
+  plus100: 0,
+  plus140: 0,
+  checkoutProzent: null,
   highestFinish: null,
 });
 
@@ -183,6 +188,11 @@ function bauSchritte(): Schritt[] {
         highestFinish: 121,
         dartsGesamt: 45,
         punkteGesamt: 1176,
+        first9Average: null,
+        plus60: 0,
+        plus100: 0,
+        plus140: 0,
+        checkoutProzent: null,
         legAverage: 97.8,
         legDarts: 9,
         bullAbstand: null,
@@ -199,6 +209,11 @@ function bauSchritte(): Schritt[] {
         highestFinish: null,
         dartsGesamt: 45,
         punkteGesamt: 977,
+        first9Average: null,
+        plus60: 0,
+        plus100: 0,
+        plus140: 0,
+        checkoutProzent: null,
         legAverage: null,
         legDarts: 0,
         bullAbstand: null,
@@ -508,7 +523,9 @@ export function useVorfuehrung(): MatchState | null {
   if (!aktiv) return null;
   const anzuzeigenderIndex =
     zielIndex !== null ? Math.min(index, zielIndex) : index % SCHRITTE.length;
-  return SCHRITTE[anzuzeigenderIndex]!.zustand;
+  const roh = SCHRITTE[anzuzeigenderIndex]!.zustand;
+  const anzahl = vorfuehrSpielerzahl();
+  return anzahl === null ? roh : mitSpielerzahl(roh, anzahl);
 }
 
 /**
@@ -575,6 +592,44 @@ export function vorfuehrMatchtag(): Matchtag {
     )
   })
   return matchtag
+}
+
+/**
+ * ?spieler=N fuellt den Vorfuehrzustand auf N Spieler auf (2 bis 8).
+ *
+ * Ohne das liesse sich nicht pruefen, ob die Bildschirme mit mehr als zwei
+ * Personen noch aufgehen - und genau dort wurde etwas abgeschnitten ("bei 5
+ * war im spieler bildschirm was abgeschnitten und bei dem zuscher viewer
+ * auch"). Die zusaetzlichen Spieler tragen erfundene, aber plausible
+ * Restpunktzahlen.
+ */
+export function vorfuehrSpielerzahl(): number | null {
+  const wert = parameter().get('spieler')
+  if (!vorfuehrungAktiv() || wert === null) return null
+  const zahl = Number(wert)
+  if (!Number.isInteger(zahl)) return null
+  return Math.max(2, Math.min(8, zahl))
+}
+
+/** Fuellt einen Zustand auf die gewuenschte Spielerzahl auf. */
+export function mitSpielerzahl(zustand: MatchState, anzahl: number): MatchState {
+  if (zustand.players.length >= anzahl) return zustand
+  const zusatzNamen = ['Mareike', 'Tobi', 'Sven', 'Kevin', 'Nina', 'Lars', 'Pia', 'Ole']
+  const players = [...zustand.players]
+  const scores = [...zustand.scores]
+  for (let i = players.length; i < anzahl; i++) {
+    const id = `vp${i}`
+    players.push({ id, autodartsName: zusatzNamen[i] ?? `Spieler ${i + 1}`, displayName: zusatzNamen[i] ?? `Spieler ${i + 1}` })
+    const vorlage = zustand.scores[0]
+    scores.push({
+      ...(vorlage as PlayerScore),
+      playerId: id,
+      remaining: 501 - i * 47,
+      legs: i % 3,
+      average3: 70 - i * 4,
+    })
+  }
+  return { ...zustand, players, scores }
 }
 
 /**

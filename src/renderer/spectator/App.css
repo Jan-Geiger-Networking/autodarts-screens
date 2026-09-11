@@ -382,7 +382,13 @@
   margin-top: 0;
 }
 
+/* Die Karten teilen sich die Spaltenhoehe, statt ihre Wunschgroesse zu
+   behalten - bei drei Karten je Spalte (sechs Spieler) stand die unterste
+   sonst halb ausserhalb des Bildes. */
 .rasterkarte {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
   background: var(--jg-surface);
   padding: 3vh 2vw;
   display: flex;
@@ -1722,4 +1728,95 @@
   .miss-schicht.zeigen {
     opacity: 1;
   }
+}
+
+/* Mehr als vier Spieler: Karten und Schrift eine Stufe kleiner, sonst passt
+   der Inhalt nicht mehr in die geteilte Spaltenhoehe. Gemeldet fuer fuenf
+   Spieler ("bei 5 war im spieler bildschirm was abgeschnitten und bei dem
+   zuscher viewer auch"). */
+.spielspalten-5 .rasterkarte,
+.spielspalten-6 .rasterkarte {
+  padding: 1.4vh 1.4vw;
+  gap: 0.6vh;
+}
+
+.spielspalten-5 .rasterkarte-rest,
+.spielspalten-6 .rasterkarte-rest {
+  font-size: 5.5vh;
+}
+
+.spielspalten-5 .rasterkarte .spielername,
+.spielspalten-6 .rasterkarte .spielername {
+  font-size: 2.1vh;
+}
+
+/* Das Foto muss mitschrumpfen, sonst schiebt es Name und Punktzahl aus der
+   Karte heraus - genau das war zu sehen: die Namen standen halb abgeschnitten. */
+.spielspalten-5 .rasterkarte .spielerfoto,
+.spielspalten-6 .rasterkarte .spielerfoto {
+  width: 6vh;
+  height: 6vh;
+}
+
+.spielspalten-5 .rasterkarte-legs,
+.spielspalten-6 .rasterkarte-legs {
+  font-size: 1.6vh;
+}
+
+.spielspalten-7 .rasterkarte,
+.spielspalten-8 .rasterkarte {
+  padding: 1vh 1.2vw;
+  gap: 0.3vh;
+}
+
+.spielspalten-7 .rasterkarte-rest,
+.spielspalten-8 .rasterkarte-rest {
+  font-size: 4.2vh;
+}
+
+.spielspalten-7 .rasterkarte .spielername,
+.spielspalten-8 .rasterkarte .spielername {
+  font-size: 1.8vh;
+}
+
+.spielspalten-7 .rasterkarte .spielerfoto,
+.spielspalten-8 .rasterkarte .spielerfoto {
+  width: 4.5vh;
+  height: 4.5vh;
+}
+
+.spielspalten-7 .rasterkarte-legs,
+.spielspalten-8 .rasterkarte-legs {
+  font-size: 1.4vh;
+}
+
+/* Ab fuenf Spielern wurde die Statistikleiste breiter als der Bildschirm -
+   die Beschriftungen liefen ineinander und es erschien ein Rollbalken.
+   Jetzt duerfen die Werte umbrechen, und die Abstaende werden kleiner. */
+.statistikseite-5 .statistikblock-werte,
+.statistikseite-6 .statistikblock-werte,
+.statistikseite-7 .statistikblock-werte,
+.statistikseite-8 .statistikblock-werte {
+  flex-wrap: wrap;
+  white-space: normal;
+  gap: 0.3vh 0.8vw;
+}
+
+.statistikseite-5,
+.statistikseite-6 {
+  gap: 1vw;
+  font-size: 0.9em;
+}
+
+.statistikseite-7,
+.statistikseite-8 {
+  gap: 0.6vw;
+  font-size: 0.8em;
+}
+
+.statistikseite-5 .statistikblock,
+.statistikseite-6 .statistikblock,
+.statistikseite-7 .statistikblock,
+.statistikseite-8 .statistikblock {
+  padding: 0.5vh 0.5vw;
 }
