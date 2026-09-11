@@ -724,3 +724,45 @@ describe('anwenden: Miss-Ereignis', () => {
     expect(neueAufnahme.lastEvent?.kind).toBe('miss')
   })
 })
+
+describe('anwenden: wer gewonnen hat', () => {
+  it('nennt den Spieler mit Rest 0, wenn Autodarts noch keinen Sieger meldet', () => {
+    // Gemeldet: "ich habe das match gewonnen aber da im screen stand bot1 hat
+    // das match gewonnen". winner stand noch auf -1, und der aktive Spieler
+    // war nach dem entscheidenden Wurf schon der naechste.
+    const laufend = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    const ende = anwenden(
+      laufend,
+      stateEreignis('match-1', {
+        finished: true,
+        winner: -1,
+        gameFinished: true,
+        gameWinner: -1,
+        player: 1,
+        gameScores: { '0': 0, '1': 130 },
+      }),
+    )
+    expect(ende.lastEvent?.kind).toBe('matchWon')
+    expect(ende.lastEvent).toMatchObject({ playerId: ende.players[0]!.id })
+  })
+
+  it('nimmt den gemeldeten Index, wenn er auf einen Spieler zeigt', () => {
+    const laufend = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    const ende = anwenden(
+      laufend,
+      stateEreignis('match-1', { finished: true, winner: 1, player: 0, gameScores: { '0': 40, '1': 0 } }),
+    )
+    expect(ende.lastEvent).toMatchObject({ playerId: ende.players[1]!.id })
+  })
+
+  it('faellt auf den aktiven Spieler zurueck, wenn niemand ausgespielt hat', () => {
+    // Abbruch: kein Index, keine Null im Rest - dann bleibt nur der aktive
+    // Spieler, und das ist ehrlicher als zu raten.
+    const laufend = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    const ende = anwenden(
+      laufend,
+      stateEreignis('match-1', { finished: true, winner: -1, player: 1, gameScores: { '0': 40, '1': 130 } }),
+    )
+    expect(ende.lastEvent).toMatchObject({ playerId: ende.players[1]!.id })
+  })
+})

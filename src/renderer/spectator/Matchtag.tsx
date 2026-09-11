@@ -35,13 +35,9 @@ import logoWeiss from '../../../assets/logo-white.png'
 
 /** Standzeit einer Folie. Laenger als beim Vorspann: hier stehen Zahlen, die
  * man lesen koennen muss, keine Schlagworte. */
-const TAKT_MS = 9000
+const TAKT_MS = 15000
 /** Die Folie "Jetzt" bleibt laenger - danach richtet jemand das Match ein. */
-const TAKT_JETZT_MS = 13000
-/** Dauer der Fahrt, muss zu den @keyframes in App.css passen. Bewusst
- * langsam, wie beim Vorspann ("die geschwindigkeit der animation also
- * transition muss langsamer werden das wichtig"). */
-const UEBERGANG_MS = 1400
+const TAKT_JETZT_MS = 20000
 
 /** Der Matchtag-Stand aus dem Hauptprozess. */
 export function useMatchtag(): MatchtagStand | null {
@@ -239,7 +235,6 @@ export function Matchtag({ matchtag }: { matchtag: MatchtagStand }) {
   // wie ?folie=N beim Vorspann.
   const festgehalten = matchtagFolieParam()
   const [index, setIndex] = useState(0)
-  const [faehrt, setFaehrt] = useState(false)
 
   // Beginnt der Matchtag eine neue Phase (Aufwaermen -> Spielplan -> ...),
   // aendert sich die Folienliste. Dann von vorn, statt in einem Index zu
@@ -247,20 +242,17 @@ export function Matchtag({ matchtag }: { matchtag: MatchtagStand }) {
   const schluessel = folien.join('|')
   useEffect(() => setIndex(0), [schluessel])
 
+  // Eine Folie steht ihre Zeit ab und wird dann unmittelbar von der
+  // naechsten abgeloest. Kein Ausblenden dazwischen: vorher lag zwischen zwei
+  // Folien eine gute Sekunde Schwarz, weil erst ausgeblendet und danach neu
+  // eingeblendet wurde.
   useEffect(() => {
     if (festgehalten !== null) return
     if (folien.length <= 1) return
     const art = folien[index % folien.length]
     const standzeit = art === 'jetzt' ? TAKT_JETZT_MS : TAKT_MS
-    const fahrt = window.setTimeout(() => setFaehrt(true), standzeit)
-    const weiter = window.setTimeout(() => {
-      setFaehrt(false)
-      setIndex((i) => (i + 1) % folien.length)
-    }, standzeit + UEBERGANG_MS)
-    return () => {
-      window.clearTimeout(fahrt)
-      window.clearTimeout(weiter)
-    }
+    const weiter = window.setTimeout(() => setIndex((i) => (i + 1) % folien.length), standzeit)
+    return () => window.clearTimeout(weiter)
   }, [index, schluessel, folien, festgehalten])
 
   if (folien.length === 0) return null
@@ -268,7 +260,7 @@ export function Matchtag({ matchtag }: { matchtag: MatchtagStand }) {
 
   return (
     <div className="bildschirm-matchtag">
-      <div className={`mt-buehne${faehrt ? ' faehrt-aus' : ''}`} key={`${art}-${index}`}>
+      <div className="mt-buehne" key={`${art}-${index}`}>
         {art === 'jetzt' && <FolieJetzt matchtag={matchtag} />}
         {art === 'tabelle' && <FolieTabelle matchtag={matchtag} />}
         {art === 'spielplan' && <FolieSpielplan matchtag={matchtag} />}

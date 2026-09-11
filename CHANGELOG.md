@@ -4,6 +4,31 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.18] - 2026-09-11
+
+Achtzehnte Beta.
+
+### Behoben
+- **Nach einem gewonnenen Match stand der falsche Sieger auf dem Schirm.**
+  Autodarts meldet den Sieger als Spielerindex, setzt ihn aber nicht in jeder
+  Momentaufnahme — in der ersten mit „beendet" kann dort noch −1 stehen. Das
+  fiel auf den gerade aktiven Spieler zurück, und der ist nach dem
+  entscheidenden Wurf schon der nächste. Jetzt gilt: der gemeldete Index,
+  wenn er auf einen Spieler zeigt; sonst der Spieler, dessen Restpunktzahl
+  auf 0 steht; erst zuletzt der aktive Spieler
+- **Die Monitorliste zeigte für einen 4K-Fernseher 1280×720.** Das ist der
+  Wert in geräteunabhängigen Punkten — bei 300 % Skalierung genau ein Drittel.
+  Jetzt steht dort die echte Auflösung und, falls abweichend, die Skalierung
+- **Zwischen zwei Matchtag-Folien war der Bildschirm etwa eine Sekunde
+  schwarz**, weil erst aus- und danach neu eingeblendet wurde. Jetzt löst die
+  nächste Folie die vorige unmittelbar ab
+
+### Geändert
+- „Spielpause" oben rechts ist deutlich größer — quer durch den Raum war es
+  nicht zu lesen. Betrifft Vorspann und Matchtag-Bildschirm
+- Die Matchtag-Folien stehen länger: 15 Sekunden, die Folie mit der nächsten
+  Partie 20
+
 ## [0.1.0-beta.17] - 2026-09-11
 
 Siebzehnte Beta.

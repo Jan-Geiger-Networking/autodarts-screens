@@ -827,14 +827,17 @@
   font-weight: 700;
   letter-spacing: 0.25em;
   text-transform: uppercase;
-  font-size: 0.9vw;
+  /* Von 0.9vw auf 1.6vw angehoben ("mach mal die Spielpause die schrift oben
+     rechts im viewer screen groesser") - auf dem Fernseher quer durch den
+     Raum war sie nicht zu lesen. */
+  font-size: 1.6vw;
   color: var(--jg-accent);
 }
 
 .vorspann-signal-punkt {
   flex: 0 0 auto;
-  width: 1.1vh;
-  height: 1.1vh;
+  width: 1.8vh;
+  height: 1.8vh;
   border-radius: 50%;
   background: var(--jg-accent);
   animation: vorspann-puls 1.6s ease-in-out infinite;
@@ -1278,9 +1281,10 @@
   animation: mt-ein 1400ms var(--jg-ease) both;
 }
 
-.mt-buehne.faehrt-aus {
-  animation: mt-aus 1400ms var(--jg-ease) both;
-}
+/* Kein Ausblenden mehr: zwischen zwei Folien lag sonst eine gute Sekunde
+   Schwarz ("zwischen den infos ist der bildschirm so lange schwartz").
+   Jetzt loest die naechste Folie die vorige unmittelbar ab und faehrt ein -
+   harter Schnitt mit Einfahrt, wie bei einer Uebertragung. */
 
 @keyframes mt-ein {
   from {
@@ -1293,20 +1297,8 @@
   }
 }
 
-@keyframes mt-aus {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-4vh);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .mt-buehne,
-  .mt-buehne.faehrt-aus {
+  .mt-buehne {
     animation: none;
   }
 }
@@ -1624,7 +1616,8 @@
   background: rgba(2, 6, 23, 0.7);
   border: 0.15vh solid var(--jg-border-strong);
   font-family: var(--jg-font-display);
-  font-size: 2.2vh;
+  /* Gleiche Groesse wie im Vorspann - dieselbe Aussage, dieselbe Schrift. */
+  font-size: 3.4vh;
   font-weight: 600;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -1632,8 +1625,8 @@
 }
 
 .mt-signal-punkt {
-  width: 1vh;
-  height: 1vh;
+  width: 1.5vh;
+  height: 1.5vh;
   border-radius: 50%;
   background: var(--jg-accent);
   animation: mt-pulsen 2.4s ease-in-out infinite;

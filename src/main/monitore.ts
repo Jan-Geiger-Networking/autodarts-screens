@@ -17,15 +17,24 @@ export function monitoreAuflisten(): MonitorEintrag[] {
   const primaerId = screen.getPrimaryDisplay().id
   return screen.getAllDisplays().map((display, index) => {
     const primaer = display.id === primaerId
+    // display.size ist in geraeteunabhaengigen Punkten, nicht in Bildpunkten:
+    // ein 4K-Fernseher mit 300 % Skalierung meldet dort 1280x720. Genau das
+    // stand in der Auswahlliste und sah nach einem Fehler aus ("ich habe ein
+    // 4K monitor und der wird mit 1280x720p angezeigt das ist falsch"). Die
+    // echte Aufloesung ist size * scaleFactor.
     const breite = display.size.width
     const hoehe = display.size.height
+    const skalierung = display.scaleFactor
+    const echteBreite = Math.round(breite * skalierung)
+    const echteHoehe = Math.round(hoehe * skalierung)
+    const skalierungstext = skalierung === 1 ? '' : ` bei ${Math.round(skalierung * 100)} % Skalierung`
     return {
       id: display.id,
       breite,
       hoehe,
-      skalierung: display.scaleFactor,
+      skalierung,
       primaer,
-      beschriftung: `${index + 1} — ${breite}×${hoehe}${primaer ? ' (primaer)' : ''}`,
+      beschriftung: `${index + 1} — ${echteBreite}×${echteHoehe}${skalierungstext}${primaer ? ' (primär)' : ''}`,
     }
   })
 }

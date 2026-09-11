@@ -369,6 +369,40 @@ export function istMatchEnde(nutz: Record<string, unknown>): boolean {
   return !BOARD_BEGINN_WERTE.has(wert)
 }
 
+/**
+ * Wer gewonnen hat.
+ *
+ * Autodarts fuehrt dafuer einen Spielerindex (winner fuer das Match,
+ * gameWinner fuer das Leg), setzt ihn aber NICHT in jeder Momentaufnahme:
+ * solange nichts entschieden ist, steht dort -1, und -1 kann auch noch in der
+ * ersten Momentaufnahme mit finished=true stehen. Ein Index von -1 traf
+ * effektivePlayers[-1] - also undefined - und fiel auf den gerade aktiven
+ * Spieler zurueck. Der ist nach dem entscheidenden Wurf aber schon der
+ * naechste: gemeldet wurde "Bot Level 1 hat das Match gewonnen", obwohl der
+ * Herausgeber gewonnen hatte.
+ *
+ * Deshalb drei Stufen: der gemeldete Index, wenn er auf einen Spieler zeigt;
+ * sonst der Spieler, dessen Restpunktzahl auf 0 steht (und nur, wenn das
+ * genau einer ist); erst zuletzt der aktive Spieler.
+ */
+function gewinnerId(
+  index: unknown,
+  nutz: Record<string, unknown>,
+  players: readonly Player[],
+  activePlayerId: string | null,
+): string | null {
+  if (typeof index === 'number' && Number.isInteger(index) && index >= 0) {
+    const ueberIndex = players[index]?.id
+    if (ueberIndex) return ueberIndex
+  }
+
+  const punkte = nachIndex(nutz.gameScores)
+  const ausgespielt = players.filter((_, i) => ersteZahl(punkte[i], ['remaining', 'score', 'value', 'points'], '') === 0)
+  if (ausgespielt.length === 1) return ausgespielt[0]!.id
+
+  return activePlayerId
+}
+
 /** Ob zwei Wurflisten denselben Stand meinen (gleiche Laenge, gleiche Felder). */
 function gleicheWurfliste(a: readonly Segment[], b: readonly Segment[]): boolean {
   return a.length === b.length && a.every((dart, index) => dart.name === b[index]?.name)
@@ -482,12 +516,8 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
   else if (istNeuesMatch) phase = 'intro'
   else phase = 'playing'
 
-  const legGewinnerId = legGeradeGewonnen
-    ? ((typeof nutz.gameWinner === 'number' ? effektivePlayers[nutz.gameWinner]?.id : undefined) ?? activePlayerId)
-    : null
-  const matchGewinnerId = matchGeradeGewonnen
-    ? ((typeof nutz.winner === 'number' ? effektivePlayers[nutz.winner]?.id : undefined) ?? activePlayerId)
-    : null
+  const legGewinnerId = legGeradeGewonnen ? gewinnerId(nutz.gameWinner, nutz, effektivePlayers, activePlayerId) : null
+  const matchGewinnerId = matchGeradeGewonnen ? gewinnerId(nutz.winner, nutz, effektivePlayers, activePlayerId) : null
 
   // Gezielte Sonden fuer die drei Felder, deren innere Form bis heute
   // unbelegt ist. Je einmal pro Programmlauf, und erst wenn tatsaechlich
