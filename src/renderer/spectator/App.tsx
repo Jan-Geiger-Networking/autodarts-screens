@@ -90,6 +90,20 @@ export function App() {
     if (ueberlagerung?.art === 'miss') setLetzterMiss(ueberlagerung)
   }, [ueberlagerung])
 
+  // Sobald ein Match zu Ende ist, raeumt Autodarts es weg: das Brett meldet
+  // "ende", der Zustand faellt auf den Ruhezustand OHNE Spieler zurueck -
+  // haeufig schon wenige Sekunden nach dem entscheidenden Wurf, waehrend die
+  // Sieger-Einblendung noch laeuft. Sie fand dann keinen Spieler mehr und
+  // stand als leere, dunkle Flaeche ueber dem Pausenbildschirm ("nach einem
+  // match ist der zuscherscreen mega dunkel als ob eine oberflaeche da drueber
+  // ist"). Deshalb merkt sich der Screen die letzte Aufnahme MIT Spielern und
+  // spielt die Einblendung damit zu Ende.
+  const [spielZustand, setSpielZustand] = useState<MatchState | null>(null)
+  useEffect(() => {
+    if (zustand && zustand.players.length > 0) setSpielZustand(zustand)
+  }, [zustand])
+  const ueberlagerungsZustand = zustand && zustand.players.length > 0 ? zustand : spielZustand
+
   const basis = zustand ? ermittleBasis(zustand) : 'idle'
 
   // 'intro' geht nach ca. 8s von selbst in die normale Anzeige ueber (siehe
@@ -142,37 +156,42 @@ export function App() {
         />
       )}
 
-      {zustand && (
+      {ueberlagerungsZustand && (
         <BigMomentSchicht
           ueberlagerung={letzterBigMoment}
           sichtbar={ueberlagerung?.art === 'bigMoment'}
-          zustand={zustand}
+          zustand={ueberlagerungsZustand}
         />
       )}
 
-      {zustand && (
+      {ueberlagerungsZustand && (
         <WechselSchicht
           ueberlagerung={letzterWechsel}
           sichtbar={ueberlagerung?.art === 'playerChange'}
-          zustand={zustand}
+          zustand={ueberlagerungsZustand}
         />
       )}
 
-      {zustand && (
-        <LegWinSchicht ueberlagerung={letzterLegWin} sichtbar={ueberlagerung?.art === 'legWin'} zustand={zustand} />
+      {ueberlagerungsZustand && (
+        <LegWinSchicht
+          ueberlagerung={letzterLegWin}
+          sichtbar={ueberlagerung?.art === 'legWin'}
+          zustand={ueberlagerungsZustand}
+        />
       )}
 
-      {zustand && (
-        <MissSchicht ueberlagerung={letzterMiss} sichtbar={ueberlagerung?.art === 'miss'} zustand={zustand} />
+      {ueberlagerungsZustand && (
+        <MissSchicht ueberlagerung={letzterMiss} sichtbar={ueberlagerung?.art === 'miss'} zustand={ueberlagerungsZustand} />
       )}
 
-      {zustand && (
+      {ueberlagerungsZustand && (
         <MatchWinSchicht
           ueberlagerung={letzterMatchWin}
           sichtbar={ueberlagerung?.art === 'matchWin'}
-          zustand={zustand}
+          zustand={ueberlagerungsZustand}
         />
       )}
+
     </div>
   )
 }

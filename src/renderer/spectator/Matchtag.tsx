@@ -31,7 +31,8 @@ import {
   type Matchtag as MatchtagStand,
   type Paarung,
 } from '../../shared/matchtag'
-import { folienFuer, phasenName } from './matchtagFolien'
+import { folienFuer } from './matchtagFolien'
+import { Fortschritt } from './Fortschritt'
 import { Heatmap } from '../shared/Heatmap'
 import { matchtagFolieParam, vorfuehrMatchtag, vorfuehrMatchtagAktiv } from './vorfuehrung'
 import logoWeiss from '../../../assets/logo-white.png'
@@ -70,7 +71,52 @@ function statusText(matchtag: MatchtagStand): string {
   const naechste = naechstePaarung(matchtag)
   if (!naechste) return 'Alle Partien gespielt'
   const offen = matchtag.paarungen.filter((p) => p.siegerId === null).length
-  return `${spielerName(matchtag, naechste.aId)} gegen ${spielerName(matchtag, naechste.bId)} · noch ${offen} ${offen === 1 ? 'Partie' : 'Partien'}`
+  return `Gleich: ${spielerName(matchtag, naechste.aId)} gegen ${spielerName(matchtag, naechste.bId)} · noch ${offen} ${offen === 1 ? 'Partie' : 'Partien'}`
+}
+
+/**
+ * Der Weg durch den Abend als Linie, die sich Partie fuer Partie fuellt
+ * ("wie so eine roadmap also oben da ist Warmup dann Main Matches oder so und
+ * dann Finale das als linie die sich fuellt schritt fuer schritt match fuer
+ * match dann weis man wie lange grob noch").
+ *
+ * Die Stationen kommen aus dem Modus: im Huetten-Modus endet der Abend mit
+ * zwei Endspielen, im Normalfall mit der Entscheidung an der Tabellenspitze
+ * (notfalls einem Stechen). Erreicht ist eine Station ueber die PHASE, gefuellt
+ * ist die Linie ueber die Zahl der gespielten Partien - beides sagt etwas
+ * anderes, und beides zusammen beantwortet die Frage "wie lange noch".
+ */
+function Roadmap({ matchtag }: { matchtag: MatchtagStand }) {
+  const letzte =
+    matchtag.phase === 'stechen' ? 'Stechen' : matchtag.modus === 'huette' ? 'Finale' : 'Entscheidung'
+  const stationen = ['Aufwärmen', 'Hauptrunde', letzte]
+
+  const erreicht =
+    matchtag.phase === 'aufwaermen' ? 0 : matchtag.phase === 'stechen' || matchtag.phase === 'finale' || matchtag.phase === 'beendet' ? 2 : 1
+
+  const gesamt = matchtag.paarungen.length
+  const gespielt = matchtag.paarungen.filter((p) => p.siegerId !== null).length
+  const anteil =
+    matchtag.phase === 'beendet' ? 1 : matchtag.phase === 'aufwaermen' ? 0 : gesamt === 0 ? 0 : gespielt / gesamt
+
+  return (
+    <div className="mt-roadmap">
+      <div className="mt-roadmap-linie">
+        <span className="mt-roadmap-fuellung" style={{ width: `${Math.round(anteil * 100)}%` }} />
+      </div>
+      <div className="mt-roadmap-stationen">
+        {stationen.map((name, i) => (
+          <span
+            className={`mt-station${i < erreicht ? ' ist-vorbei' : ''}${i === erreicht ? ' ist-hier' : ''}`}
+            key={name}
+          >
+            <span className="mt-station-punkt" />
+            {name}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 /** Zahl mit einer Nachkommastelle, oder ein Strich, wenn es sie nicht gibt. */
@@ -103,7 +149,6 @@ function FolieJetzt({ matchtag }: { matchtag: MatchtagStand }) {
     <div className="mt-folie mt-folie-jetzt">
       <span className="mt-eyebrow">{stechen ? 'Stechen um den Sieg' : 'Als Nächstes'}</span>
       <VsZeile matchtag={matchtag} paarung={naechste} gross />
-      <p className="mt-hinweis">Match jetzt einrichten</p>
       {danach.length > 0 && (
         <div className="mt-danach">
           <span className="mt-danach-titel">Danach</span>
@@ -321,13 +366,82 @@ function FolieAufwaermen({ matchtag }: { matchtag: MatchtagStand }) {
 }
 
 function FolieSieger({ matchtag }: { matchtag: MatchtagStand }) {
+  const stand = endstand(matchtag)
+  const sieger = stand.find((z) => z.spieler.id === matchtag.siegerId) ?? stand[0]
+  const name = sieger?.spieler.name ?? spielerName(matchtag, matchtag.siegerId ?? '')
+  const bilanz = spielerBilanzen(matchtag).find((b) => b.spieler.id === sieger?.spieler.id)
+  const verfolger = stand.filter((z) => z.spieler.id !== sieger?.spieler.id).slice(0, 2)
+
   return (
     <div className="mt-folie mt-folie-sieger">
+      {/* Strahlenkranz und Konfetti sind reine Zier - deshalb aria-hidden und
+          deshalb unter dem Text. Beides steht still, wenn das Betriebssystem
+          weniger Bewegung verlangt (siehe prefers-reduced-motion in App.css). */}
+      <div className="mt-strahlen" aria-hidden="true" />
+      <div className="mt-konfetti" aria-hidden="true">
+        {Array.from({ length: 24 }, (_, i) => (
+          <span className={`mt-schnipsel mt-schnipsel-${i % 4}`} key={i} style={{ left: `${(i * 4.1 + 2) % 100}%`, animationDelay: `${(i % 8) * 260}ms` }} />
+        ))}
+      </div>
+
       <span className="mt-eyebrow">{matchtag.titel || 'Matchtag'} entschieden</span>
-      <p className="mt-riesig">{spielerName(matchtag, matchtag.siegerId ?? '')}</p>
-      <p className="mt-hinweis">Sieger des Abends</p>
+
+      {/* Buchstabe fuer Buchstabe: der Name baut sich auf, statt einfach da zu
+          sein. Leerzeichen bleiben als geschuetztes Leerzeichen stehen, sonst
+          faellt der Abstand zwischen Vor- und Nachnamen weg. */}
+      <p className="mt-siegername">
+        {[...name].map((zeichen, i) => (
+          <span className="mt-siegerzeichen" key={i} style={{ animationDelay: `${300 + i * 55}ms` }}>
+            {zeichen === ' ' ? ' ' : zeichen}
+          </span>
+        ))}
+      </p>
+      <p className="mt-hinweis mt-siegerzeile">Sieger des Abends</p>
+
+      {bilanz && (
+        <div className="mt-siegerwerte">
+          <span className="mt-siegerwert">
+            <strong>{sieger?.punkte ?? 0}</strong> Punkte
+          </span>
+          <span className="mt-siegerwert">
+            <strong>{sieger?.siege ?? 0}</strong> Siege
+          </span>
+          <span className="mt-siegerwert">
+            <strong>{zahl(bilanz.schnitt)}</strong> Ø
+          </span>
+          {bilanz.count180 > 0 && (
+            <span className="mt-siegerwert">
+              <strong>{bilanz.count180}</strong> × 180
+            </span>
+          )}
+          {bilanz.hoechstesFinish !== null && (
+            <span className="mt-siegerwert">
+              <strong>{bilanz.hoechstesFinish}</strong> Finish
+            </span>
+          )}
+        </div>
+      )}
+
+      {verfolger.length > 0 && (
+        <div className="mt-podest">
+          {verfolger.map((z) => (
+            <span className="mt-podest-platz" key={z.spieler.id}>
+              <span className="mt-podest-nummer">{z.platz}</span>
+              <span className="mt-podest-name">{z.spieler.name}</span>
+              <span className="mt-podest-punkte">{z.punkte} Pkt</span>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
+}
+
+/** Wie lange eine Folie steht. Timer und Fortschrittsbalken lesen dieselbe Zahl. */
+function standzeitVon(art: string): number {
+  if (art === 'jetzt') return TAKT_JETZT_MS
+  if (art === 'analyse' || art === 'heatmap' || art === 'sieger') return TAKT_LANG_MS
+  return TAKT_MS
 }
 
 export function Matchtag({ matchtag }: { matchtag: MatchtagStand }) {
@@ -350,9 +464,10 @@ export function Matchtag({ matchtag }: { matchtag: MatchtagStand }) {
   useEffect(() => {
     if (festgehalten !== null) return
     if (folien.length <= 1) return
-    const art = folien[index % folien.length]
-    const standzeit = art === 'jetzt' ? TAKT_JETZT_MS : art === 'analyse' || art === 'heatmap' ? TAKT_LANG_MS : TAKT_MS
-    const weiter = window.setTimeout(() => setIndex((i) => (i + 1) % folien.length), standzeit)
+    const weiter = window.setTimeout(
+      () => setIndex((i) => (i + 1) % folien.length),
+      standzeitVon(folien[index % folien.length] ?? ''),
+    )
     return () => window.clearTimeout(weiter)
   }, [index, schluessel, folien, festgehalten])
 
@@ -372,13 +487,18 @@ export function Matchtag({ matchtag }: { matchtag: MatchtagStand }) {
         {art === 'sieger' && <FolieSieger matchtag={matchtag} />}
       </div>
 
-      {/* Statuszeile: steht ueber jeder Folie und sagt, wo der Abend gerade
-          ist und wer als naechstes dran ist. */}
-      <div className="mt-status">
-        <span className="mt-status-phase">{phasenName(matchtag)}</span>
-        <span className="mt-status-trenner" />
+      {/* Kopfzeile ueber jeder Folie: wo der Abend steht (Roadmap) und wer als
+          naechstes dran ist. Beides zusammen beantwortet die beiden Fragen,
+          die im Raum stehen, ohne dass jemand fragen muss. */}
+      <div className="mt-kopf">
+        <Roadmap matchtag={matchtag} />
         <span className="mt-status-text">{statusText(matchtag)}</span>
       </div>
+
+      {/* Der Balken unten zeigt, wann umgeblaettert wird. */}
+      {festgehalten === null && folien.length > 1 && (
+        <Fortschritt dauerMs={standzeitVon(art)} schluessel={`${art}-${index}`} />
+      )}
 
       {/* Dauerhaftes Signal oben rechts, wie im Vorspann: es sagt jedem im
           Raum, dass gerade nicht gespielt wird. */}

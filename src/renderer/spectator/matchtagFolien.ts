@@ -1,6 +1,5 @@
 // Welche Folien der Matchtag-Pausenbildschirm hergibt und in welcher
-// Reihenfolge, und wie die Phase heisst, in der der Abend gerade steckt.
-// Eigene Datei statt in Matchtag.tsx, damit sie ohne React und ohne
+// Reihenfolge. Eigene Datei statt in Matchtag.tsx, damit sie ohne React und ohne
 // Bilddateien pruefbar ist - dieselbe Trennung wie zwischen szene.ts und
 // App.tsx.
 
@@ -15,30 +14,6 @@ export type FolienArt =
   | 'heatmap'
   | 'aufwaermen'
   | 'sieger'
-
-/**
- * Wie die laufende Phase heisst. Steht auf jeder Folie oben - der
- * Herausgeber wollte den Stand jederzeit ablesen koennen ("die slides die
- * kommen sollen immer den status auch anzeigen wo sind wir in welcher
- * phase").
- */
-export function phasenName(matchtag: Matchtag): string {
-  switch (matchtag.phase) {
-    case 'aufwaermen':
-      return 'Aufwärmen'
-    case 'spielplan':
-    case 'laeuft':
-      return 'Match-Phase'
-    case 'stechen':
-      return 'Stechen'
-    case 'finale':
-      return 'Finalrunde'
-    case 'beendet':
-      return 'Entschieden'
-    default:
-      return ''
-  }
-}
 
 /**
  * Eine Folie ohne Inhalt wird weggelassen statt leer gezeigt: ein Spielplan

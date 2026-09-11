@@ -30,7 +30,6 @@ function sektorPfad(zahl: number, innen: number, aussen: number): string {
 export function Dartscheibe({
   darts,
   verblasst = false,
-  dunkel = false,
 }: {
   darts: Segment[]
   verblasst?: boolean
@@ -40,10 +39,9 @@ export function Dartscheibe({
    * cremefarbene Scheibe zog dort zu viel Aufmerksamkeit auf sich, neben
    * einem Spielstand, der die eigentliche Nachricht ist.
    */
-  dunkel?: boolean
 }) {
   return (
-    <svg className={`dartscheibe${dunkel ? ' dartscheibe-dunkel' : ''}`} viewBox="-115 -115 230 230" role="img" aria-label="Trefferbild des laufenden Wurfs">
+    <svg className="dartscheibe" viewBox="-115 -115 230 230" role="img" aria-label="Trefferbild des laufenden Wurfs">
       <circle className="scheibe-rand" cx="0" cy="0" r="108" />
 
       {SEKTOREN.map((zahl, index) => {

@@ -1601,10 +1601,201 @@
 
 /* Folie: Sieger */
 
-.mt-folie-sieger .mt-riesig {
+/* ─── Siegerfolie ─────────────────────────────────────────────────
+   Der Abend ist entschieden - das ist der einzige Moment dieses Screens, der
+   laut sein darf ("mach den finalen screen wo jemand gewonnen hat mal mehr
+   atraktiver und spannender mit vielen animationen"). Drei Ebenen: ein
+   langsam drehender Strahlenkranz hinter allem, fallendes Konfetti darueber
+   und der Name, der sich Buchstabe fuer Buchstabe aufbaut. */
+
+.mt-folie-sieger {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.mt-strahlen {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 190vh;
+  height: 190vh;
+  margin: -95vh 0 0 -95vh;
+  z-index: -2;
+  opacity: 0.5;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(4, 252, 76, 0.14) 0deg 6deg,
+    transparent 6deg 18deg
+  );
+  mask-image: radial-gradient(circle, #000 12%, transparent 62%);
+  animation: mt-strahlen-drehen 48s linear infinite;
+}
+
+@keyframes mt-strahlen-drehen {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mt-konfetti {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.mt-schnipsel {
+  position: absolute;
+  top: -6vh;
+  width: 1.2vh;
+  height: 2.4vh;
+  border-radius: 0.2vh;
+  opacity: 0;
+  animation: mt-schnipsel-fallen 5200ms linear infinite;
+}
+
+.mt-schnipsel-0 {
+  background: var(--jg-accent);
+}
+.mt-schnipsel-1 {
+  background: #ffd166;
+}
+.mt-schnipsel-2 {
+  background: #ffffff;
+}
+.mt-schnipsel-3 {
+  background: var(--jg-accent-dim);
+}
+
+@keyframes mt-schnipsel-fallen {
+  0% {
+    opacity: 0;
+    transform: translateY(0) rotate(0deg);
+  }
+  8% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(108vh) rotate(540deg);
+  }
+}
+
+.mt-siegername {
+  margin: 0;
+  font-family: var(--jg-font-display);
+  font-size: 16vh;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
   color: var(--jg-accent);
-  text-shadow: 0 0 6vh var(--jg-accent-glow);
-  font-size: 14vh;
+  text-shadow: 0 0 7vh var(--jg-accent-glow);
+}
+
+.mt-siegerzeichen {
+  display: inline-block;
+  animation: mt-zeichen-ein 700ms var(--jg-ease) both;
+}
+
+@keyframes mt-zeichen-ein {
+  from {
+    opacity: 0;
+    transform: translateY(2.4vh) rotate(-6deg) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(0) scale(1);
+  }
+}
+
+.mt-siegerzeile {
+  animation: mt-zeile-ein 700ms var(--jg-ease) both;
+  animation-delay: 1200ms;
+}
+
+.mt-siegerwerte {
+  display: flex;
+  gap: 3vw;
+  margin-top: 1vh;
+  animation: mt-zeile-ein 800ms var(--jg-ease) both;
+  animation-delay: 1500ms;
+}
+
+.mt-siegerwert {
+  font-family: var(--jg-font-display);
+  font-size: 2.4vh;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--jg-muted-strong);
+}
+
+.mt-siegerwert strong {
+  display: block;
+  font-size: 5.4vh;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--jg-text);
+}
+
+.mt-podest {
+  display: flex;
+  gap: 2.4vw;
+  margin-top: 4vh;
+  animation: mt-zeile-ein 800ms var(--jg-ease) both;
+  animation-delay: 1900ms;
+}
+
+.mt-podest-platz {
+  display: flex;
+  align-items: baseline;
+  gap: 1.2vw;
+  padding: 1vh 2vw;
+  border-radius: 0.8vh;
+  background: rgba(255, 255, 255, 0.04);
+  border: 0.15vh solid var(--jg-border);
+  font-family: var(--jg-font-display);
+  color: var(--jg-muted-strong);
+}
+
+.mt-podest-nummer {
+  font-size: 3.6vh;
+  font-weight: 800;
+  color: var(--jg-accent-dim);
+}
+
+.mt-podest-name {
+  font-size: 3vh;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--jg-text);
+}
+
+.mt-podest-punkte {
+  font-size: 2.2vh;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--jg-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mt-strahlen,
+  .mt-schnipsel {
+    animation: none;
+  }
+
+  .mt-konfetti {
+    display: none;
+  }
+
+  .mt-siegerzeichen,
+  .mt-siegerzeile,
+  .mt-siegerwerte,
+  .mt-podest {
+    animation: none;
+  }
 }
 
 /* Dauerhaftes Signal oben rechts */
@@ -1858,40 +2049,107 @@
 
 /* Matchtag: Statuszeile, Analyse, Heatmaps und der weichere Folienwechsel. */
 
-/* Statuszeile ueber jeder Folie. Sie beantwortet die zwei Fragen, die im
-   Raum stehen: wo sind wir, und wer spielt gleich. */
-.mt-status {
+/* Kopfzeile ueber jeder Folie: die Roadmap sagt, wo der Abend steht, die
+   Zeile darunter, wer gleich spielt. Beides oben und immer an derselben
+   Stelle - wer nur kurz hinsieht, findet es blind. */
+.mt-kopf {
   position: absolute;
-  top: 3vh;
+  top: 2.4vh;
   left: 50%;
   transform: translateX(-50%);
   z-index: 6;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 1.4vh;
-  padding: 0.9vh 2vw;
+  gap: 0.9vh;
+  /* Schmaler als der Bildschirm: links steht das Logo, rechts das
+     Spielpause-Signal - die Roadmap muss dazwischen passen. */
+  width: 52vw;
+}
+
+.mt-roadmap {
+  position: relative;
+  width: 100%;
+}
+
+/* Die Linie liegt hinter den Stationen und faellt mit ihrer Fuellung
+   zusammen: gefuellt heisst gespielt. */
+.mt-roadmap-linie {
+  position: absolute;
+  top: 0.95vh;
+  left: 6%;
+  right: 6%;
+  height: 0.35vh;
   border-radius: 99px;
-  background: rgba(10, 19, 36, 0.72);
-  border: 0.15vh solid var(--jg-border-strong);
-  backdrop-filter: blur(8px);
-  white-space: nowrap;
-  max-width: 70vw;
+  background: rgba(255, 255, 255, 0.1);
   overflow: hidden;
 }
 
-.mt-status-phase {
+.mt-roadmap-fuellung {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--jg-accent-dim), var(--jg-accent));
+  box-shadow: 0 0 1.6vh rgba(4, 252, 76, 0.5);
+  /* Die Breite kommt aus React und aendert sich nach jeder Partie - die
+     Fahrt dorthin macht sichtbar, dass etwas vorangegangen ist. */
+  transition: width 1200ms var(--jg-ease);
+}
+
+.mt-roadmap-stationen {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+}
+
+.mt-station {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5vh;
   font-family: var(--jg-font-display);
-  font-size: 2.2vh;
+  font-size: 1.7vh;
   font-weight: 700;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
+  color: var(--jg-muted);
+}
+
+.mt-station-punkt {
+  width: 1.9vh;
+  height: 1.9vh;
+  border-radius: 50%;
+  background: var(--jg-bg);
+  border: 0.3vh solid rgba(255, 255, 255, 0.18);
+}
+
+.mt-station.ist-vorbei {
+  color: var(--jg-muted-strong);
+}
+
+.mt-station.ist-vorbei .mt-station-punkt {
+  background: var(--jg-accent);
+  border-color: var(--jg-accent);
+}
+
+.mt-station.ist-hier {
   color: var(--jg-accent);
 }
 
-.mt-status-trenner {
-  width: 0.15vh;
-  height: 2.4vh;
-  background: var(--jg-border-strong);
+.mt-station.ist-hier .mt-station-punkt {
+  background: var(--jg-accent);
+  border-color: var(--jg-accent);
+  animation: mt-station-puls 2200ms ease-in-out infinite;
+}
+
+@keyframes mt-station-puls {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(4, 252, 76, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 1.2vh rgba(4, 252, 76, 0);
+  }
 }
 
 .mt-status-text {
@@ -1900,14 +2158,65 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--jg-muted-strong);
+  max-width: 100%;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Die Folien beginnen unter der Statuszeile. */
+/* Die Folien beginnen unter der Kopfzeile. */
 .bildschirm-matchtag .mt-buehne {
-  padding-top: 6vh;
+  padding-top: 12vh;
 }
+
+/* ─── Fortschrittsbalken der Diaschau ─────────────────────────────── */
+
+.fortschritt {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9;
+  height: 0.8vh;
+  /* Dunkle Bahn darunter: der Balken laeuft auch ueber einem hellen Foto,
+     und ohne sie verschwindet der nicht gefuellte Teil darin. */
+  background: rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.fortschritt-balken {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--jg-accent-dim), var(--jg-accent));
+  box-shadow: 0 0 1.4vh rgba(4, 252, 76, 0.55);
+  animation-name: fortschritt-laufen;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+
+@keyframes fortschritt-laufen {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fortschritt-balken {
+    animation: none;
+    transform: scaleX(1);
+  }
+
+  .mt-station.ist-hier .mt-station-punkt {
+    animation: none;
+  }
+}
+
 
 /* Weicher, gerichteter Einzug statt eines harten Schnitts: der Inhalt faehrt
    leicht von unten ein und wird dabei scharf. Nur eine Bewegung, langsam
@@ -2098,15 +2407,14 @@
 }
 
 /* Ueberlagerung erzeugt die Waerme: wo viele Pfeile liegen, addieren sich
-   die Schichten zu Gelb und schliesslich zu Weiss. */
+   die Kreise zu einem kraeftigen Fleck. Rot aussen, Gelb im Kern - das liest
+   sich als Waermebild, auch auf den hellen Feldern der Scheibe. */
 .heat-weit circle {
-  fill: var(--jg-accent);
-  opacity: 0.16;
-  mix-blend-mode: screen;
+  fill: #ff3b1f;
+  opacity: 0.22;
 }
 
 .heat-kern circle {
   fill: #ffd166;
-  opacity: 0.3;
-  mix-blend-mode: screen;
+  opacity: 0.42;
 }

@@ -38,6 +38,18 @@ spielen:
 5. Haben am Ende mehrere dieselbe Punktzahl, setzt die Anwendung ein
    **Stechen** an: die Gleichauf-Spieler spielen es untereinander aus.
 
+Im **Hütten-Modus** folgen auf die Gruppenrunde zwei Endspiele: Erster gegen
+Zweiten um Platz 1, Dritter gegen Vierten um Platz 3. Die gesammelten Punkte
+setzen dort nur die Reihenfolge — entschieden wird auf der Scheibe.
+
+Über jeder Pausenfolie steht der Weg durch den Abend als Linie, die sich
+Partie für Partie füllt (Aufwärmen · Hauptrunde · Entscheidung bzw. Finale),
+darunter die nächste Paarung. Ein grüner Balken am unteren Rand zeigt, wann
+umgeblättert wird. Zu den Folien gehören Tabelle, Spielplan, Zahlen des
+Abends, eine Spieleranalyse und die Heatmaps aller Spieler. Ist der Abend
+entschieden, bleibt der Endstand mit hervorgehobenem Sieger stehen, bis ein
+neues Match beginnt.
+
 Der Stand liegt lokal in `matchtag.json` im Benutzerprofil und übersteht
 einen Neustart mitten im Turnier. Läuft eine Partie versehentlich falsch,
 öffnet **Letztes Ergebnis zurücknehmen** sie wieder.

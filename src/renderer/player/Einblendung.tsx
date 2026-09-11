@@ -113,12 +113,41 @@ export function useEinblendung(zustand: MatchState): { anzeige: Anzeige | null; 
   return { anzeige, sichtbar }
 }
 
+/**
+ * Der Spielerwechsel als Bahn, die quer durchs Bild faehrt.
+ *
+ * Bewusst gross und bewusst quer ueber alles: der Bildschirm haengt weit weg
+ * an der Scheibe, und wer gerade an der Reihe ist, muss aus jeder Ecke des
+ * Raums zu erkennen sein ("animieren das ein neuer spielr drann ist wie so
+ * ein slide und ganz gros welcher spieler jetzt dran ist"). Sie steht nur
+ * anderthalb Sekunden - danach ist der Blick wieder frei fuer Restpunktzahl
+ * und Checkout-Weg.
+ *
+ * position: fixed, damit dieselbe Bahn aus beiden Aufteilungen (Default und
+ * JGN Optimized) ueber den ganzen Bildschirm geht, egal an welcher Stelle im
+ * Baum sie haengt.
+ */
+export function SpielerSlide({ name, sichtbar, lauf }: { name: string; sichtbar: boolean; lauf: number }) {
+  return (
+    <div className="spielerslide" key={lauf} role="status" aria-live="polite">
+      <div className={`spielerslide-bahn${sichtbar ? ' ist-sichtbar' : ' faehrt-aus'}`}>
+        <span className="spielerslide-oben">Am Wurf</span>
+        <span className="spielerslide-name">{name}</span>
+      </div>
+    </div>
+  )
+}
+
 export function Einblendung({ zustand }: { zustand: MatchState }) {
   const { anzeige, sichtbar } = useEinblendung(zustand)
   if (!anzeige) return null
 
   const u = anzeige.ueberlagerung
   const { oben, gross, unten } = texte(zustand, u)
+
+  // Der Spielerwechsel bekommt die grosse Bahn statt der kleinen Einblendung
+  // ueber der Scheibe.
+  if (u.art === 'playerChange') return <SpielerSlide name={gross} sichtbar={sichtbar} lauf={anzeige.lauf} />
   const klassen = [
     'einblendung',
     `einblendung-${u.art}`,

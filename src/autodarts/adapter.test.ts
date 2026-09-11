@@ -765,6 +765,55 @@ describe('anwenden: wer gewonnen hat', () => {
     )
     expect(ende.lastEvent).toMatchObject({ playerId: ende.players[1]!.id })
   })
+
+  it('laesst die gewonnenen Legs entscheiden, nicht den gemeldeten Index', () => {
+    // Abend des 2026-09-11: der Zuschauer-Screen nannte sechsmal den
+    // Verlierer ("frank spielt gegen michael frank gewinnt aber im
+    // zuscherscreen steht michael hat gewonnen"), waehrend die
+    // Matchtag-Wertung aus denselben Momentaufnahmen jedes Mal richtig lag -
+    // die rechnet aus den Legs.
+    const laufend = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    const ende = anwenden(
+      laufend,
+      stateEreignis('match-1', {
+        finished: true,
+        winner: 0,
+        player: 0,
+        scores: { '0': { legs: 1 }, '1': { legs: 3 } },
+        gameScores: { '0': 40, '1': 120 },
+      }),
+    )
+    expect(ende.lastEvent).toMatchObject({ kind: 'matchWon', playerId: ende.players[1]!.id })
+  })
+
+  it('schreibt eine Abweichung zwischen Index und Daten einmalig ins Protokoll', () => {
+    const laufend = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    anwenden(
+      laufend,
+      stateEreignis('match-1', {
+        finished: true,
+        winner: 0,
+        player: 0,
+        scores: { '0': { legs: 1 }, '1': { legs: 3 } },
+      }),
+    )
+    const zeilen = mockProtokollieren.mock.calls.map((c) => String(c[0]))
+    expect(zeilen.filter((z) => z.includes('Gewinner match'))).toHaveLength(1)
+  })
+
+  it('nennt beim Leg den Spieler mit Rest 0, auch wenn gameWinner daneben liegt', () => {
+    const laufend = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    const ende = anwenden(
+      laufend,
+      stateEreignis('match-1', {
+        gameFinished: true,
+        gameWinner: 0,
+        player: 0,
+        gameScores: { '0': 88, '1': 0 },
+      }),
+    )
+    expect(ende.lastEvent).toMatchObject({ kind: 'legWon', playerId: ende.players[1]!.id })
+  })
 })
 
 describe('anwenden: Start der Runde', () => {
@@ -786,6 +835,18 @@ describe('anwenden: Start der Runde', () => {
   it('wirft ein laufendes Match nicht weg, wenn noch eine Startmeldung kommt', () => {
     const laufend = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
     expect(anwenden(laufend, brett('start', 'match-1'))).toBe(laufend)
+  })
+
+  it('schaltet um, wenn waehrend des stehenden Endstands die naechste Runde beginnt', () => {
+    // Der Endstand bleibt nach dem Match eine halbe Minute stehen
+    // (ENDSTAND_STEHEN_LASSEN_MS). Wer in dieser Zeit die naechste Runde
+    // einrichtet, sah bis dahin bis zum ersten Dart den alten Endstand.
+    const laufend = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    const beendet = anwenden(laufend, stateEreignis('match-1', { finished: true, winner: 0 }))
+    expect(beendet.phase).toBe('finished')
+    const naechste = anwenden(beendet, brett('start', 'match-2'))
+    expect(naechste.phase).toBe('starting')
+    expect(naechste.matchId).toBe('match-2')
   })
 
   it('wird von der ersten Zustandsmeldung abgeloest', () => {

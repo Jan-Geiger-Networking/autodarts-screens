@@ -22,6 +22,7 @@ import patchpanel from '../../../assets/vorspann-patchpanel.jpg'
 import server from '../../../assets/vorspann-server.jpg'
 import switchFoto from '../../../assets/vorspann-switch.jpg'
 import { vorfuehrungAktiv, vorspannFolieParam } from './vorfuehrung'
+import { Fortschritt } from './Fortschritt'
 
 /** Standzeit einer Leistungsfolie - siehe "Takt statt Zufall" in der Vorgabe, unveraendert. */
 const TAKT_MS = 6500
@@ -155,6 +156,8 @@ export function Vorspann() {
         <span className="vorspann-signal-punkt" />
         Spielpause
       </div>
+
+      <Fortschritt dauerMs={haltenMsVon(folie)} schluessel={`folie-${aktuell}`} />
 
       <div className="vorspann-fuss">
         <div className="vorspann-partner">

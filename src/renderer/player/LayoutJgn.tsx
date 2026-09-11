@@ -22,7 +22,7 @@
 import type { MatchState, Player, PlayerScore } from '../../shared/typen'
 import logoWeiss from '../../../assets/logo-white.png'
 import { Dartscheibe } from '../shared/Dartscheibe'
-import { texte, useEinblendung } from './Einblendung'
+import { SpielerSlide, texte, useEinblendung } from './Einblendung'
 
 /** Ein Average mit einer Nachkommastelle, oder ein Strich. */
 function zahlOderStrich(wert: number | null): string {
@@ -148,6 +148,21 @@ function Logofeld({ zustand }: { zustand: MatchState }) {
   }
 
   const { oben, gross } = texte(zustand, u)
+
+  // Der Spielerwechsel gehoert nicht ins Logofeld: er bekommt dieselbe grosse
+  // Bahn wie in der Default-Aufteilung, damit auf beiden Bildschirmen dasselbe
+  // passiert ("auf beiden JGN und default").
+  if (u.art === 'playerChange') {
+    return (
+      <>
+        <div className="jgn-logofeld">
+          <img className="jgn-logo" src={logoWeiss} alt="Jan Geiger Networking" />
+        </div>
+        <SpielerSlide name={gross} sichtbar={sichtbar} lauf={anzeige.lauf} />
+      </>
+    )
+  }
+
   return (
     <div
       className={`jgn-logofeld jgn-ereignis jgn-ereignis-${u.art}${sichtbar ? ' ist-sichtbar' : ' faehrt-aus'}`}

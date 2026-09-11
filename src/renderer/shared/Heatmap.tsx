@@ -2,14 +2,16 @@
 //
 // Grundlage sind die gemessenen Koordinaten, die waehrend des Abends
 // mitgeschrieben wurden (siehe wuerfeErgaenzen in src/shared/matchtag.ts).
-// Gezeichnet wird die dunkle Scheibe und darueber zwei weiche Schichten:
-// eine breite in der Signalfarbe und eine schmale, warme. Wo viele Pfeile
-// liegen, ueberlagern sie sich und die Stelle wird heller bis weiss - das ist
-// die ganze Rechnung. Eine echte Dichteschaetzung braucht es dafuer nicht,
-// und sie waere auf einem Fernseher auch nicht zu unterscheiden.
+// Gezeichnet wird dieselbe Scheibe wie ueberall sonst - farbig, wie auf dem
+// Player-Screen ("mach die dartscheibe bei allen zuschaern wider wie bei dem
+// playerboard also farbig") - und darueber zwei weiche Schichten: eine breite
+// in Rot und eine schmale in Gelb. Wo viele Pfeile liegen, ueberlagern sich
+// die Kreise und die Stelle wird kraeftiger. Das ist die ganze Rechnung; eine
+// echte Dichteschaetzung waere auf einem Fernseher nicht zu unterscheiden.
 //
-// Die dunkle Fassung der Scheibe ist hier richtig: auf dem cremefarbenen
-// Brett verschwindet eine helle Heatmap.
+// Bewusst OHNE mix-blend-mode: aufhellende Mischung verschwindet auf den
+// cremefarbenen Feldern der Scheibe. Deckende Farben mit Alphakanal sind auf
+// hellem wie dunklem Feld gleich gut zu sehen.
 
 import { Dartscheibe } from './Dartscheibe'
 import { ausKoordinaten } from './scheibengeometrie'
@@ -19,7 +21,7 @@ export function Heatmap({ wuerfe }: { wuerfe: readonly { x: number; y: number }[
 
   return (
     <div className="heatmap">
-      <Dartscheibe darts={[]} dunkel />
+      <Dartscheibe darts={[]} />
       <svg className="heatmap-schicht" viewBox="-115 -115 230 230" aria-hidden="true">
         <defs>
           {/* Zwei Unschaerfen: die breite malt den Bereich, die schmale den

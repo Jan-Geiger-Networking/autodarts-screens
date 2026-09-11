@@ -1152,3 +1152,78 @@
   width: 50%;
   border-left: 0.15vh solid var(--jg-border-strong);
 }
+
+/* ─── Spielerwechsel als grosse Bahn ──────────────────────────────────
+   Gilt fuer beide Aufteilungen (Default und JGN Optimized). Sie faehrt von
+   links herein, steht kurz und faehrt nach rechts wieder hinaus - eine
+   Bewegung, eine Richtung. Der Name traegt die Bahn; alles andere ist klein.
+   Der Rest des Bildschirms bleibt dahinter sichtbar, die Bahn deckt nur ein
+   Drittel der Hoehe ab. */
+
+.spielerslide {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.spielerslide-bahn {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.4vh;
+  max-width: 64%;
+  padding: 3vh 7vw 3vh 6vw;
+  /* Deckende Signalfarbe mit angeschraegter Kante statt eines Verlaufs ueber
+     die ganze Breite: die Scheibe bleibt frei, kein gruener Schleier. */
+  background: var(--jg-accent);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 5vh) 100%, 0 100%);
+  box-shadow: 0 0 9vh rgba(4, 252, 76, 0.3);
+  transform: translateX(-102%);
+  transition: transform 420ms var(--jg-ease);
+}
+
+.spielerslide-bahn.ist-sichtbar {
+  transform: translateX(0);
+}
+
+.spielerslide-bahn.faehrt-aus {
+  transform: translateX(-102%);
+}
+
+.spielerslide-oben {
+  font-family: var(--jg-font-display);
+  font-size: 2.6vh;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: rgba(2, 6, 23, 0.72);
+}
+
+/* Dunkle Schrift auf der hellen Signalfarbe: das ist die Paarung mit dem
+   groessten Abstand, und aus fuenf Metern zaehlt nur der. */
+.spielerslide-name {
+  font-family: var(--jg-font-display);
+  font-size: 15vh;
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: #02040c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spielerslide-bahn {
+    transition: none;
+  }
+
+  .spielerslide-bahn.faehrt-aus {
+    transform: translateX(-102%);
+  }
+}

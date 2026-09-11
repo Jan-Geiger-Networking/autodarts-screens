@@ -373,34 +373,62 @@ export function istMatchEnde(nutz: Record<string, unknown>): boolean {
  * Wer gewonnen hat.
  *
  * Autodarts fuehrt dafuer einen Spielerindex (winner fuer das Match,
- * gameWinner fuer das Leg), setzt ihn aber NICHT in jeder Momentaufnahme:
- * solange nichts entschieden ist, steht dort -1, und -1 kann auch noch in der
- * ersten Momentaufnahme mit finished=true stehen. Ein Index von -1 traf
- * effektivePlayers[-1] - also undefined - und fiel auf den gerade aktiven
- * Spieler zurueck. Der ist nach dem entscheidenden Wurf aber schon der
- * naechste: gemeldet wurde "Bot Level 1 hat das Match gewonnen", obwohl der
- * Herausgeber gewonnen hatte.
+ * gameWinner fuer das Leg). Auf den ist kein Verlass: er steht in der ersten
+ * Momentaufnahme mit finished=true oft noch auf -1, und am Abend des
+ * 2026-09-11 zeigte der Zuschauer-Screen in sechs von acht Partien den
+ * Verlierer als Sieger - waehrend die Matchtag-Wertung, die aus den
+ * gewonnenen Legs rechnet, alle zehn Partien richtig hatte.
  *
- * Deshalb drei Stufen: der gemeldete Index, wenn er auf einen Spieler zeigt;
- * sonst der Spieler, dessen Restpunktzahl auf 0 steht (und nur, wenn das
- * genau einer ist); erst zuletzt der aktive Spieler.
+ * Deshalb entscheidet hier die Lage auf dem Brett, nicht die Meldung:
+ *
+ *   Leg:   wer bei 0 steht (gameScores traegt den Restpunktestand).
+ *   Match: wer die meisten Legs hat (scores[i].legs).
+ *
+ * Der gemeldete Index kommt erst danach, und nur, wenn die Daten nichts
+ * hergeben. Weichen beide voneinander ab, steht das einmal im
+ * Diagnoseprotokoll - dann ist beim naechsten Mal belegt, was der Index
+ * wirklich bedeutet, statt wieder geraten zu werden.
  */
 function gewinnerId(
   index: unknown,
   nutz: Record<string, unknown>,
   players: readonly Player[],
   activePlayerId: string | null,
+  art: 'leg' | 'match',
 ): string | null {
-  if (typeof index === 'number' && Number.isInteger(index) && index >= 0) {
-    const ueberIndex = players[index]?.id
-    if (ueberIndex) return ueberIndex
+  const ueberIndex =
+    typeof index === 'number' && Number.isInteger(index) && index >= 0 ? (players[index]?.id ?? null) : null
+
+  const ausDaten = art === 'match' ? nachLegs(nutz, players) : nachRestpunkten(nutz, players)
+  // Zweite Chance: ein Match endet mit dem letzten Leg, also steht der
+  // Sieger auch dort auf 0. Und ein Leg zaehlt am Ende die Legs hoch.
+  const ersatz = art === 'match' ? nachRestpunkten(nutz, players) : nachLegs(nutz, players)
+  const gefunden = ausDaten ?? ersatz
+
+  if (gefunden && ueberIndex && gefunden !== ueberIndex) {
+    einmaligProtokollieren(
+      `gewinner-abweichung-${art}`,
+      `Gewinner ${art}: gemeldeter Index ${String(index)} zeigt auf "${players.find((p) => p.id === ueberIndex)?.autodartsName ?? ueberIndex}", die Daten auf "${players.find((p) => p.id === gefunden)?.autodartsName ?? gefunden}". Die Daten gelten.`,
+    )
   }
 
+  return gefunden ?? ueberIndex ?? activePlayerId
+}
+
+/** Wer allein bei 0 Restpunkten steht - sonst null. */
+function nachRestpunkten(nutz: Record<string, unknown>, players: readonly Player[]): string | null {
   const punkte = nachIndex(nutz.gameScores)
   const ausgespielt = players.filter((_, i) => ersteZahl(punkte[i], ['remaining', 'score', 'value', 'points'], '') === 0)
-  if (ausgespielt.length === 1) return ausgespielt[0]!.id
+  return ausgespielt.length === 1 ? ausgespielt[0]!.id : null
+}
 
-  return activePlayerId
+/** Wer allein die meisten gewonnenen Legs hat - sonst null. */
+function nachLegs(nutz: Record<string, unknown>, players: readonly Player[]): string | null {
+  const legs = players.map((_, i) => ersteZahl(nachIndex(nutz.scores)[i], ['legs', 'legsWon', 'legCount'], ''))
+  const beste = Math.max(...legs.map((l) => l ?? -1))
+  if (beste <= 0) return null
+  const vorn = players.filter((_, i) => (legs[i] ?? -1) === beste)
+  return vorn.length === 1 ? vorn[0]!.id : null
 }
 
 /** Ob zwei Wurflisten denselben Stand meinen (gleiche Laenge, gleiche Felder). */
@@ -439,9 +467,17 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
       // Zuschauer-Screen noch in der Werbeschleife, obwohl die Runde laengst
       // gestartet war.
       //
-      // Nur aus dem Ruhezustand heraus: laeuft schon ein Match, wuerde eine
-      // zweite Startmeldung sonst den Spielstand wegwerfen.
-      if (zustand.phase !== 'idle') return zustand
+      // Ein laufendes Match laesst sich davon nicht stoeren - ein verirrtes
+      // "start" darf den Spielstand nicht wegwerfen. Steht dagegen nur noch
+      // ein ENDSTAND (der bleibt nach dem Matchende ENDSTAND_STEHEN_LASSEN_MS
+      // stehen, siehe verbindung.ts), gilt die Meldung: wer in dieser Zeit
+      // die naechste Runde einrichtet, sah bis 0.1.0-beta.22 bis zum ersten
+      // Dart weiter den alten Endstand. Bei einer Anfangsermittlung faellt
+      // der erste Dart erst Sekunden spaeter - bis dahin muss der Bildschirm
+      // schon zeigen, dass es losgeht.
+      const ruhendePhasen: MatchState['phase'][] = ['idle', 'finished', 'starting']
+      if (!ruhendePhasen.includes(zustand.phase)) return zustand
+      if (beginnId !== null && beginnId === zustand.matchId && zustand.phase === 'starting') return zustand
       return { ...RUHEZUSTAND, phase: 'starting', matchId: beginnId }
     }
     // Ein Ende-Ereignis gilt nur fuer das Match, das gerade laeuft. Autodarts
@@ -523,8 +559,10 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
   else if (istNeuesMatch) phase = 'intro'
   else phase = 'playing'
 
-  const legGewinnerId = legGeradeGewonnen ? gewinnerId(nutz.gameWinner, nutz, effektivePlayers, activePlayerId) : null
-  const matchGewinnerId = matchGeradeGewonnen ? gewinnerId(nutz.winner, nutz, effektivePlayers, activePlayerId) : null
+  const legGewinnerId = legGeradeGewonnen ? gewinnerId(nutz.gameWinner, nutz, effektivePlayers, activePlayerId, 'leg') : null
+  const matchGewinnerId = matchGeradeGewonnen
+    ? gewinnerId(nutz.winner, nutz, effektivePlayers, activePlayerId, 'match')
+    : null
 
   // Gezielte Sonden fuer die drei Felder, deren innere Form bis heute
   // unbelegt ist. Je einmal pro Programmlauf, und erst wenn tatsaechlich

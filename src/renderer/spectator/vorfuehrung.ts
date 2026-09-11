@@ -11,6 +11,8 @@ import type { LegEntry, MatchState, Player, PlayerScore, Segment } from "../../s
 import {
   ergebnisUebernehmen,
   matchtagStarten,
+  naechstePaarung,
+  spielerName,
   spielerSchluessel,
   type MatchErgebnis,
   type Matchtag,
@@ -611,6 +613,38 @@ export function vorfuehrMatchtag(): Matchtag {
       `2026-09-11T20:0${i}:00.000Z`,
     )
   })
+  // ?mtsieger spielt den Rest des Abends durch, damit sich die Siegerfolie
+  // und der Endstand begutachten lassen - im normalen Beispiel laeuft das
+  // Turnier noch, und beide kaemen gar nicht vor.
+  if (vorfuehrungAktiv() && parameter().has('mtsieger')) {
+    let nr = 100
+    while (naechstePaarung(matchtag)) {
+      const partie = naechstePaarung(matchtag)!
+      nr += 1
+      matchtag = ergebnisUebernehmen(
+        matchtag,
+        {
+          matchId: `vorfuehrung-${nr}`,
+          spieler: [partie.aId, partie.bId].map((id, seite) => ({
+            id,
+            name: spielerName(matchtag, id),
+            legs: seite === nr % 2 ? 3 : 1,
+            average: 58 + (nr % 7) * 2,
+            count180: nr % 3,
+            highestFinish: seite === nr % 2 ? 96 : null,
+            plus60: 7,
+            plus100: 3,
+            plus140: 1,
+            darts: 45,
+            checkoutProzent: 33,
+          })),
+          siegerId: nr % 2 === 0 ? partie.aId : partie.bId,
+        },
+        `2026-09-11T21:${String(nr % 60).padStart(2, '0')}:00.000Z`,
+      )
+    }
+  }
+
   // Erfundene, aber plausible Auftreffpunkte, damit sich die Heatmap ohne
   // Scheibe begutachten laesst: eine Wolke um das Triple 20 herum, je
   // Spieler unterschiedlich breit gestreut.

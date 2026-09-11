@@ -582,3 +582,42 @@ Autodarts zeichnet die Scheibe mit einem Doppelring-Außenradius von 377,778
 Turnierscheibe ab (Doppelring innen 95,3 % statt 94,1 %). Da die
 Auftreffpunkte von Autodarts kommen, gilt hier deren Raster — sonst liegt ein
 Dart, der dort im Doppel steckt, bei uns knapp darunter im einfachen Feld.
+
+## `winner` und `gameWinner` sind nicht verlässlich — eigener Befund 2026-09-11
+
+Am Abend des 11.09.2026 wurden zehn Partien gespielt. Der Zuschauer-Screen
+nannte in **sechs** davon den Verlierer als Sieger (gemeldet: „frank spielt
+gegen michael frank gewinnt aber im zuscherscreen steht michael hat
+gewonnen"), während die Matchtag-Wertung aus **denselben** Momentaufnahmen
+alle zehn richtig hatte. Der Unterschied lag allein in der Quelle:
+
+| Quelle | Ergebnis |
+|---|---|
+| `winner` / `gameWinner` (Spielerindex) + Rückfall auf den aktiven Spieler | 4 von 10 richtig |
+| `scores[i].legs` (gewonnene Legs) | 10 von 10 richtig |
+
+`winner` steht in der ersten Momentaufnahme mit `finished: true` häufig noch
+auf `-1`; der aktive Spieler (`player`) ist zu diesem Zeitpunkt bereits ein
+anderer oder auf 0 zurückgesetzt. Deshalb entscheidet in
+`src/autodarts/adapter.ts` seit 0.1.0-beta.23 die Lage auf dem Brett:
+
+* **Leg** — wer in `gameScores` allein auf `0` Restpunkten steht.
+* **Match** — wer in `scores[i].legs` allein die meisten Legs hat.
+
+Der gemeldete Index gilt nur noch, wenn die Daten nichts hergeben. Weicht er
+von den Daten ab, steht das einmal je Programmlauf im Diagnoseprotokoll
+(`Gewinner match: gemeldeter Index … die Daten gelten.`) — damit lässt sich
+beim nächsten Abend belegen, was der Index wirklich bedeutet.
+
+## Der Endstand blockierte die nächste Startmeldung — eigener Befund 2026-09-11
+
+Nach dem Matchende bleibt der Endstand 30 Sekunden stehen
+(`ENDSTAND_STEHEN_LASSEN_MS` in `src/main/verbindung.ts`). Eine
+Startmeldung des Bretts (`<brett>.matches` mit `event: "start"`) wurde in
+dieser Zeit verworfen, weil sie nur aus dem Ruhezustand heraus galt. Wer die
+nächste Runde zügig einrichtet, sah deshalb bis zum ersten Dart weiter den
+alten Endstand — bei einer Anfangsermittlung sind das leicht zwanzig
+Sekunden, denn die erste `.state`-Momentaufnahme kommt erst mit dem ersten
+Wurf. Seit 0.1.0-beta.23 gilt eine Startmeldung für ein **anderes** Match
+auch dann, wenn nur noch der Endstand steht; ein laufendes Match wird davon
+weiterhin nicht angetastet.
