@@ -22,14 +22,17 @@
 
 import { useEffect, useState } from 'react'
 import {
+  endstand,
   naechstePaarung,
+  spielerBilanzen,
   spielerName,
   statistiken,
   tabelle,
   type Matchtag as MatchtagStand,
   type Paarung,
 } from '../../shared/matchtag'
-import { folienFuer } from './matchtagFolien'
+import { folienFuer, phasenName } from './matchtagFolien'
+import { Heatmap } from '../shared/Heatmap'
 import { matchtagFolieParam, vorfuehrMatchtag, vorfuehrMatchtagAktiv } from './vorfuehrung'
 import logoWeiss from '../../../assets/logo-white.png'
 
@@ -38,6 +41,8 @@ import logoWeiss from '../../../assets/logo-white.png'
 const TAKT_MS = 15000
 /** Die Folie "Jetzt" bleibt laenger - danach richtet jemand das Match ein. */
 const TAKT_JETZT_MS = 20000
+/** Analyse und Heatmap tragen viel Inhalt und brauchen Lesezeit. */
+const TAKT_LANG_MS = 20000
 
 /** Der Matchtag-Stand aus dem Hauptprozess. */
 export function useMatchtag(): MatchtagStand | null {
@@ -56,6 +61,16 @@ export function useMatchtag(): MatchtagStand | null {
     return window.app.beiMatchtag(setStand)
   }, [vorfuehrung])
   return stand
+}
+
+/** Was gerade ansteht - fuer die Statuszeile ueber jeder Folie. */
+function statusText(matchtag: MatchtagStand): string {
+  if (matchtag.phase === 'beendet') return `Sieger: ${spielerName(matchtag, matchtag.siegerId ?? '')}`
+  if (matchtag.phase === 'aufwaermen') return 'Alle Mitspieler in ein Match'
+  const naechste = naechstePaarung(matchtag)
+  if (!naechste) return 'Alle Partien gespielt'
+  const offen = matchtag.paarungen.filter((p) => p.siegerId === null).length
+  return `${spielerName(matchtag, naechste.aId)} gegen ${spielerName(matchtag, naechste.bId)} · noch ${offen} ${offen === 1 ? 'Partie' : 'Partien'}`
 }
 
 /** Zahl mit einer Nachkommastelle, oder ein Strich, wenn es sie nicht gibt. */
@@ -104,11 +119,14 @@ function FolieJetzt({ matchtag }: { matchtag: MatchtagStand }) {
 }
 
 function FolieTabelle({ matchtag }: { matchtag: MatchtagStand }) {
-  const zeilen = tabelle(matchtag)
+  // Nach dem Ende zaehlt die Endplatzierung, nicht die rohe Punktetabelle:
+  // im Huetten-Modus entscheiden die Endspiele ueber die Plaetze 1 bis 4.
+  const beendet = matchtag.phase === 'beendet'
+  const zeilen = beendet ? endstand(matchtag) : tabelle(matchtag)
   const fuehrend = zeilen[0]?.punkte ?? 0
   return (
     <div className="mt-folie mt-folie-tabelle">
-      <span className="mt-eyebrow">{matchtag.titel || 'Matchtag'} · Tabelle</span>
+      <span className="mt-eyebrow">{matchtag.titel || 'Matchtag'} · {beendet ? 'Endstand' : 'Tabelle'}</span>
       <table className="mt-tabelle">
         <thead>
           <tr>
@@ -124,7 +142,18 @@ function FolieTabelle({ matchtag }: { matchtag: MatchtagStand }) {
         </thead>
         <tbody>
           {zeilen.map((z) => (
-            <tr key={z.spieler.id} className={z.punkte === fuehrend && z.gespielt > 0 ? 'ist-fuehrend' : undefined}>
+            <tr
+              key={z.spieler.id}
+              className={
+                beendet
+                  ? z.spieler.id === matchtag.siegerId
+                    ? 'ist-sieger'
+                    : undefined
+                  : z.punkte === fuehrend && z.gespielt > 0
+                    ? 'ist-fuehrend'
+                    : undefined
+              }
+            >
               <td className="mt-sp-platz">{z.platz}</td>
               <td className="mt-sp-name">{z.spieler.name}</td>
               <td className="mt-punkte">{z.punkte}</td>
@@ -209,6 +238,78 @@ function FolieStatistik({ matchtag }: { matchtag: MatchtagStand }) {
   )
 }
 
+/**
+ * Die Analyse-Folie: alles, was sich ueber jeden Spieler sagen laesst, in
+ * einer Tabelle. Sie ist bewusst dicht - dafuer steht sie auch laenger.
+ */
+function FolieAnalyse({ matchtag }: { matchtag: MatchtagStand }) {
+  const bilanzen = spielerBilanzen(matchtag)
+  return (
+    <div className="mt-folie mt-folie-analyse">
+      <span className="mt-eyebrow">Spieleranalyse</span>
+      <table className="mt-tabelle mt-analyse">
+        <thead>
+          <tr>
+            <th className="mt-sp-name">Spieler</th>
+            <th>Ø</th>
+            <th>Bestes</th>
+            <th>180</th>
+            <th>Finish</th>
+            <th>60+</th>
+            <th>100+</th>
+            <th>140+</th>
+            <th>Darts</th>
+            <th>Legs</th>
+            <th>Pkt</th>
+          </tr>
+        </thead>
+        <tbody>
+          {bilanzen.map((b) => (
+            <tr key={b.spieler.id}>
+              <td className="mt-sp-name">{b.spieler.name}</td>
+              <td>{zahl(b.schnitt)}</td>
+              <td>{zahl(b.bestesAverage)}</td>
+              <td>{b.count180}</td>
+              <td>{b.hoechstesFinish ?? '–'}</td>
+              <td>{b.plus60}</td>
+              <td>{b.plus100}</td>
+              <td>{b.plus140}</td>
+              <td>{b.darts}</td>
+              <td>
+                {b.legsFuer}:{b.legsGegen}
+              </td>
+              <td className="mt-punkte">{b.punkte}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+/**
+ * Die Heatmap-Folie: jeder Spieler mit seiner Scheibe daneben, darauf alle
+ * Pfeile des Abends als Waermebild. Wer keinen gemessenen Wurf hat, faellt
+ * weg - eine leere Scheibe sagt nichts.
+ */
+function FolieHeatmap({ matchtag }: { matchtag: MatchtagStand }) {
+  const mitWuerfen = matchtag.spieler.filter((s) => s.wuerfe.length > 0)
+  return (
+    <div className="mt-folie mt-folie-heatmap">
+      <span className="mt-eyebrow">Wo die Pfeile landen</span>
+      <div className={`mt-heatmaps mt-heatmaps-${Math.min(mitWuerfen.length, 8)}`}>
+        {mitWuerfen.map((spieler) => (
+          <div className="mt-heatkarte" key={spieler.id}>
+            <Heatmap wuerfe={spieler.wuerfe} />
+            <span className="mt-heatname">{spieler.name}</span>
+            <span className="mt-heatzahl">{spieler.wuerfe.length} Pfeile</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function FolieAufwaermen({ matchtag }: { matchtag: MatchtagStand }) {
   return (
     <div className="mt-folie mt-folie-jetzt">
@@ -250,7 +351,7 @@ export function Matchtag({ matchtag }: { matchtag: MatchtagStand }) {
     if (festgehalten !== null) return
     if (folien.length <= 1) return
     const art = folien[index % folien.length]
-    const standzeit = art === 'jetzt' ? TAKT_JETZT_MS : TAKT_MS
+    const standzeit = art === 'jetzt' ? TAKT_JETZT_MS : art === 'analyse' || art === 'heatmap' ? TAKT_LANG_MS : TAKT_MS
     const weiter = window.setTimeout(() => setIndex((i) => (i + 1) % folien.length), standzeit)
     return () => window.clearTimeout(weiter)
   }, [index, schluessel, folien, festgehalten])
@@ -265,8 +366,18 @@ export function Matchtag({ matchtag }: { matchtag: MatchtagStand }) {
         {art === 'tabelle' && <FolieTabelle matchtag={matchtag} />}
         {art === 'spielplan' && <FolieSpielplan matchtag={matchtag} />}
         {art === 'statistik' && <FolieStatistik matchtag={matchtag} />}
+        {art === 'analyse' && <FolieAnalyse matchtag={matchtag} />}
+        {art === 'heatmap' && <FolieHeatmap matchtag={matchtag} />}
         {art === 'aufwaermen' && <FolieAufwaermen matchtag={matchtag} />}
         {art === 'sieger' && <FolieSieger matchtag={matchtag} />}
+      </div>
+
+      {/* Statuszeile: steht ueber jeder Folie und sagt, wo der Abend gerade
+          ist und wer als naechstes dran ist. */}
+      <div className="mt-status">
+        <span className="mt-status-phase">{phasenName(matchtag)}</span>
+        <span className="mt-status-trenner" />
+        <span className="mt-status-text">{statusText(matchtag)}</span>
       </div>
 
       {/* Dauerhaftes Signal oben rechts, wie im Vorspann: es sagt jedem im

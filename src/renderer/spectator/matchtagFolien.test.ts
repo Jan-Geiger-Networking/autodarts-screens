@@ -47,9 +47,20 @@ describe('folienFuer', () => {
     expect(folienFuer(matchtagMit(['A', 'B', 'C', 'D']))).toEqual(['jetzt', 'tabelle', 'spielplan'])
   })
 
-  it('nimmt die Statistik auf, sobald eine Partie gespielt ist', () => {
+  it('nimmt Statistik und Analyse auf, sobald eine Partie gespielt ist', () => {
     const m = partieGewinnen(matchtagMit(['A', 'B', 'C', 'D']), 'A', 'B', 1)
-    expect(folienFuer(m)).toEqual(['jetzt', 'tabelle', 'spielplan', 'statistik'])
+    expect(folienFuer(m)).toEqual(['jetzt', 'tabelle', 'spielplan', 'statistik', 'analyse'])
+  })
+
+  it('nimmt die Heatmap erst auf, wenn ein Wurf gemessen wurde', () => {
+    const ohne = partieGewinnen(matchtagMit(['A', 'B', 'C', 'D']), 'A', 'B', 1)
+    expect(folienFuer(ohne)).not.toContain('heatmap')
+
+    const mit: Matchtag = {
+      ...ohne,
+      spieler: ohne.spieler.map((s, i) => (i === 0 ? { ...s, wuerfe: [{ x: 0.1, y: 0.2 }] } : s)),
+    }
+    expect(folienFuer(mit)).toContain('heatmap')
   })
 
   it('beginnt bei einem entschiedenen Matchtag mit dem Sieger und laesst "jetzt" weg', () => {

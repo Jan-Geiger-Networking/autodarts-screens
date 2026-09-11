@@ -4,6 +4,37 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.22] - 2026-09-11
+
+Zweiundzwanzigste Beta. Der Matchtag bekommt einen zweiten Modus und eine
+richtige Auswertung.
+
+### Neu
+- **Hütten-Modus.** Wie bisher eine Gruppenrunde, danach aber zwei
+  Endspiele: Erster gegen Zweiten um Platz 1, Dritter gegen Vierten um
+  Platz 3. Alle übrigen sind nach der Gruppenrunde ausgeschieden. Die
+  gesammelten Punkte setzen nur die Reihenfolge — wer Erster wird,
+  entscheidet sich auf der Scheibe. Auswählbar beim Start; unter vier
+  Spielern gilt die normale Regel
+- **Statuszeile über jeder Folie**: in welcher Phase der Abend steckt
+  (Aufwärmen, Match-Phase, Stechen, Finalrunde, Entschieden) und wer als
+  Nächstes spielt
+- **Heatmap-Folie.** Jeder Spieler mit seiner Scheibe, darauf alle Pfeile des
+  Abends als Wärmebild. Die Auftreffpunkte werden dafür **live** mitgeschrieben
+  — am Ende eines Matches enthält der Zustand nur noch das letzte Leg
+- **Analyse-Folie**: je Spieler Schnitt, bestes Average, 180er, höchstes
+  Finish, 60+/100+/140+, Darts, Legs und Punkte
+- Nach dem letzten Spiel bleibt der **Endstand** stehen, bis ein neues Match
+  beginnt oder der Matchtag beendet wird. Der Sieger ist hervorgehoben; im
+  Hütten-Modus zählt die Platzierung aus den Endspielen
+
+### Geändert
+- Die Folien fahren weich von unten ein und werden dabei scharf, die
+  Tabellenzeilen laufen versetzt nach — statt eines harten Schnitts
+- Analyse und Heatmap stehen 20 Sekunden, die übrigen Folien 15
+- Die Scheibe auf dem Zuschauer-Screen sieht wieder aus wie auf dem
+  Player-Screen. Die dunkle Fassung bleibt — sie trägt jetzt die Heatmap
+
 ## [0.1.0-beta.21] - 2026-09-11
 
 Einundzwanzigste Beta.

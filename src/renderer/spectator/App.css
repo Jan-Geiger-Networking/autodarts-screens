@@ -1855,3 +1855,258 @@
   text-transform: uppercase;
   color: var(--jg-muted);
 }
+
+/* Matchtag: Statuszeile, Analyse, Heatmaps und der weichere Folienwechsel. */
+
+/* Statuszeile ueber jeder Folie. Sie beantwortet die zwei Fragen, die im
+   Raum stehen: wo sind wir, und wer spielt gleich. */
+.mt-status {
+  position: absolute;
+  top: 3vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 1.4vh;
+  padding: 0.9vh 2vw;
+  border-radius: 99px;
+  background: rgba(10, 19, 36, 0.72);
+  border: 0.15vh solid var(--jg-border-strong);
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
+  max-width: 70vw;
+  overflow: hidden;
+}
+
+.mt-status-phase {
+  font-family: var(--jg-font-display);
+  font-size: 2.2vh;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--jg-accent);
+}
+
+.mt-status-trenner {
+  width: 0.15vh;
+  height: 2.4vh;
+  background: var(--jg-border-strong);
+}
+
+.mt-status-text {
+  font-family: var(--jg-font-display);
+  font-size: 2.2vh;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--jg-muted-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Die Folien beginnen unter der Statuszeile. */
+.bildschirm-matchtag .mt-buehne {
+  padding-top: 6vh;
+}
+
+/* Weicher, gerichteter Einzug statt eines harten Schnitts: der Inhalt faehrt
+   leicht von unten ein und wird dabei scharf. Nur eine Bewegung, langsam
+   ausklingend - das wirkt teuer, ohne abzulenken. */
+@keyframes mt-ein {
+  from {
+    opacity: 0;
+    transform: translateY(3.5vh) scale(0.985);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.mt-buehne {
+  animation: mt-ein 900ms var(--jg-ease) both;
+}
+
+/* Die Zeilen einer Tabelle laufen nacheinander ein - dieselbe Bewegung, nur
+   versetzt. Mehr als sechs Stufen braucht es nicht, danach wiederholt sich
+   der Versatz. */
+.mt-tabelle tbody tr,
+.mt-plan .mt-vs,
+.mt-kachel,
+.mt-heatkarte {
+  animation: mt-zeile-ein 700ms var(--jg-ease) both;
+}
+
+@keyframes mt-zeile-ein {
+  from {
+    opacity: 0;
+    transform: translateY(1.6vh);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mt-tabelle tbody tr:nth-child(1),
+.mt-plan .mt-vs:nth-child(1),
+.mt-kachel:nth-child(1),
+.mt-heatkarte:nth-child(1) {
+  animation-delay: 120ms;
+}
+.mt-tabelle tbody tr:nth-child(2),
+.mt-plan .mt-vs:nth-child(2),
+.mt-kachel:nth-child(2),
+.mt-heatkarte:nth-child(2) {
+  animation-delay: 190ms;
+}
+.mt-tabelle tbody tr:nth-child(3),
+.mt-plan .mt-vs:nth-child(3),
+.mt-kachel:nth-child(3),
+.mt-heatkarte:nth-child(3) {
+  animation-delay: 260ms;
+}
+.mt-tabelle tbody tr:nth-child(4),
+.mt-plan .mt-vs:nth-child(4),
+.mt-kachel:nth-child(4),
+.mt-heatkarte:nth-child(4) {
+  animation-delay: 330ms;
+}
+.mt-tabelle tbody tr:nth-child(5),
+.mt-plan .mt-vs:nth-child(5),
+.mt-heatkarte:nth-child(5) {
+  animation-delay: 400ms;
+}
+.mt-tabelle tbody tr:nth-child(6),
+.mt-plan .mt-vs:nth-child(6),
+.mt-heatkarte:nth-child(6) {
+  animation-delay: 470ms;
+}
+.mt-tabelle tbody tr:nth-child(n + 7),
+.mt-plan .mt-vs:nth-child(n + 7),
+.mt-heatkarte:nth-child(n + 7) {
+  animation-delay: 540ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mt-tabelle tbody tr,
+  .mt-plan .mt-vs,
+  .mt-kachel,
+  .mt-heatkarte {
+    animation: none;
+  }
+}
+
+/* Der Sieger im Endstand: kraeftiger als die blosse Fuehrung waehrend des
+   Turniers - der Abend ist entschieden. */
+.mt-tabelle tr.ist-sieger td {
+  background: linear-gradient(90deg, var(--jg-accent-dim), transparent);
+  color: var(--jg-text);
+}
+
+.mt-tabelle tr.ist-sieger .mt-sp-name,
+.mt-tabelle tr.ist-sieger .mt-sp-platz {
+  color: var(--jg-accent);
+  font-weight: 800;
+}
+
+/* Analyse: viele Spalten, deshalb eine Stufe kleiner als die Tabelle. */
+.mt-analyse {
+  font-size: 2.6vh;
+}
+
+.mt-analyse th {
+  font-size: 1.7vh;
+  letter-spacing: 0.12em;
+  padding: 0.6vh 0.6vw;
+}
+
+.mt-analyse td {
+  padding: 0.7vh 0.6vw;
+}
+
+/* Heatmaps: eine Karte je Spieler, Scheibe oben, Name darunter. */
+.mt-heatmaps {
+  display: grid;
+  gap: 2vh 2vw;
+  width: 100%;
+}
+
+.mt-heatmaps-2,
+.mt-heatmaps-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.mt-heatmaps-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.mt-heatmaps-5,
+.mt-heatmaps-6 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.mt-heatmaps-7,
+.mt-heatmaps-8 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.mt-heatkarte {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5vh;
+}
+
+.mt-heatname {
+  font-family: var(--jg-font-display);
+  font-size: 2.6vh;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--jg-text);
+}
+
+.mt-heatzahl {
+  font-family: var(--jg-font-display);
+  font-size: 1.9vh;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--jg-muted);
+}
+
+.heatmap {
+  position: relative;
+  width: 100%;
+  max-width: 30vh;
+  aspect-ratio: 1;
+}
+
+.heatmap .dartscheibe {
+  width: 100%;
+  height: 100%;
+}
+
+.heatmap-schicht {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Ueberlagerung erzeugt die Waerme: wo viele Pfeile liegen, addieren sich
+   die Schichten zu Gelb und schliesslich zu Weiss. */
+.heat-weit circle {
+  fill: var(--jg-accent);
+  opacity: 0.16;
+  mix-blend-mode: screen;
+}
+
+.heat-kern circle {
+  fill: #ffd166;
+  opacity: 0.3;
+  mix-blend-mode: screen;
+}

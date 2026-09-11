@@ -586,11 +586,11 @@ export function vorfuehrMatchtag(): Matchtag {
             average: 62 + i * 3,
             count180: hunderte,
             highestFinish: finish,
-            plus60: 0,
-            plus100: 0,
-            plus140: 0,
-            darts: 0,
-            checkoutProzent: null,
+            plus60: 9 + i * 2,
+            plus100: 4 + i,
+            plus140: 1 + (i % 2),
+            darts: 39 + i * 3,
+            checkoutProzent: 40 + i * 5,
           },
           {
             id: spielerSchluessel(verlierer),
@@ -599,11 +599,11 @@ export function vorfuehrMatchtag(): Matchtag {
             average: 51 + i,
             count180: 0,
             highestFinish: null,
-            plus60: 0,
-            plus100: 0,
+            plus60: 6 + i,
+            plus100: 2,
             plus140: 0,
-            darts: 0,
-            checkoutProzent: null,
+            darts: 42 + i * 2,
+            checkoutProzent: 20 + i * 4,
           },
         ],
         siegerId: spielerSchluessel(sieger),
@@ -611,7 +611,42 @@ export function vorfuehrMatchtag(): Matchtag {
       `2026-09-11T20:0${i}:00.000Z`,
     )
   })
-  return matchtag
+  // Erfundene, aber plausible Auftreffpunkte, damit sich die Heatmap ohne
+  // Scheibe begutachten laesst: eine Wolke um das Triple 20 herum, je
+  // Spieler unterschiedlich breit gestreut.
+  return {
+    ...matchtag,
+    spieler: matchtag.spieler.map((spieler, index) => ({
+      ...spieler,
+      wuerfe: vorfuehrWuerfe(60 + index * 7, 0.03 + index * 0.02),
+    })),
+  }
+}
+
+/**
+ * Eine Wurfwolke um das Triple 20. Deterministisch aus einem einfachen
+ * Zufallsgenerator, damit dieselbe Vorfuehrung immer gleich aussieht - ein
+ * springendes Bild waere zum Begutachten unbrauchbar.
+ */
+function vorfuehrWuerfe(anzahl: number, streuung: number): { x: number; y: number }[] {
+  let saat = anzahl * 7919
+  const zufall = () => {
+    saat = (saat * 1103515245 + 12345) % 2147483648
+    return saat / 2147483648
+  }
+  const punkte: { x: number; y: number }[] = []
+  for (let i = 0; i < anzahl; i++) {
+    // Zwei Drittel ins Triple 20, der Rest ueber die Scheibe verteilt.
+    const zielTriple = zufall() < 0.65
+    const winkel = zielTriple ? Math.PI / 2 + (zufall() - 0.5) * 0.22 : zufall() * Math.PI * 2
+    const radius = zielTriple ? 0.6 + (zufall() - 0.5) * 0.08 : zufall() * 0.85
+    const streu = () => (zufall() - 0.5) * streuung * 2
+    punkte.push({
+      x: Math.round((Math.cos(winkel) * radius + streu()) * 1000) / 1000,
+      y: Math.round((Math.sin(winkel) * radius + streu()) * 1000) / 1000,
+    })
+  }
+  return punkte
 }
 
 /**
