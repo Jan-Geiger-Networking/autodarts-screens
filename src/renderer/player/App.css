@@ -790,10 +790,12 @@
   color: var(--jg-text);
 }
 
+/* Die Punktzahl ist das Einzige, was man aus der Liste wirklich ablesen
+   will - deshalb deutlich groesser als der Name daneben. */
 .jgn-stack-score {
   flex: 0 0 auto;
   font-family: var(--jg-font-display);
-  font-size: 3.2vh;
+  font-size: 4.4vh;
   font-weight: 800;
   color: var(--jg-text);
   font-variant-numeric: tabular-nums;
@@ -1054,4 +1056,99 @@
   box-shadow:
     0 0 0 0.3vh var(--jg-accent-strong),
     0 0 4vh 1vh var(--jg-accent-glow);
+}
+
+/* Spielertafel nach dem Vorbild der Autodarts-Ansicht: Punktzahl gross,
+   daneben klein die laufende Aufnahme, darunter Leg- und Match-Average, die
+   geworfenen Darts und die Aufnahmen des Legs. */
+
+.jgn-aktiv-zeile {
+  display: flex;
+  align-items: center;
+  gap: 1vw;
+}
+
+/* Was die laufende Aufnahme bisher gebracht hat - im Vorbild der kleine
+   Kasten rechts neben der Punktzahl. */
+.jgn-aktiv-zug {
+  padding: 0.4vh 1vh;
+  border-radius: 0.5vh;
+  background: rgba(2, 6, 23, 0.75);
+  border: 0.15vh solid var(--jg-border-strong);
+  font-family: var(--jg-font-display);
+  font-size: 4vh;
+  font-weight: 700;
+  color: var(--jg-muted-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.jgn-aktiv-schnitt {
+  margin: 0;
+  font-family: var(--jg-font-display);
+  font-size: 3vh;
+  letter-spacing: 0.04em;
+  color: var(--jg-muted);
+}
+
+.jgn-aktiv-schnitt strong {
+  color: var(--jg-text);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.jgn-aktiv-darts {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.8vh;
+  font-family: var(--jg-font-display);
+  font-size: 2.8vh;
+  font-weight: 700;
+  color: var(--jg-muted-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.jgn-dartsymbol {
+  width: 5vh;
+  height: 1.6vh;
+  fill: none;
+  stroke: var(--jg-muted-strong);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+/* Die Restpunktzahl steht im Kasten - im Vorbild hebt das die Spalte vom
+   erzielten Wert links ab. */
+.jgn-restkasten {
+  display: inline-block;
+  min-width: 4.5vw;
+  padding: 0.25vh 0.8vh;
+  border-radius: 0.5vh;
+  background: rgba(2, 6, 23, 0.7);
+  border: 0.1vh solid var(--jg-border-strong);
+  text-align: center;
+  color: var(--jg-text);
+  font-weight: 700;
+}
+
+/* Wie im Vorbild: zwei Spalten mit einer Trennlinie dazwischen, beide
+   Werte mittig. Ohne die Linie standen die Zahlen wie zufaellig verteilt. */
+.jgn-aufnahmen {
+  max-width: 17vw;
+}
+
+.jgn-aufnahmen td {
+  border-bottom: none;
+  padding: 0.3vh 1vh;
+}
+
+.jgn-aufnahme-punkte {
+  text-align: center;
+  width: 50%;
+}
+
+.jgn-aufnahme-rest {
+  text-align: center;
+  width: 50%;
+  border-left: 0.15vh solid var(--jg-border-strong);
 }

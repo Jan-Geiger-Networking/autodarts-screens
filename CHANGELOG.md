@@ -4,6 +4,25 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.21] - 2026-09-11
+
+Einundzwanzigste Beta.
+
+### Behoben
+- **Die Scheibe hatte die Feldfarben vertauscht.** Auf einem echten Brett ist
+  die 20 dunkel, die 1 hell, die 18 wieder dunkel — bei uns war es genau
+  andersherum. Die Ringfarben hängen daran: ein dunkles Feld hat rote Doppel
+  und Triple, ein helles grüne
+
+### Geändert
+- **Die Spielertafel im Layout „JGN Optimized" folgt jetzt dem Vorbild der
+  Autodarts-Ansicht**: Punktzahl groß, daneben klein die laufende Aufnahme,
+  darunter „Leg / Match", die geworfenen Darts und die Aufnahmen des Legs als
+  zwei Spalten — links die erzielten Punkte, rechts die Restpunktzahl im
+  Kasten, mit Trennlinie dazwischen
+- Die Punktzahl in der Gegnerliste ist größer — im JGN-Layout wie auf dem
+  Zuschauer-Screen
+
 ## [0.1.0-beta.20] - 2026-09-11
 
 Zwanzigste Beta.

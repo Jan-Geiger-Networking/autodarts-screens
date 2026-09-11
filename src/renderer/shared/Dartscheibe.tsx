@@ -49,7 +49,13 @@ export function Dartscheibe({
       {SEKTOREN.map((zahl, index) => {
         // Gerade/ungerade Sektoren wechseln sich in der Farbe ab - wie auf
         // einer echten Scheibe, damit sich benachbarte Felder trennen.
-        const hell = index % 2 === 0
+        //
+        // Die 20 steht an Index 0 und ist auf einer echten Scheibe DUNKEL,
+        // die 1 daneben hell, die 18 wieder dunkel. Bis 0.1.0-beta.20 war es
+        // genau andersherum - die Scheibe sah dadurch fuer jeden, der eine
+        // echte kennt, falsch aus. Die Ringfarben haengen daran: ein dunkles
+        // Feld hat rote Doppel und Triple, ein helles gruene.
+        const hell = index % 2 === 1
         return (
           <g key={zahl}>
             <path className={hell ? 'feld-hell' : 'feld-dunkel'} d={sektorPfad(zahl, RADIUS.bullAussen, RADIUS.tripleInnen)} />

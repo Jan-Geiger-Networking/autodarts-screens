@@ -24,6 +24,20 @@ import logoWeiss from '../../../assets/logo-white.png'
 import { Dartscheibe } from '../shared/Dartscheibe'
 import { texte, useEinblendung } from './Einblendung'
 
+/** Ein Average mit einer Nachkommastelle, oder ein Strich. */
+function zahlOderStrich(wert: number | null): string {
+  return wert === null || !Number.isFinite(wert) ? '–' : wert.toFixed(1)
+}
+
+/** Pfeil von der Seite - dasselbe Zeichen wie in der Default-Fassung. */
+function DartSymbol() {
+  return (
+    <svg className="jgn-dartsymbol" viewBox="0 0 64 16" aria-hidden="true">
+      <path d="M2 8 H44 M44 2 L60 8 L44 14 Z M8 3 L14 8 L8 13 Z" />
+    </svg>
+  )
+}
+
 /** Anzeigename eines Spielers. */
 function namen(spieler: Player): string {
   return spieler.displayName.trim() !== '' ? spieler.displayName : spieler.autodartsName
@@ -60,17 +74,26 @@ function Aufnahmen({ zustand, spielerId }: { zustand: MatchState; spielerId: str
   // Nur die letzten sechs: darunter wird die Zeile zu niedrig, und aeltere
   // Aufnahmen interessieren beim Werfen nicht mehr.
   const sichtbare = eigene.slice(-6)
-  if (sichtbare.length === 0) {
-    return <p className="jgn-aufnahmen-leer">Noch keine Aufnahme in diesem Leg</p>
-  }
 
   return (
     <table className="jgn-aufnahmen">
       <tbody>
+        {/* Erste Zeile ohne Punkte: die Startpunktzahl, von der aus gezaehlt
+            wird - genauso wie in der Autodarts-Ansicht. */}
+        {eigene.length === sichtbare.length && (
+          <tr>
+            <td className="jgn-aufnahme-punkte" />
+            <td className="jgn-aufnahme-rest">
+              <span className="jgn-restkasten">{zustand.startScore}</span>
+            </td>
+          </tr>
+        )}
         {sichtbare.map((eintrag, index) => (
           <tr key={`${index}-${eintrag.remainingAfter}`} className={eintrag.bust ? 'ist-bust' : undefined}>
             <td className="jgn-aufnahme-punkte">{eintrag.bust ? 'Bust' : eintrag.scored}</td>
-            <td className="jgn-aufnahme-rest">{eintrag.remainingAfter}</td>
+            <td className="jgn-aufnahme-rest">
+              <span className="jgn-restkasten">{eintrag.remainingAfter}</span>
+            </td>
           </tr>
         ))}
       </tbody>
@@ -154,9 +177,26 @@ export function LayoutJgn({ zustand }: { zustand: MatchState }) {
 
         <div className="jgn-aktiv">
           <span className="jgn-aktiv-name">{amWurf ? namen(amWurf) : ''}</span>
-          <span className={`jgn-aktiv-score${zustand.bust ? ' ist-bust' : ''}`}>
-            {zustand.bust ? 'Bust' : (score?.remaining ?? '–')}
-          </span>
+
+          {/* Punktzahl und daneben, klein, was die laufende Aufnahme bisher
+              gebracht hat - dieselbe Anordnung wie in der Autodarts-Ansicht. */}
+          <div className="jgn-aktiv-zeile">
+            <span className={`jgn-aktiv-score${zustand.bust ? ' ist-bust' : ''}`}>
+              {zustand.bust ? 'Bust' : (score?.remaining ?? '–')}
+            </span>
+            <span className="jgn-aktiv-zug">{zustand.currentThrowTotal}</span>
+          </div>
+
+          <p className="jgn-aktiv-schnitt">
+            Leg <strong>{zahlOderStrich(score?.legAverage ?? null)}</strong> / Match{' '}
+            <strong>{zahlOderStrich(score?.average3 ?? null)}</strong>
+          </p>
+
+          <p className="jgn-aktiv-darts">
+            <DartSymbol />
+            {score?.dartsGesamt ?? 0}
+          </p>
+
           {amWurf && <Aufnahmen zustand={zustand} spielerId={amWurf.id} />}
         </div>
 
