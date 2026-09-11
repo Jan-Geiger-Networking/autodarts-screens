@@ -513,6 +513,18 @@ Beobachtete Werte für `event`:
 2. Ein Ende-Ereignis gilt nur, wenn seine `id` die des laufenden Matches ist.
    Sonst schaltet ein alter Aufräumvorgang eine laufende Anzeige ab.
 
+### Die erste Momentaufnahme kommt bei der Anfangsermittlung erst mit dem ersten Dart
+
+Vom Herausgeber berichtet (11.09.2026): die Anfangsermittlung ist dort die
+übliche Startmethode, und die Anzeige erschien erst, nachdem der erste Dart
+geworfen war — *"ich muss den ersten immer schmeissen damit es los geht"*.
+
+Das Brett meldet den Start dagegen sofort (`{"event":"start","id":…}` auf
+`<brett>.matches`). Deshalb wertet die Anwendung diesen Beginn seit
+0.1.0-beta.20 selbst aus und verlässt die Spielpause damit, statt auf die
+erste `.state`-Momentaufnahme zu warten. Bis die kommt, steht der Zustand
+auf `phase: 'starting'` — Match-Kennung bekannt, sonst nichts.
+
 ## Spielerstatistik und Anfangsermittlung — belegt aus dem Quelltext 2026-09-10
 
 Gleiche Quelle wie oben (`use-game-*.js`). Vertrauen: **hoch**.

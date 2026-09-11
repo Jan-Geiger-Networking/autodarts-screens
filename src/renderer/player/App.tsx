@@ -187,6 +187,25 @@ export function App() {
   // Kein Zustand, Ruhezustand oder kein Spieler bekannt: nur das Logo auf
   // dunklem Grund. Kein Blinken, keine Bewegung - dieser Bildschirm haengt
   // neben der Scheibe und darf niemanden beim Werfen stoeren.
+  // Zwischen Startmeldung und erster Zustandsmeldung: die Runde laeuft
+  // schon, es ist nur noch nichts bekannt. Der Standby-Bildschirm waere hier
+  // falsch - er sagt "es passiert nichts".
+  if (zustand && zustand.phase === 'starting') {
+    return (
+      <div className="ruhezustand">
+        <div className="ruhezustand-ringe" aria-hidden="true">
+          <span className="ruhering" />
+          <span className="ruhering" />
+          <span className="ruhering" />
+        </div>
+        <div className="ruhezustand-mitte">
+          <img className="ruhezustand-logo" src={logoWeiss} alt="JGNet" />
+          <p className="ruhezustand-text">Gleich geht&apos;s los</p>
+        </div>
+      </div>
+    )
+  }
+
   if (!zustand || zustand.phase === 'idle' || zustand.players.length === 0) {
     return (
       <div className="ruhezustand">

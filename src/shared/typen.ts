@@ -87,7 +87,16 @@ export type MatchState = {
    * wer naeher am Bull liegt, beginnt. Autodarts fuehrt sie als eigenen Modus
    * (Variant "Bull-off", belegt im Quelltext des Web-Clients).
    */
-  phase: 'idle' | 'bullOff' | 'intro' | 'playing' | 'legBreak' | 'finished'
+  /**
+   * 'starting' liegt zwischen der Startmeldung des Bretts und der ersten
+   * Zustandsmeldung von Autodarts. In dieser Zeit ist noch nichts bekannt -
+   * keine Spieler, keine Punktzahl -, aber der Bildschirm soll die
+   * Spielpause schon verlassen haben. Bei einer Anfangsermittlung kann das
+   * mehrere Sekunden dauern, weil die erste Momentaufnahme erst mit dem
+   * ersten Dart kommt ("ich muss den ersten immer schmeissen damit es los
+   * geht").
+   */
+  phase: 'idle' | 'starting' | 'bullOff' | 'intro' | 'playing' | 'legBreak' | 'finished'
   matchId: string | null
   variant: 'x01' | 'other'
   /**

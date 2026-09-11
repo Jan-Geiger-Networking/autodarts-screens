@@ -107,7 +107,9 @@ export function App() {
   const anzeige =
     basis === 'idle'
       ? 'idle'
-      : basis === 'bullOff'
+      : basis === 'starting'
+        ? 'starting'
+        : basis === 'bullOff'
         ? 'bullOff'
         : basis === 'intro' && !introAbgelaufen
           ? 'intro'
@@ -117,6 +119,14 @@ export function App() {
     <div className="bildschirm-zuschauer">
       {anzeige === 'idle' && (matchtagLaeuft && matchtag ? <Matchtag matchtag={matchtag} /> : <Vorspann />)}
 
+      {anzeige === 'starting' && (
+        <div className="bildschirm-start">
+          <img className="bug" src={logoWeiss} alt="JGNet" />
+          <p className="start-zeile">Gleich geht&apos;s los</p>
+          <p className="start-unterzeile">Das Match wird eingerichtet</p>
+        </div>
+      )}
+
       {anzeige === 'bullOff' && zustand && (
         <div className="bildschirm-anfang">
           <img className="bug" src={logoWeiss} alt="JGNet" />
@@ -124,7 +134,7 @@ export function App() {
         </div>
       )}
 
-      {anzeige !== 'idle' && anzeige !== 'bullOff' && zustand && (
+      {anzeige !== 'idle' && anzeige !== 'starting' && anzeige !== 'bullOff' && zustand && (
         <Spielstand
           zustand={zustand}
           intro={anzeige === 'intro'}

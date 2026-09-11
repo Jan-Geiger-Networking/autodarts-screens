@@ -766,3 +766,37 @@ describe('anwenden: wer gewonnen hat', () => {
     expect(ende.lastEvent).toMatchObject({ playerId: ende.players[1]!.id })
   })
 })
+
+describe('anwenden: Start der Runde', () => {
+  const brett = (event: string, id: string) => ({
+    channel: 'autodarts.boards',
+    topic: 'b.matches',
+    data: { event, id },
+  })
+
+  it('verlaesst die Spielpause schon bei der Startmeldung des Bretts', () => {
+    // Bei einer Anfangsermittlung kommt die erste Zustandsmeldung erst mit
+    // dem ersten Dart ("ich muss den ersten immer schmeissen damit es los
+    // geht") - bis dahin stand die Werbeschleife, obwohl die Runde lief.
+    const nachStart = anwenden(RUHEZUSTAND, brett('start', 'match-9'))
+    expect(nachStart.phase).toBe('starting')
+    expect(nachStart.matchId).toBe('match-9')
+  })
+
+  it('wirft ein laufendes Match nicht weg, wenn noch eine Startmeldung kommt', () => {
+    const laufend = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    expect(anwenden(laufend, brett('start', 'match-1'))).toBe(laufend)
+  })
+
+  it('wird von der ersten Zustandsmeldung abgeloest', () => {
+    const gestartet = anwenden(RUHEZUSTAND, brett('start', 'match-1'))
+    const mitZustand = anwenden(gestartet, stateEreignis('match-1'))
+    expect(mitZustand.phase).not.toBe('starting')
+    expect(mitZustand.players.length).toBe(2)
+  })
+
+  it('geht bei einem Ende aus dem Startzustand zurueck in die Spielpause', () => {
+    const gestartet = anwenden(RUHEZUSTAND, brett('start', 'match-1'))
+    expect(anwenden(gestartet, brett('delete', 'match-1'))).toBe(RUHEZUSTAND)
+  })
+})

@@ -1820,3 +1820,38 @@
 .statistikseite-8 .statistikblock {
   padding: 0.5vh 0.5vw;
 }
+
+/* Zwischen Startmeldung des Bretts und erster Zustandsmeldung. Bei einer
+   Anfangsermittlung liegen dazwischen mehrere Sekunden, weil Autodarts die
+   erste Momentaufnahme erst mit dem ersten Dart schickt - bis dahin stand
+   hier die Werbeschleife, obwohl die Runde laengst gestartet war. */
+.bildschirm-start {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5vh;
+  background: radial-gradient(circle at 50% 45%, var(--jg-surface) 0%, var(--jg-bg) 65%);
+}
+
+.start-zeile {
+  margin: 0;
+  font-family: var(--jg-font-display);
+  font-size: 9vh;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--jg-accent);
+}
+
+.start-unterzeile {
+  margin: 0;
+  font-family: var(--jg-font-display);
+  font-size: 3vh;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--jg-muted);
+}

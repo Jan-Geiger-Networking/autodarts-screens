@@ -6,7 +6,7 @@
 
 import type { MatchEvent, MatchState } from '../../shared/typen'
 
-export type BasisSzene = 'idle' | 'bullOff' | 'intro' | 'scoreboard'
+export type BasisSzene = 'idle' | 'starting' | 'bullOff' | 'intro' | 'scoreboard'
 
 export type Ueberlagerung =
   | { art: 'playerChange'; seq: number; zuSpielerId: string }
@@ -39,6 +39,9 @@ export const UEBERLAGERUNG_DAUER_MS: Record<Ueberlagerung['art'], number> = {
 }
 
 export function ermittleBasis(zustand: MatchState): BasisSzene {
+  // 'starting' hat noch keine Spieler - es steht ja gerade erst fest, dass
+  // ueberhaupt etwas losgeht. Deshalb VOR der Spielerpruefung.
+  if (zustand.phase === 'starting') return 'starting'
   if (zustand.phase === 'idle' || zustand.players.length === 0) return 'idle'
   // Die Anfangsermittlung hat keinen Spielstand - sie bekommt ein eigenes
   // Bild, sonst stuende dort ein Scoreboard mit zweimal 501.

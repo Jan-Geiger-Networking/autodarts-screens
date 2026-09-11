@@ -431,16 +431,23 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
   const eingeordnet = einordnen(roh)
   if (eingeordnet.art === 'ignoriert') return zustand
   if (eingeordnet.art === 'board') {
-    // Ein Board-Ereignis, das ein Ende meint, beendet die Anzeige sofort -
-    // auch wenn nie ein "finished" im Zustandskanal ankam. Ein Beginn wird
-    // hier nicht ausgewertet: den baut die erste .state-Momentaufnahme auf,
-    // die ohnehin unmittelbar folgt.
-    if (!istMatchEnde(eingeordnet.nutz)) return zustand
+    const beginnId = typeof eingeordnet.nutz.id === 'string' ? eingeordnet.nutz.id : null
+    if (!istMatchEnde(eingeordnet.nutz)) {
+      // Ein Beginn schaltet die Spielpause sofort ab, statt auf die erste
+      // .state-Momentaufnahme zu warten. Die kommt bei einer
+      // Anfangsermittlung erst mit dem ersten Dart - bis dahin stand der
+      // Zuschauer-Screen noch in der Werbeschleife, obwohl die Runde laengst
+      // gestartet war.
+      //
+      // Nur aus dem Ruhezustand heraus: laeuft schon ein Match, wuerde eine
+      // zweite Startmeldung sonst den Spielstand wegwerfen.
+      if (zustand.phase !== 'idle') return zustand
+      return { ...RUHEZUSTAND, phase: 'starting', matchId: beginnId }
+    }
     // Ein Ende-Ereignis gilt nur fuer das Match, das gerade laeuft. Autodarts
     // raeumt aeltere Matches nachtraeglich weg ("delete") - ein solches
     // Ereignis darf die Anzeige eines laufenden Matches nicht abschalten.
-    const id = typeof eingeordnet.nutz.id === 'string' ? eingeordnet.nutz.id : null
-    if (id !== null && zustand.matchId !== null && id !== zustand.matchId) return zustand
+    if (beginnId !== null && zustand.matchId !== null && beginnId !== zustand.matchId) return zustand
     return RUHEZUSTAND
   }
   if (eingeordnet.art === 'unbekannt') {

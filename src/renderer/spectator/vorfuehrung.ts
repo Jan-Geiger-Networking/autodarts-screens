@@ -420,6 +420,10 @@ function bauSchritte(): Schritt[] {
     lastEvent: { seq: 12, kind: 'miss', playerId: 'p1' },
   })
 
+  // Zwischen Startmeldung des Bretts und erster Zustandsmeldung. Ans Ende
+  // gehaengt, damit die Nummern der uebrigen Schritte stabil bleiben.
+  const startet: MatchState = { ...idle, phase: 'starting', matchId: 'vorfuehrung-start' }
+
   return [
     { zustand: idle, haltenMs: 3000 },
     { zustand: intro, haltenMs: 8000 },
@@ -438,6 +442,7 @@ function bauSchritte(): Schritt[] {
     // Bildschirmfotos verwiesen wird.
     { zustand: bullOff, haltenMs: 6000 },
     { zustand: miss, haltenMs: 2500 },
+    { zustand: startet, haltenMs: 3000 },
   ];
 }
 

@@ -4,6 +4,19 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.20] - 2026-09-11
+
+Zwanzigste Beta.
+
+### Behoben
+- **Nach dem Start einer Runde lief noch die Werbeschleife weiter.** Die
+  Anwendung wartete auf die erste Zustandsmeldung von Autodarts — bei einer
+  Anfangsermittlung kommt die aber erst mit dem ersten Dart. Das Brett meldet
+  den Start dagegen sofort. Genau darauf reagieren die Bildschirme jetzt: sie
+  verlassen die Spielpause im selben Moment, in dem die Runde gestartet wird,
+  und zeigen „Gleich geht's los", bis Autodarts Spieler und Punktzahlen
+  nachliefert
+
 ## [0.1.0-beta.19] - 2026-09-11
 
 Neunzehnte Beta. Zweites Player-Layout, mehr Platz für mehr Spieler.
