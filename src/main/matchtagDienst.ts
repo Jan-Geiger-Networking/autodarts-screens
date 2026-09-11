@@ -24,14 +24,17 @@ import {
   matchtagStarten,
   naechstePaarung,
   spielerName,
+  spielerSchluessel,
+  wuerfeErgaenzen,
   RUHENDER_MATCHTAG,
   type Matchtag,
+  type MatchtagModus,
 } from '../shared/matchtag'
 import type { MatchState } from '../shared/typen'
 
 export type MatchtagBefehl =
   /** Neuen Matchtag anlegen. Das naechste Match gilt als Aufwaermrunde. */
-  | { art: 'starten'; titel: string }
+  | { art: 'starten'; titel: string; modus: MatchtagModus }
   /** Turnier abbrechen und zum Normalbetrieb zurueck. */
   | { art: 'beenden' }
   /** Zuletzt gewertete Partie wieder oeffnen (falsch eingerichtet, Abbruch). */
@@ -48,6 +51,27 @@ let aktuell: Matchtag = { ...RUHENDER_MATCHTAG }
  * Momentaufnahme erneut gemeldet.
  */
 let zuletztGesehen: string | null = null
+
+/**
+ * Die zuletzt gesehene Wurfliste je Spieler, als Feldnamen.
+ *
+ * Fuer die Heatmap muessen die Auftreffpunkte LIVE mitgeschrieben werden: am
+ * Ende eines Matches enthaelt der Zustand nur noch das letzte Leg. Autodarts
+ * schickt zu einem Wurf mehrere Momentaufnahmen, deshalb wird die Liste mit
+ * der zuletzt gesehenen verglichen und nur der neue Teil uebernommen.
+ */
+const letzteWurfliste = new Map<string, string[]>()
+
+/** Die Punkte, die seit der letzten Momentaufnahme dazugekommen sind. */
+function neueAuftreffpunkte(spielerId: string, wuerfe: MatchState['currentThrow']): { x: number; y: number }[] {
+  const namen = wuerfe.map((d) => d.name)
+  const vorher = letzteWurfliste.get(spielerId) ?? []
+  // Ist die neue Liste eine Fortsetzung der alten, zaehlt nur der Rest;
+  // sonst hat eine neue Aufnahme begonnen und alles ist neu.
+  const fortsetzung = namen.length >= vorher.length && vorher.every((n, i) => n === namen[i])
+  letzteWurfliste.set(spielerId, namen)
+  return wuerfe.slice(fortsetzung ? vorher.length : 0).flatMap((d) => (d.koordinaten ? [d.koordinaten] : []))
+}
 
 async function speicherPfad(): Promise<string> {
   const { app } = await import('electron')
@@ -100,11 +124,15 @@ export async function matchtagBefehlAusfuehren(befehl: MatchtagBefehl): Promise<
   switch (befehl.art) {
     case 'starten': {
       zuletztGesehen = null
-      void protokollieren(`Matchtag "${befehl.titel}" gestartet - das naechste Match zaehlt als Aufwaermrunde`)
-      return uebernehmen(matchtagStarten(befehl.titel, new Date().toISOString()))
+      letzteWurfliste.clear()
+      void protokollieren(
+        `Matchtag "${befehl.titel}" gestartet (Modus ${befehl.modus}) - das naechste Match zaehlt als Aufwaermrunde`,
+      )
+      return uebernehmen(matchtagStarten(befehl.titel, new Date().toISOString(), befehl.modus))
     }
     case 'beenden': {
       zuletztGesehen = null
+      letzteWurfliste.clear()
       void protokollieren('Matchtag beendet')
       return uebernehmen(matchtagBeenden())
     }
@@ -126,7 +154,20 @@ export async function matchtagBefehlAusfuehren(befehl: MatchtagBefehl): Promise<
  * genau das Gegenteil - Zustand, der bleibt.
  */
 export function matchZustandVerarbeiten(zustand: MatchState): void {
-  if (aktuell.phase === 'aus' || aktuell.phase === 'beendet') return
+  if (aktuell.phase === 'aus') return
+
+  // Auftreffpunkte des Spielers am Wurf mitschreiben - auch waehrend der
+  // Aufwaermrunde und nach dem letzten Spiel: jeder geworfene Pfeil gehoert
+  // in die Heatmap des Abends.
+  const amWurf = zustand.players.find((p) => p.id === zustand.activePlayerId)
+  if (amWurf) {
+    const name = amWurf.displayName.trim() !== '' ? amWurf.displayName : amWurf.autodartsName
+    const punkte = neueAuftreffpunkte(spielerSchluessel(name), zustand.currentThrow)
+    const mitWuerfen = wuerfeErgaenzen(aktuell, spielerSchluessel(name), punkte)
+    if (mitWuerfen !== aktuell) void uebernehmen(mitWuerfen)
+  }
+
+  if (aktuell.phase === 'beendet') return
 
   const ergebnis = ergebnisAusZustand(zustand)
   if (!ergebnis) return

@@ -321,7 +321,13 @@ export function ipcRegistrieren(): void {
 export function matchtagBefehlPruefen(roh: unknown): MatchtagBefehl {
   if (typeof roh !== 'object' || roh === null) return { art: 'beenden' }
   const b = roh as Record<string, unknown>
-  if (b.art === 'starten') return { art: 'starten', titel: typeof b.titel === 'string' ? b.titel : '' }
+  if (b.art === 'starten') {
+    return {
+      art: 'starten',
+      titel: typeof b.titel === 'string' ? b.titel : '',
+      modus: b.modus === 'huette' ? 'huette' : 'normal',
+    }
+  }
   if (b.art === 'zuruecknehmen') return { art: 'zuruecknehmen' }
   return { art: 'beenden' }
 }

@@ -397,7 +397,7 @@ function Mittelanzeige({
       </div>
       {/* Zeigt den laufenden Wurf dort, wo er auf der Scheibe gelandet ist -
           die Frage "wo ging der Wurf hin" beantwortet keine Zahlenreihe. */}
-      <Dartscheibe darts={darts} verblasst={verblasst} dunkel />
+      <Dartscheibe darts={darts} verblasst={verblasst} />
     </div>
   )
 }
@@ -448,7 +448,7 @@ function SpielerSpalten({
     <div className={`spielspalten spielspalten-${Math.min(links.length + rechts.length, 8)}`}>
       {spalte(links, 'links')}
       <div className="spielmitte">
-        <Dartscheibe darts={darts} verblasst={verblasst} dunkel />
+        <Dartscheibe darts={darts} verblasst={verblasst} />
       </div>
       {spalte(rechts, 'rechts')}
     </div>

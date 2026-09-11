@@ -77,14 +77,21 @@ describe('darfKanalNutzen', () => {
 
 describe('matchtagBefehlPruefen', () => {
   it('nimmt einen Start samt Titel an', () => {
-    expect(matchtagBefehlPruefen({ art: 'starten', titel: 'Huettenabend' })).toEqual({
+    expect(matchtagBefehlPruefen({ art: 'starten', titel: 'Huettenabend', modus: 'huette' })).toEqual({
       art: 'starten',
       titel: 'Huettenabend',
+      modus: 'huette',
     })
   })
 
   it('nimmt einen Start ohne brauchbaren Titel mit leerem Titel an', () => {
-    expect(matchtagBefehlPruefen({ art: 'starten', titel: 42 })).toEqual({ art: 'starten', titel: '' })
+    // Unbekannter Modus faellt auf 'normal' zurueck, nicht auf einen
+    // Sonderablauf, den niemand gewaehlt hat.
+    expect(matchtagBefehlPruefen({ art: 'starten', titel: 42, modus: 'unsinn' })).toEqual({
+      art: 'starten',
+      titel: '',
+      modus: 'normal',
+    })
   })
 
   it('nimmt das Zuruecknehmen an', () => {

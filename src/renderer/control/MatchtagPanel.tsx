@@ -11,7 +11,14 @@
 // Einrichten vor sich hat, ohne sich umzudrehen.
 
 import { useEffect, useState } from 'react'
-import { naechstePaarung, spielerName, tabelle, type Matchtag, type MatchtagPhase } from '../../shared/matchtag'
+import {
+  naechstePaarung,
+  spielerName,
+  tabelle,
+  type Matchtag,
+  type MatchtagModus,
+  type MatchtagPhase,
+} from '../../shared/matchtag'
 
 const PHASENTEXT: Record<MatchtagPhase, string> = {
   aus: 'Kein Matchtag — die Anwendung läuft im Normalbetrieb.',
@@ -19,12 +26,14 @@ const PHASENTEXT: Record<MatchtagPhase, string> = {
   spielplan: 'Spielplan steht. Erste Partie einrichten.',
   laeuft: 'Turnier läuft.',
   stechen: 'Gleichstand an der Spitze — Stechen läuft.',
+  finale: 'Gruppenrunde vorbei — die Endspiele laufen: Erster gegen Zweiten, Dritter gegen Vierten.',
   beendet: 'Entschieden.',
 }
 
 export function MatchtagPanel() {
   const [matchtag, setMatchtag] = useState<Matchtag | null>(null)
   const [titel, setTitel] = useState('')
+  const [modus, setModus] = useState<MatchtagModus>('normal')
   const [beendenBestaetigt, setBeendenBestaetigt] = useState(false)
 
   useEffect(() => {
@@ -63,8 +72,20 @@ export function MatchtagPanel() {
               maxLength={40}
             />
           </label>
+          <label className="feld">
+            Modus
+            <select value={modus} onChange={(e) => setModus(e.target.value === 'huette' ? 'huette' : 'normal')}>
+              <option value="normal">Normal — jeder gegen jeden, meiste Punkte gewinnt</option>
+              <option value="huette">Hütte — danach Endspiele um Platz 1 und 3</option>
+            </select>
+          </label>
+          <p className="hinweis">
+            Im Hütten-Modus folgen auf die Gruppenrunde zwei Endspiele: Erster gegen Zweiten um Platz 1, Dritter gegen
+            Vierten um Platz 3. Alle übrigen sind nach der Gruppenrunde ausgeschieden. Die gesammelten Punkte setzen nur
+            die Reihenfolge — entschieden wird auf der Scheibe. Ab vier Spielern.
+          </p>
           <div className="knopfreihe">
-            <button type="button" onClick={() => void window.app.matchtagBefehl({ art: 'starten', titel })}>
+            <button type="button" onClick={() => void window.app.matchtagBefehl({ art: 'starten', titel, modus })}>
               Matchtag starten
             </button>
           </div>

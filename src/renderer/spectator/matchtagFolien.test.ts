@@ -13,7 +13,7 @@ import {
 const JETZT = '2026-09-11T20:00:00.000Z'
 
 function matchtagMit(namen: string[]): Matchtag {
-  const spieler = namen.map((name) => ({ id: spielerSchluessel(name), name, warmupAverage: null }))
+  const spieler = namen.map((name) => ({ id: spielerSchluessel(name), name, warmupAverage: null, wuerfe: [] }))
   return {
     ...matchtagStarten('Test', JETZT),
     phase: 'spielplan',
@@ -26,8 +26,8 @@ function partieGewinnen(matchtag: Matchtag, sieger: string, verlierer: string, n
   const ergebnis: MatchErgebnis = {
     matchId: `m${nr}`,
     spieler: [
-      { id: spielerSchluessel(sieger), name: sieger, legs: 3, average: 70, count180: 1, highestFinish: null },
-      { id: spielerSchluessel(verlierer), name: verlierer, legs: 1, average: 60, count180: 0, highestFinish: null },
+      { id: spielerSchluessel(sieger), name: sieger, legs: 3, average: 70, count180: 1, highestFinish: null, plus60: 0, plus100: 0, plus140: 0, darts: 0, checkoutProzent: null },
+      { id: spielerSchluessel(verlierer), name: verlierer, legs: 1, average: 60, count180: 0, highestFinish: null, plus60: 0, plus100: 0, plus140: 0, darts: 0, checkoutProzent: null },
     ],
     siegerId: spielerSchluessel(sieger),
   }

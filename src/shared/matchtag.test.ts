@@ -10,6 +10,7 @@ import {
   offenePaarungen,
   RUHENDER_MATCHTAG,
   spielerSchluessel,
+  endstand,
   spielplanErzeugen,
   statistiken,
   tabelle,
@@ -26,6 +27,7 @@ function spieler(...namen: string[]): MatchtagSpieler[] {
     id: spielerSchluessel(name),
     name,
     warmupAverage: 60 - index,
+    wuerfe: [],
   }))
 }
 
@@ -67,6 +69,11 @@ function partieGewinnen(
         average: werte?.average?.[0] ?? null,
         count180: werte?.count180?.[0] ?? 0,
         highestFinish: werte?.highestFinish?.[0] ?? null,
+        plus60: 0,
+        plus100: 0,
+        plus140: 0,
+        darts: 0,
+        checkoutProzent: null,
       },
       {
         id: spielerSchluessel(verlierer),
@@ -75,6 +82,11 @@ function partieGewinnen(
         average: werte?.average?.[1] ?? null,
         count180: werte?.count180?.[1] ?? 0,
         highestFinish: werte?.highestFinish?.[1] ?? null,
+        plus60: 0,
+        plus100: 0,
+        plus140: 0,
+        darts: 0,
+        checkoutProzent: null,
       },
     ],
     siegerId: spielerSchluessel(sieger),
@@ -236,9 +248,9 @@ describe('aufwaermenUebernehmen', () => {
   const aufwaermen: MatchErgebnis = {
     matchId: 'warm-1',
     spieler: [
-      { id: spielerSchluessel('Anna'), name: 'Anna', legs: 0, average: 55, count180: 0, highestFinish: null },
-      { id: spielerSchluessel('Bert'), name: 'Bert', legs: 0, average: 71, count180: 1, highestFinish: null },
-      { id: spielerSchluessel('Cem'), name: 'Cem', legs: 0, average: 63, count180: 0, highestFinish: null },
+      { id: spielerSchluessel('Anna'), name: 'Anna', legs: 0, average: 55, count180: 0, highestFinish: null, plus60: 0, plus100: 0, plus140: 0, darts: 0, checkoutProzent: null },
+      { id: spielerSchluessel('Bert'), name: 'Bert', legs: 0, average: 71, count180: 1, highestFinish: null, plus60: 0, plus100: 0, plus140: 0, darts: 0, checkoutProzent: null },
+      { id: spielerSchluessel('Cem'), name: 'Cem', legs: 0, average: 63, count180: 0, highestFinish: null, plus60: 0, plus100: 0, plus140: 0, darts: 0, checkoutProzent: null },
     ],
     siegerId: null,
   }
@@ -297,8 +309,8 @@ describe('ergebnisUebernehmen', () => {
     const fremd: MatchErgebnis = {
       matchId: 'x',
       spieler: [
-        { id: spielerSchluessel('A'), name: 'A', legs: 3, average: null, count180: 0, highestFinish: null },
-        { id: spielerSchluessel('Gast'), name: 'Gast', legs: 1, average: null, count180: 0, highestFinish: null },
+        { id: spielerSchluessel('A'), name: 'A', legs: 3, average: null, count180: 0, highestFinish: null, plus60: 0, plus100: 0, plus140: 0, darts: 0, checkoutProzent: null },
+        { id: spielerSchluessel('Gast'), name: 'Gast', legs: 1, average: null, count180: 0, highestFinish: null, plus60: 0, plus100: 0, plus140: 0, darts: 0, checkoutProzent: null },
       ],
       siegerId: spielerSchluessel('A'),
     }
@@ -310,8 +322,8 @@ describe('ergebnisUebernehmen', () => {
     const abgebrochen: MatchErgebnis = {
       matchId: 'x',
       spieler: [
-        { id: spielerSchluessel('A'), name: 'A', legs: 1, average: null, count180: 0, highestFinish: null },
-        { id: spielerSchluessel('B'), name: 'B', legs: 1, average: null, count180: 0, highestFinish: null },
+        { id: spielerSchluessel('A'), name: 'A', legs: 1, average: null, count180: 0, highestFinish: null, plus60: 0, plus100: 0, plus140: 0, darts: 0, checkoutProzent: null },
+        { id: spielerSchluessel('B'), name: 'B', legs: 1, average: null, count180: 0, highestFinish: null, plus60: 0, plus100: 0, plus140: 0, darts: 0, checkoutProzent: null },
       ],
       siegerId: null,
     }
@@ -329,6 +341,11 @@ describe('ergebnisUebernehmen', () => {
         average: null,
         count180: 0,
         highestFinish: null,
+        plus60: 0,
+        plus100: 0,
+        plus140: 0,
+        darts: 0,
+        checkoutProzent: null,
       })),
       siegerId: spielerSchluessel('A'),
     }
@@ -525,5 +542,113 @@ describe('statistiken', () => {
     m = partieGewinnen(m, 'A', 'B', [3, 1], 1, { average: [80, 60] })
     const schnitte = statistiken(m).schnitte
     expect(schnitte.map((e) => e.spieler.name)).toEqual(['A', 'B'])
+  })
+})
+
+describe('Huetten-Modus', () => {
+  /** Vier Spieler, Gruppenrunde so ausgespielt, dass die Reihenfolge feststeht. */
+  function nachGruppenrunde(): Matchtag {
+    const liste = spieler('A', 'B', 'C', 'D')
+    let m: Matchtag = {
+      ...matchtagStarten('Huettenabend', JETZT, 'huette'),
+      phase: 'spielplan',
+      spieler: liste,
+      paarungen: spielplanErzeugen(liste),
+    }
+    let n = 1
+    // A gewinnt alle, B zwei, C eine, D keine.
+    for (const [sieger, verlierer] of [
+      ['A', 'B'],
+      ['A', 'C'],
+      ['A', 'D'],
+      ['B', 'C'],
+      ['B', 'D'],
+      ['C', 'D'],
+    ] as [string, string][]) {
+      m = partieGewinnen(m, sieger, verlierer, [3, 1], n++)
+    }
+    return m
+  }
+
+  it('setzt nach der Gruppenrunde zwei Endspiele an', () => {
+    const m = nachGruppenrunde()
+    expect(m.phase).toBe('finale')
+    const finale = m.paarungen.find((p) => p.art === 'finale')!
+    const platz3 = m.paarungen.find((p) => p.art === 'platz3')!
+    // Erster gegen Zweiten, Dritter gegen Vierten.
+    expect([finale.aId, finale.bId].sort()).toEqual([spielerSchluessel('A'), spielerSchluessel('B')].sort())
+    expect([platz3.aId, platz3.bId].sort()).toEqual([spielerSchluessel('C'), spielerSchluessel('D')].sort())
+    expect(m.siegerId).toBeNull()
+  })
+
+  it('kuert den Sieger des Endspiels, auch wenn er weniger Punkte hatte', () => {
+    let m = nachGruppenrunde()
+    // B gewinnt das Endspiel gegen A, obwohl A die Gruppenrunde gewonnen hat.
+    m = partieGewinnen(m, 'B', 'A', [3, 2], 50)
+    m = partieGewinnen(m, 'D', 'C', [3, 0], 51)
+    expect(m.phase).toBe('beendet')
+    expect(m.siegerId).toBe(spielerSchluessel('B'))
+  })
+
+  it('ordnet die Plaetze 1 bis 4 nach den Endspielen', () => {
+    let m = nachGruppenrunde()
+    m = partieGewinnen(m, 'B', 'A', [3, 2], 60)
+    m = partieGewinnen(m, 'D', 'C', [3, 0], 61)
+    expect(endstand(m).map((z) => z.spieler.name)).toEqual(['B', 'A', 'D', 'C'])
+    expect(endstand(m).map((z) => z.platz)).toEqual([1, 2, 3, 4])
+  })
+
+  it('sticht im Huetten-Modus nicht - die Endspiele entscheiden', () => {
+    // Vier Spieler mit je zwei Siegen: im Modus 'normal' gaebe das ein
+    // Stechen, hier gehen die ersten vier direkt in die Endspiele.
+    const liste = spieler('W', 'X', 'Y', 'Z')
+    let m: Matchtag = {
+      ...matchtagStarten('Abend', JETZT, 'huette'),
+      phase: 'spielplan',
+      spieler: liste,
+      paarungen: spielplanErzeugen(liste),
+    }
+    let n = 1
+    for (const [sieger, verlierer] of [
+      ['W', 'X'],
+      ['X', 'Y'],
+      ['Y', 'Z'],
+      ['Z', 'W'],
+      ['W', 'Y'],
+      ['X', 'Z'],
+    ] as [string, string][]) {
+      m = partieGewinnen(m, sieger, verlierer, [3, 2], n++)
+    }
+    expect(m.phase).toBe('finale')
+    expect(m.stechenRunde).toBe(0)
+  })
+
+  it('faellt bei weniger als vier Spielern auf die normale Regel zurueck', () => {
+    const liste = spieler('A', 'B', 'C')
+    let m: Matchtag = {
+      ...matchtagStarten('Abend', JETZT, 'huette'),
+      phase: 'spielplan',
+      spieler: liste,
+      paarungen: spielplanErzeugen(liste),
+    }
+    let n = 1
+    for (const [sieger, verlierer] of [
+      ['A', 'B'],
+      ['A', 'C'],
+      ['B', 'C'],
+    ] as [string, string][]) {
+      m = partieGewinnen(m, sieger, verlierer, [3, 1], n++)
+    }
+    expect(m.phase).toBe('beendet')
+    expect(m.siegerId).toBe(spielerSchluessel('A'))
+  })
+})
+
+describe('endstand im Modus normal', () => {
+  it('stellt den ausgespielten Sieger nach vorn', () => {
+    let m = matchtagMit(['A', 'B'])
+    m = partieGewinnen(m, 'B', 'A', [3, 0], 1)
+    expect(endstand(m)[0]!.spieler.name).toBe('B')
+    expect(endstand(m)[0]!.platz).toBe(1)
   })
 })
