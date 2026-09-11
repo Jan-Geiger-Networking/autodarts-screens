@@ -19,6 +19,7 @@ type BigMoment = Extract<Ueberlagerung, { art: 'bigMoment' }>
 type MatchWin = Extract<Ueberlagerung, { art: 'matchWin' }>
 type LegWin = Extract<Ueberlagerung, { art: 'legWin' }>
 type SpielerWechsel = Extract<Ueberlagerung, { art: 'playerChange' }>
+type Miss = Extract<Ueberlagerung, { art: 'miss' }>
 
 export function App() {
   // Vorfuehrmodus (?vorfuehrung in der Adresse) ersetzt window.app komplett -
@@ -80,11 +81,13 @@ export function App() {
   const [letzterMatchWin, setLetzterMatchWin] = useState<MatchWin | null>(null)
   const [letzterLegWin, setLetzterLegWin] = useState<LegWin | null>(null)
   const [letzterWechsel, setLetzterWechsel] = useState<SpielerWechsel | null>(null)
+  const [letzterMiss, setLetzterMiss] = useState<Miss | null>(null)
   useEffect(() => {
     if (ueberlagerung?.art === 'bigMoment') setLetzterBigMoment(ueberlagerung)
     if (ueberlagerung?.art === 'matchWin') setLetzterMatchWin(ueberlagerung)
     if (ueberlagerung?.art === 'legWin') setLetzterLegWin(ueberlagerung)
     if (ueberlagerung?.art === 'playerChange') setLetzterWechsel(ueberlagerung)
+    if (ueberlagerung?.art === 'miss') setLetzterMiss(ueberlagerung)
   }, [ueberlagerung])
 
   const basis = zustand ? ermittleBasis(zustand) : 'idle'
@@ -147,6 +150,10 @@ export function App() {
 
       {zustand && (
         <LegWinSchicht ueberlagerung={letzterLegWin} sichtbar={ueberlagerung?.art === 'legWin'} zustand={zustand} />
+      )}
+
+      {zustand && (
+        <MissSchicht ueberlagerung={letzterMiss} sichtbar={ueberlagerung?.art === 'miss'} zustand={zustand} />
       )}
 
       {zustand && (
@@ -589,6 +596,36 @@ function BigMomentSchicht({ ueberlagerung, sichtbar, zustand }: { ueberlagerung:
  * Tafeln bleibt daneben bestehen - sie zeigt dauerhaft an, wer dran ist, das
  * Band zeigt den Moment des Wechsels.
  */
+/**
+ * Ein Dart ausserhalb der Scheibe. Bewusst klein und bewusst kurz: ein
+ * danebengegangener Wurf ist kein grosser Moment, aber er soll im Bild
+ * vorkommen, damit niemand raetselt, warum die Punktzahl stehen bleibt.
+ * Rot statt der Signalfarbe - das ist die einzige Einblendung, die nichts
+ * zu feiern hat.
+ */
+function MissSchicht({
+  ueberlagerung,
+  sichtbar,
+  zustand,
+}: {
+  ueberlagerung: Miss | null
+  sichtbar: boolean
+  zustand: MatchState
+}) {
+  const imBaum = useAusblenden(sichtbar, 320)
+  if (!imBaum || !ueberlagerung) return null
+  const spieler = zustand.players.find((p) => p.id === ueberlagerung.spielerId)
+
+  return (
+    <div className={`miss-schicht${sichtbar ? ' zeigen' : ''}`} role="status" aria-live="polite">
+      <div className="miss-band">
+        <span className="miss-wort">Miss</span>
+        {spieler && <span className="miss-name">{spieler.displayName}</span>}
+      </div>
+    </div>
+  )
+}
+
 function WechselSchicht({
   ueberlagerung,
   sichtbar,

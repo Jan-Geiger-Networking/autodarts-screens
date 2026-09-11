@@ -1664,3 +1664,69 @@
   left: 3vh;
   height: 6vh;
 }
+
+/* Miss: ein Dart ausserhalb der Scheibe. Die einzige Einblendung, die nichts
+   zu feiern hat - deshalb rot statt der Signalfarbe, klein statt gross und
+   kurz statt stehend. Sie faehrt von oben herein und sofort wieder hinaus
+   ("die miss aber schnell weg gehen"). */
+.miss-schicht {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  transform: translateY(-120%);
+  transition: transform 320ms var(--jg-ease);
+}
+
+.miss-schicht.zeigen {
+  transform: translateY(0);
+}
+
+.miss-band {
+  display: flex;
+  align-items: baseline;
+  gap: 1.6vh;
+  padding: 1.4vh 3vw;
+  border-radius: 0 0 1vh 1vh;
+  background: rgba(2, 6, 23, 0.92);
+  border: 0.2vh solid var(--jg-warning);
+  border-top: none;
+  box-shadow: 0 0 5vh 0.5vh var(--jg-warning-dim);
+}
+
+.miss-wort {
+  font-family: var(--jg-font-display);
+  font-size: 6vh;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--jg-warning);
+  line-height: 1;
+}
+
+.miss-name {
+  font-family: var(--jg-font-display);
+  font-size: 2.8vh;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--jg-muted-strong);
+}
+
+/* Ohne Bewegung bleibt die Einblendung stehen, statt zu fahren - dieselbe
+   Information, nur ohne Fahrt. */
+@media (prefers-reduced-motion: reduce) {
+  .miss-schicht {
+    transition: none;
+    transform: translateY(0);
+    opacity: 0;
+  }
+
+  .miss-schicht.zeigen {
+    opacity: 1;
+  }
+}

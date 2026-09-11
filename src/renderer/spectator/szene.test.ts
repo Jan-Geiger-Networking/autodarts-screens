@@ -163,3 +163,30 @@ describe("szeneAusZustand", () => {
     expect(zweiter.verarbeiteteSeq).toBe(4);
   });
 });
+
+describe("szeneAusZustand: Zaehler beginnt bei jedem Match neu", () => {
+  it("spielt ein Ereignis auch dann ab, wenn die Nummer KLEINER ist als die zuletzt gesehene", () => {
+    // Der Ruhezustand traegt lastEvent: null, deshalb faengt seq bei jedem
+    // neuen Match wieder bei 1 an. Ein Bildschirm, der ueber mehrere Matches
+    // offen bleibt, hat aber noch die hohe Nummer des vorigen Matches
+    // gemerkt - ab dem zweiten Match wuerde sonst keine Einblendung mehr
+    // ausgeloest. Genau das war gemeldet: "bei dem normalen viewer screen
+    // wird der gewinner des legs und 180 und so nicht angezeigt".
+    const ereignis: MatchEvent = { seq: 1, kind: "oneEighty", playerId: "p1" };
+    const ergebnis = szeneAusZustand(zustand({ lastEvent: ereignis }), 87);
+    expect(ergebnis.ueberlagerung).toEqual({
+      art: "bigMoment",
+      seq: 1,
+      anlass: "oneEighty",
+      spielerId: "p1",
+    });
+    expect(ergebnis.verarbeiteteSeq).toBe(1);
+  });
+
+  it("spielt dieselbe Momentaufnahme trotzdem nur einmal ab", () => {
+    const ereignis: MatchEvent = { seq: 4, kind: "legWon", playerId: "p1" };
+    const ergebnis = szeneAusZustand(zustand({ lastEvent: ereignis }), 4);
+    expect(ergebnis.ueberlagerung).toBeNull();
+    expect(ergebnis.verarbeiteteSeq).toBe(4);
+  });
+});

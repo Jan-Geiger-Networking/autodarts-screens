@@ -26,6 +26,9 @@ import { vorfuehrungEingefroren } from '../spectator/vorfuehrung'
  */
 const DAUER_MS: Record<Ueberlagerung['art'], number> = {
   playerChange: 1600,
+  // Noch kuerzer als auf dem Zuschauer-Screen: hier steht der Werfer davor
+  // und wirft gleich weiter.
+  miss: 900,
   bigMoment: 2200,
   legWin: 2800,
   matchWin: 6000,
@@ -55,6 +58,8 @@ function texte(zustand: MatchState, u: Ueberlagerung): { oben: string; gross: st
       return u.anlass === 'oneEighty'
         ? { oben: nameVon(zustand, u.spielerId), gross: '180' }
         : { oben: nameVon(zustand, u.spielerId), gross: 'High Finish' }
+    case 'miss':
+      return { oben: nameVon(zustand, u.spielerId), gross: 'Miss' }
     case 'legWin':
       return { oben: 'Leg gewonnen', gross: nameVon(zustand, u.spielerId) }
     case 'matchWin':

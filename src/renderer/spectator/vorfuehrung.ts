@@ -396,6 +396,15 @@ function bauSchritte(): Schritt[] {
     activePlayerId: null,
   }
 
+  // Ein Dart ausserhalb der Scheibe. Wie die Anfangsermittlung ans Ende
+  // gehaengt, damit die Nummern der uebrigen Schritte stabil bleiben.
+  const miss = mitCheckout({
+    ...scoreboard,
+    currentThrow: [{ name: 'Miss', value: 0, multiplier: 1 }],
+    currentThrowTotal: 0,
+    lastEvent: { seq: 12, kind: 'miss', playerId: 'p1' },
+  })
+
   return [
     { zustand: idle, haltenMs: 3000 },
     { zustand: intro, haltenMs: 8000 },
@@ -413,6 +422,7 @@ function bauSchritte(): Schritt[] {
     // Nummern der uebrigen Schritte stabil, auf die in Notizen und
     // Bildschirmfotos verwiesen wird.
     { zustand: bullOff, haltenMs: 6000 },
+    { zustand: miss, haltenMs: 2500 },
   ];
 }
 

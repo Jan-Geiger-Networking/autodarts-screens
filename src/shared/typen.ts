@@ -101,6 +101,8 @@ export type MatchEvent = { seq: number } & (
   | { kind: 'throw' }
   | { kind: 'playerChange'; toPlayerId: string }
   | { kind: 'oneEighty'; playerId: string }
+  /** Ein Dart ausserhalb der Scheibe. Wird nur ganz kurz gezeigt. */
+  | { kind: 'miss'; playerId: string }
   | { kind: 'highFinish'; playerId: string; score: number }
   | { kind: 'legWon'; playerId: string }
   | { kind: 'matchWon'; playerId: string }

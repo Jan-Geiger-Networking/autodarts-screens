@@ -4,6 +4,29 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.17] - 2026-09-11
+
+Siebzehnte Beta.
+
+### Behoben
+- **Ab dem zweiten Match einer Sitzung kam auf dem Zuschauer-Screen keine
+  einzige Einblendung mehr** — kein 180er, kein gewonnenes Leg, kein
+  gewonnenes Match. Die Ereignisse tragen eine laufende Nummer, und die
+  beginnt bei jedem neuen Match wieder bei 1, weil der Ruhezustand kein
+  letztes Ereignis führt. Der Bildschirm hatte aber noch die hohe Nummer des
+  vorigen Matches gemerkt und verwarf alles Kleinere als „schon gesehen".
+  Eine kleinere Nummer heißt jetzt „neue Zählung", nicht „alt". Betrifft
+  Zuschauer- und Player-Screen
+
+### Neu
+- **Miss-Einblendung.** Geht ein Dart neben die Scheibe, fährt oben kurz ein
+  rotes Band ein und sofort wieder aus — 1,4 Sekunden auf dem Zuschauer-,
+  0,9 auf dem Player-Screen. Die einzige Einblendung in Warnrot statt in der
+  Signalfarbe: sie hat nichts zu feiern, soll aber im Bild vorkommen, damit
+  niemand rätselt, warum die Punktzahl stehen bleibt. Derselbe Dart wird nie
+  zweimal gemeldet, auch wenn Autodarts mehrere Momentaufnahmen dazu schickt
+- Die Vorführtour zeigt den Miss als letzten Schritt (`?vorfuehrung&schritt=13`)
+
 ## [0.1.0-beta.16] - 2026-09-11
 
 Sechzehnte Beta. Ergebnis einer Sichtprüfung: alle neuen Bildschirme wurden

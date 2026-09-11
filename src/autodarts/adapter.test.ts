@@ -678,3 +678,49 @@ describe('dartsAusZug: fertige Aufnahme bleibt stehen', () => {
     expect(dartsAusZug([{ throws: [] }, { throws: [] }], 'k')).toEqual([])
   })
 })
+
+describe('anwenden: Miss-Ereignis', () => {
+  /** Eine Momentaufnahme mit genau diesen Feldern im laufenden Zug. */
+  const mitWuerfen = (felder: { number: number; bed: string }[]) =>
+    stateEreignis('match-1', {
+      turns: [{ throws: felder.map((segment) => ({ segment })) }],
+      turnScore: 0,
+    })
+
+  it('meldet einen Dart ausserhalb der Scheibe', () => {
+    const laufend = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    const danach = anwenden(laufend, mitWuerfen([{ number: 0, bed: 'Outside' }]))
+    expect(danach.lastEvent?.kind).toBe('miss')
+  })
+
+  it('meldet denselben Dart nicht zweimal', () => {
+    // Autodarts schickt zu einem Wurf mehrere Momentaufnahmen kurz
+    // hintereinander - ohne den Vergleich der Wurfliste liefe die
+    // Einblendung mehrfach fuer denselben Dart.
+    const laufend = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    const einmal = anwenden(laufend, mitWuerfen([{ number: 0, bed: 'Outside' }]))
+    const nochmal = anwenden(einmal, mitWuerfen([{ number: 0, bed: 'Outside' }]))
+    expect(nochmal.lastEvent?.kind).not.toBe('miss')
+  })
+
+  it('meldet nichts, solange der letzte Dart getroffen hat', () => {
+    const laufend = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    const danach = anwenden(laufend, mitWuerfen([{ number: 20, bed: 'Triple' }]))
+    expect(danach.lastEvent?.kind).not.toBe('miss')
+  })
+
+  it('meldet auch den ERSTEN Dart einer neuen Aufnahme, obwohl die Liste dabei kuerzer wird', () => {
+    // 3 Darts -> 1 Dart: ueber die Laenge allein waere das kein neuer Wurf.
+    const laufend = anwenden(RUHEZUSTAND, stateEreignis('match-1'))
+    const volleAufnahme = anwenden(
+      laufend,
+      mitWuerfen([
+        { number: 20, bed: 'Triple' },
+        { number: 20, bed: 'Triple' },
+        { number: 20, bed: 'Triple' },
+      ]),
+    )
+    const neueAufnahme = anwenden(volleAufnahme, mitWuerfen([{ number: 0, bed: 'Outside' }]))
+    expect(neueAufnahme.lastEvent?.kind).toBe('miss')
+  })
+})

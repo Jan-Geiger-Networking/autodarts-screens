@@ -369,6 +369,11 @@ export function istMatchEnde(nutz: Record<string, unknown>): boolean {
   return !BOARD_BEGINN_WERTE.has(wert)
 }
 
+/** Ob zwei Wurflisten denselben Stand meinen (gleiche Laenge, gleiche Felder). */
+function gleicheWurfliste(a: readonly Segment[], b: readonly Segment[]): boolean {
+  return a.length === b.length && a.every((dart, index) => dart.name === b[index]?.name)
+}
+
 function istX01(variant: string): boolean {
   const v = variant.toLowerCase()
   return v === 'x01' || v.includes('x01')
@@ -703,6 +708,16 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
   // Momentaufnahme erhoeht ihn um genau 1.
   const seq = (zustand.lastEvent?.seq ?? 0) + 1
 
+  // Ein Dart ausserhalb der Scheibe. Ausgeloest wird nur, wenn sich die
+  // Wurfliste seit der letzten Momentaufnahme tatsaechlich geaendert hat -
+  // Autodarts schickt zu einem Wurf mehrere Momentaufnahmen kurz
+  // hintereinander, und ohne diesen Vergleich liefe die Einblendung mehrfach
+  // fuer denselben Dart. Der Vergleich ueber die Namen statt ueber die
+  // Laenge allein: der erste Dart einer neuen Aufnahme verkuerzt die Liste
+  // (3 -> 1), waere also ueber die Laenge nicht als neu zu erkennen.
+  const letzterDart = currentThrow[currentThrow.length - 1]
+  const missGeworfen = letzterDart?.value === 0 && !gleicheWurfliste(currentThrow, zustand.currentThrow)
+
   let ereignis: MatchEvent
   if (matchGeradeGewonnen) {
     ereignis = { seq, kind: 'matchWon', playerId: matchGewinnerId ?? activePlayerId ?? '' }
@@ -717,6 +732,8 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
         : { seq, kind: 'legWon', playerId: legGewinnerId ?? activePlayerId ?? '' }
   } else if (currentThrowTotal === 180 && !bust) {
     ereignis = { seq, kind: 'oneEighty', playerId: activePlayerId ?? '' }
+  } else if (missGeworfen) {
+    ereignis = { seq, kind: 'miss', playerId: activePlayerId ?? '' }
   } else if (spielerWechsel) {
     ereignis = { seq, kind: 'playerChange', toPlayerId: activePlayerId as string }
   } else {

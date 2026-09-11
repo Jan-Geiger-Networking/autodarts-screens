@@ -11,6 +11,7 @@ export type BasisSzene = 'idle' | 'bullOff' | 'intro' | 'scoreboard'
 export type Ueberlagerung =
   | { art: 'playerChange'; seq: number; zuSpielerId: string }
   | { art: 'bigMoment'; seq: number; anlass: 'oneEighty' | 'highFinish'; spielerId: string }
+  | { art: 'miss'; seq: number; spielerId: string }
   | { art: 'legWin'; seq: number; spielerId: string }
   | { art: 'matchWin'; seq: number; spielerId: string }
 
@@ -29,6 +30,9 @@ export type SzenenErgebnis = {
 // unserem Arbeitsbereich liegende Logik).
 export const UEBERLAGERUNG_DAUER_MS: Record<Ueberlagerung['art'], number> = {
   playerChange: 2500,
+  // Kurz - der Wurf ist daneben gegangen, das muss man sehen, aber nicht
+  // ausgiebig ("die miss aber schnell weg gehen").
+  miss: 1400,
   bigMoment: 3500,
   legWin: 4000,
   matchWin: 12000,
@@ -49,6 +53,8 @@ function ueberlagerungAusEreignis(ereignis: MatchEvent): Ueberlagerung | null {
       return { art: 'playerChange', seq: ereignis.seq, zuSpielerId: ereignis.toPlayerId }
     case 'oneEighty':
       return { art: 'bigMoment', seq: ereignis.seq, anlass: 'oneEighty', spielerId: ereignis.playerId }
+    case 'miss':
+      return { art: 'miss', seq: ereignis.seq, spielerId: ereignis.playerId }
     case 'highFinish':
       return { art: 'bigMoment', seq: ereignis.seq, anlass: 'highFinish', spielerId: ereignis.playerId }
     case 'legWon':
@@ -62,16 +68,25 @@ function ueberlagerungAusEreignis(ereignis: MatchEvent): Ueberlagerung | null {
 
 /**
  * `zuletztVerarbeiteteSeq` ist die zuletzt von diesem Aufrufer verarbeitete
- * `lastEvent.seq`. Nur ein `lastEvent` mit hoeherer seq loest eine
- * Ueberlagerung aus - so laeuft eine Einblendung genau einmal, auch wenn
+ * `lastEvent.seq`. Eine Ueberlagerung loest genau dann aus, wenn die Nummer
+ * eine ANDERE ist - so laeuft eine Einblendung genau einmal, auch wenn
  * derselbe MatchState mehrfach durch diese Funktion laeuft (React-Re-Render,
  * unveraenderte IPC-Nachricht, ...).
+ *
+ * Ausdruecklich "andere" und nicht "hoehere": der Zaehler beginnt bei jedem
+ * neuen Match wieder bei 1, weil der Ruhezustand lastEvent: null traegt
+ * (siehe RUHEZUSTAND in adapter.ts). Ein Bildschirm, der ueber einen ganzen
+ * Abend offen bleibt, hat dann noch die hohe Nummer des vorigen Matches
+ * gemerkt - mit "hoeher" waere ab dem ZWEITEN Match keine einzige
+ * Einblendung mehr gekommen, weder 180 noch gewonnenes Leg. Genau das war
+ * gemeldet. Eine kleinere Nummer heisst nicht "alt", sondern "neue
+ * Zaehlung".
  */
 export function szeneAusZustand(zustand: MatchState, zuletztVerarbeiteteSeq: number): SzenenErgebnis {
   const basis = ermittleBasis(zustand)
   const ereignis = zustand.lastEvent
 
-  if (!ereignis || ereignis.seq <= zuletztVerarbeiteteSeq) {
+  if (!ereignis || ereignis.seq === zuletztVerarbeiteteSeq) {
     return { basis, ueberlagerung: null, verarbeiteteSeq: zuletztVerarbeiteteSeq }
   }
 
