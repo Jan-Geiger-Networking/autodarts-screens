@@ -1,0 +1,10 @@
+/* Aus React Bits uebernommen: github.com/DavidHDev/react-bits,
+   src/ts-default/Backgrounds/Grainient/Grainient.css,
+   Commit 3a1c7f2f9f94ed833934ab5c2635760b9e644583.
+   Lizenz: MIT + Commons Clause, siehe LICENSE.md in diesem Ordner. */
+.grainient-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}

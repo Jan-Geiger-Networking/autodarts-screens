@@ -1,0 +1,12 @@
+/* Aus React Bits uebernommen: github.com/DavidHDev/react-bits,
+   src/ts-default/Animations/Noise/Noise.css,
+   Commit 3a1c7f2f9f94ed833934ab5c2635760b9e644583.
+   Lizenz: MIT + Commons Clause, siehe LICENSE.md in diesem Ordner. */
+.noise-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+}
