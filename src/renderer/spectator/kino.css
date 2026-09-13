@@ -1,0 +1,349 @@
+/* Pausenscreen im Stil "Kino" - Vorspann und Matchtag.
+   Siehe docs/superpowers/specs/2026-09-13-pausenscreen-kino-design.md.
+   Alles in vh/vw, damit 1080p und 4K gleich wirken. Gruen nur als Signal,
+   Weiss fuer Inhalte, Grau fuer Nebensachen - kein Amber, kein Rot. */
+
+/* ─── Buehne ─────────────────────────────────────────────────────── */
+
+.kino {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--jg-bg);
+  color: var(--jg-text);
+  font-family: var(--jg-font-display);
+}
+
+.kino p {
+  margin: 0;
+}
+
+/* Unterlage und Ersatz fuer Grainient: dieselben Farben als ruhiger Verlauf.
+   Mit WebGL deckt die Zeichenflaeche ihn zu, ohne steht nur er. */
+.kino-grund {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60% 70% at 20% 85%, rgba(15, 81, 50, 0.55) 0%, transparent 70%),
+    radial-gradient(55% 65% at 85% 10%, rgba(7, 54, 66, 0.6) 0%, transparent 70%),
+    var(--jg-bg);
+}
+
+.kino--hell .kino-grund {
+  background:
+    radial-gradient(70% 80% at 50% 100%, rgba(22, 163, 74, 0.45) 0%, transparent 70%),
+    radial-gradient(55% 65% at 85% 10%, rgba(14, 116, 144, 0.45) 0%, transparent 70%),
+    #052e16;
+}
+
+.kino-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 50%, transparent 50%, rgba(0, 0, 0, 0.6) 100%);
+}
+
+.kino-logo {
+  position: absolute;
+  top: 4vh;
+  left: 3vw;
+  z-index: 5;
+  height: 6vh;
+  width: auto;
+}
+
+.kino-pause {
+  position: absolute;
+  top: 4.6vh;
+  right: 3vw;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 1vh;
+  font-size: 2.2vh;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--jg-muted-strong);
+}
+
+.kino-pause-punkt {
+  width: 1.2vh;
+  height: 1.2vh;
+  border-radius: 50%;
+  background: var(--jg-accent);
+  animation: kino-puls 1.8s ease-in-out infinite;
+}
+
+@keyframes kino-puls {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* ─── Folien und Ueberblendung (UEBERBLENDUNG_MS in KinoBuehne.tsx) ─── */
+
+.kino-folie {
+  position: absolute;
+  inset: 0;
+}
+
+.kino-folie--ankommend {
+  animation: kino-folie-ein 1500ms var(--jg-ease) both;
+}
+
+.kino-folie--verlassend {
+  animation: kino-folie-aus 1500ms var(--jg-ease) both;
+}
+
+@keyframes kino-folie-ein {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes kino-folie-aus {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Einzelne Elemente, die nach der Folie aus der Unschaerfe auftauchen.
+   Die Verzoegerung kommt je Element als animation-delay aus dem Code. */
+.kino-einblenden {
+  animation: kino-einblenden 900ms var(--jg-ease) both;
+}
+
+@keyframes kino-einblenden {
+  from {
+    opacity: 0;
+    filter: blur(12px);
+    transform: translateY(1.5vh);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+
+.kino-strich {
+  display: block;
+  width: 6vw;
+  height: 0.55vh;
+  background: var(--jg-accent);
+}
+
+/* ─── Vorspann ───────────────────────────────────────────────────── */
+
+.kino-foto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation-name: kino-fahrt-links;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+
+.kino-foto--rechts {
+  animation-name: kino-fahrt-rechts;
+}
+
+@keyframes kino-fahrt-links {
+  from {
+    transform: scale(1.02) translate(0, 0);
+  }
+  to {
+    transform: scale(1.12) translate(-2%, -1.5%);
+  }
+}
+
+@keyframes kino-fahrt-rechts {
+  from {
+    transform: scale(1.02) translate(0, 0);
+  }
+  to {
+    transform: scale(1.12) translate(2%, -1.5%);
+  }
+}
+
+/* Dunkler Verlauf links und unten: dort steht der Text. */
+.kino-foto-schleier {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(2, 6, 23, 0.95) 0%, rgba(2, 6, 23, 0.7) 38%, rgba(2, 6, 23, 0.1) 75%),
+    linear-gradient(0deg, rgba(2, 6, 23, 0.9) 0%, transparent 40%);
+}
+
+.kino-text {
+  position: absolute;
+  left: 6vw;
+  bottom: 17vh;
+  z-index: 2;
+  width: 62vw;
+}
+
+.kino-text .kino-strich {
+  margin-bottom: 3vh;
+}
+
+.kino-wort {
+  font-weight: 800;
+  line-height: 0.88;
+  text-transform: uppercase;
+}
+
+.kino-wort--riesig {
+  font-size: min(26vh, 14vw);
+}
+
+.kino-wort--gross {
+  font-size: min(19vh, 10.5vw);
+}
+
+.kino-wort--kompakt {
+  font-size: min(14vh, 7.6vw);
+}
+
+/* BlurText erzeugt einen eigenen, unklassifizierten <p> je Zeile. Ohne diese
+   Regel gewinnt die globale Absatz-Vorgabe aus tokens.css (kleine Schrift,
+   duenn, weiter Zeilenabstand) gegen die Vererbung aus .kino-wort--*, weil
+   direkt am Element gesetzte Werte immer vor geerbten Werten stehen - die
+   Ueberschrift stand dann kaum lesbar in 16.8px/300 statt in voller Groesse.
+   .kino-unterzeile und .kino-signal-text betrifft das nicht: dort traegt der
+   <p> selbst schon eine Klasse mit eigenem font-size. */
+.kino-wort p {
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
+
+.kino-unterzeile {
+  padding-top: 3.2vh;
+  max-width: 52vw;
+  font-family: var(--jg-font-body);
+  font-size: 3vh;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--jg-muted-strong);
+}
+
+.kino-signal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kino-signal-text {
+  justify-content: center;
+  max-width: 90vw;
+  font-size: min(20vh, 11vw);
+  font-weight: 800;
+  line-height: 0.9;
+  text-transform: uppercase;
+  color: var(--jg-text);
+}
+
+.kino-fuss {
+  position: absolute;
+  left: 6vw;
+  right: 3vw;
+  bottom: 4vh;
+  z-index: 5;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 2vw;
+}
+
+.kino-partner {
+  display: flex;
+  font-size: 2vh;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--jg-muted);
+}
+
+.kino-partner span:not(:last-child)::after {
+  content: '·';
+  margin: 0 0.9vw;
+  color: var(--jg-border-strong);
+}
+
+.kino-kontakt {
+  font-family: var(--jg-font-mono);
+  font-size: 1.6vh;
+  letter-spacing: 0.02em;
+  color: var(--jg-muted);
+  white-space: nowrap;
+}
+
+/* ─── Fortschrittslinie (Fortschritt.tsx) ────────────────────────── */
+
+.fortschritt {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9;
+  height: 0.35vh;
+  background: rgba(229, 236, 245, 0.08);
+  overflow: hidden;
+}
+
+.fortschritt-balken {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: var(--jg-accent);
+  animation-name: fortschritt-laufen;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+
+@keyframes fortschritt-laufen {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ─── Reduzierte Bewegung ────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  /* tokens.css kuerzt jede Animation auf 0.01ms. Die Ueberblendung bleibt
+     trotzdem - sie aendert nur die Deckkraft und bewegt nichts. */
+  .kino-folie--ankommend,
+  .kino-folie--verlassend {
+    animation-duration: 1500ms !important;
+  }
+
+  .kino-foto {
+    animation: none !important;
+    transform: scale(1.02);
+  }
+
+  .kino-pause-punkt {
+    animation: none;
+  }
+
+  .fortschritt-balken {
+    animation: none !important;
+    transform: scaleX(1);
+  }
+}

@@ -473,6 +473,15 @@ export function vorfuehrungEingefroren(): boolean {
 }
 
 /**
+ * ?ohnewebgl schaltet im Vorfuehrmodus den WebGL-Hintergrund des
+ * Pausenscreens ab - so laesst sich der CSS-Ersatz begutachten, den ein
+ * Rechner ohne WebGL 2 zu sehen bekommt.
+ */
+export function vorfuehrOhneWebgl(): boolean {
+  return vorfuehrungAktiv() && parameter().has("ohnewebgl");
+}
+
+/**
  * ?folie=N haelt den Vorspann (Vorspann.tsx) auf einer bestimmten Folie fest,
  * unabhaengig vom schritt-Parameter fuer den MatchState oben: der Vorspann
  * braucht keinen MatchState und laeuft in seinem eigenen Takt weiter, auch
