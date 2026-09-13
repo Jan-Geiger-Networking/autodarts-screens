@@ -69,6 +69,9 @@ bereitgestellt.
 ## Lizenz
 
 MIT, siehe [LICENSE](LICENSE).
+Ausnahme: die angepassten React-Bits-Komponenten unter
+`src/renderer/spectator/reactbits/` stehen unter MIT + Commons Clause, siehe
+[THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
 
 ## Sicherheit und Datenschutz
 

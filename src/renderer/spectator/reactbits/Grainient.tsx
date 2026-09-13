@@ -11,6 +11,7 @@
 //    statt zu springen - eine WebGL-Flaeche traegt alle Folien.
 //  - Der WebGL-Kontext wird beim Aushaengen freigegeben.
 //  - Anpassungen fuer noUncheckedIndexedAccess.
+//  - Scheitert WebGL beim Anlegen, bleibt die Flaeche leer statt zu werfen.
 
 import React, { useEffect, useRef } from 'react';
 import { Renderer, Program, Mesh, Triangle } from 'ogl';
@@ -243,12 +244,21 @@ const Grainient: React.FC<GrainientProps> = ({
     const container = containerRef.current;
     if (!container) return;
 
-    const renderer = new Renderer({
-      webgl: 2,
-      alpha: true,
-      antialias: false,
-      dpr: Math.min(window.devicePixelRatio || 1, maxDpr)
-    });
+    let renderer: InstanceType<typeof Renderer>;
+    try {
+      renderer = new Renderer({
+        webgl: 2,
+        alpha: true,
+        antialias: false,
+        dpr: Math.min(window.devicePixelRatio || 1, maxDpr)
+      });
+    } catch {
+      // Kein Kontext zu bekommen (this.gl bleibt null) laesst ogl im
+      // Konstruktor werfen ('this.gl.renderer = this' auf null) - Flaeche
+      // bleibt dann einfach leer, statt die React-Wurzel zu leeren.
+      return;
+    }
+    if (!renderer.isWebgl2) return; // Shader brauchen WebGL 2 (#version 300 es)
 
     const gl = renderer.gl;
     const canvas = gl.canvas as HTMLCanvasElement;
@@ -307,6 +317,20 @@ const Grainient: React.FC<GrainientProps> = ({
         uLightMode: { value: lightMode ? 1.0 : 0.0 }
       }
     });
+
+    if (!program.uniformLocations) {
+      // Linken gescheitert - ogl setzt uniformLocations nur bei Erfolg
+      // (Program.js/setShaders bricht bei LINK_STATUS false vorher ab).
+      // Ohne diese Pruefung wuerde program.use() gleich darauf auf
+      // undefined.forEach() werfen. Flaeche bleibt leer statt zu werfen.
+      try {
+        container.removeChild(canvas);
+      } catch {
+        /* bereits entfernt */
+      }
+      gl.getExtension('WEBGL_lose_context')?.loseContext();
+      return;
+    }
 
     const mesh = new Mesh(gl, { geometry, program });
 
@@ -381,6 +405,12 @@ const Grainient: React.FC<GrainientProps> = ({
     };
     document.addEventListener('visibilitychange', onVisibility);
 
+    // Der Kontext kann im Betrieb verloren gehen (Treiberwechsel, zu viele
+    // Kontexte offen). Ohne dies liefe die Schleife nutzlos gegen einen
+    // toten Kontext weiter.
+    const onContextLost = () => tryStop();
+    canvas.addEventListener('webglcontextlost', onContextLost);
+
     tryStart();
 
     return () => {
@@ -388,6 +418,7 @@ const Grainient: React.FC<GrainientProps> = ({
       ro.disconnect();
       io.disconnect();
       document.removeEventListener('visibilitychange', onVisibility);
+      canvas.removeEventListener('webglcontextlost', onContextLost);
       ctxMap.delete(container);
       try {
         container.removeChild(canvas);

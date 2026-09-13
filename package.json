@@ -54,6 +54,8 @@
       "assets/**/*",
       "package.json",
       "CHANGELOG.md",
+      "src/renderer/spectator/reactbits/LICENSE.md",
+      "THIRD-PARTY-LICENSES.md",
       "node_modules/**/*"
     ],
     "win": {

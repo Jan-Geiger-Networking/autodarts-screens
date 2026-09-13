@@ -7,7 +7,7 @@
 //  - Verlaesst der Zuschauer-Screen die Pause, haengt App.tsx die Buehne aus;
 //    Grainient gibt dabei seinen WebGL-Kontext frei.
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { Component, useEffect, useState, type ReactNode } from 'react'
 import { useReducedMotion } from 'motion/react'
 import logoWeiss from '../../../assets/logo-white.png'
 import Grainient from './reactbits/Grainient'
@@ -26,7 +26,7 @@ export const UEBERBLENDUNG_MS = 1500
  */
 const FARBEN = {
   normal: { color1: '#0f5132', color2: '#020617', color3: '#073642', contrast: 1.35 },
-  hell: { color1: '#16a34a', color2: '#052e16', color3: '#0e7490', contrast: 1.2 },
+  hell: { color1: '#15803d', color2: '#052e16', color3: '#0e7490', contrast: 1.2 },
 } as const
 
 let webgl2Ergebnis: boolean | null = null
@@ -46,6 +46,23 @@ function webgl2Verfuegbar(): boolean {
   return webgl2Ergebnis
 }
 
+/**
+ * Faengt einen Fehler ab, der trotz der webgl2Verfuegbar()-Vorabpruefung noch
+ * beim Anlegen des Kontexts auftritt (siehe Spec Abschnitt 4: kein leerer
+ * Schirm). Ohne diese Grenze wuerde React 19 bei einem Fehler im Effekt die
+ * ganze Wurzel aushaengen - mit ihr bleibt nur die Grainient-Flaeche leer,
+ * der CSS-Verlauf darunter (.kino-grund) traegt weiter.
+ */
+class WebglGrenze extends Component<{ children: ReactNode }, { fehler: boolean }> {
+  state = { fehler: false }
+  static getDerivedStateFromError() {
+    return { fehler: true }
+  }
+  render() {
+    return this.state.fehler ? null : this.props.children
+  }
+}
+
 export function KinoBuehne({ lage, hell = false, children }: { lage: VerlaufLage; hell?: boolean; children: ReactNode }) {
   const stillstand = useReducedMotion() === true
   const [webgl] = useState(webgl2Verfuegbar)
@@ -55,21 +72,23 @@ export function KinoBuehne({ lage, hell = false, children }: { lage: VerlaufLage
     <div className={`kino${hell ? ' kino--hell' : ''}`}>
       <div className="kino-grund" aria-hidden="true">
         {webgl && (
-          <Grainient
-            color1={farben.color1}
-            color2={farben.color2}
-            color3={farben.color3}
-            contrast={farben.contrast}
-            centerX={lage.centerX}
-            centerY={lage.centerY}
-            blendAngle={lage.blendAngle}
-            timeSpeed={0.12}
-            warpSpeed={1.2}
-            grainAmount={0.05}
-            grainAnimated={false}
-            maxDpr={0.5}
-            stillstand={stillstand}
-          />
+          <WebglGrenze>
+            <Grainient
+              color1={farben.color1}
+              color2={farben.color2}
+              color3={farben.color3}
+              contrast={farben.contrast}
+              centerX={lage.centerX}
+              centerY={lage.centerY}
+              blendAngle={lage.blendAngle}
+              timeSpeed={0.12}
+              warpSpeed={1.2}
+              grainAmount={0.05}
+              grainAnimated={false}
+              maxDpr={0.5}
+              stillstand={stillstand}
+            />
+          </WebglGrenze>
         )}
       </div>
       <div className="kino-vignette" aria-hidden="true" />

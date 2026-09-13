@@ -13,7 +13,7 @@
 // Unschaerfe auf, Zahlen zaehlen hoch. Strahlen und Konfetti der Siegerfolie
 // sind entfallen; der hellere Verlauf uebernimmt ihre Rolle.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import {
   endstand,
   naechstePaarung,
@@ -144,34 +144,45 @@ function Titel({ kicker, titel }: { kicker: string; titel: string }) {
   )
 }
 
+/** Style-Variable fuer die laengenabhaengige Schriftgroesse in kino.css. */
+function zeichenVariable(text: string): CSSProperties {
+  return { '--zeichen': text.length } as CSSProperties
+}
+
 function FolieJetzt({ matchtag }: { matchtag: MatchtagStand }) {
   const naechste = naechstePaarung(matchtag)
   if (!naechste) return null
   const danach = matchtag.paarungen.filter((p) => p.siegerId === null && p.id !== naechste.id).slice(0, 3)
   const stechen = matchtag.phase === 'stechen'
+  const nameA = spielerName(matchtag, naechste.aId)
+  const nameB = spielerName(matchtag, naechste.bId)
 
   return (
     <div className="mt-folie mt-jetzt">
       <div className="mt-jetzt-paar">
         <span className="kino-strich" />
         <span className="mt-kicker">{stechen ? 'Stechen um den Sieg' : 'Als Nächstes'}</span>
-        <BlurText
-          text={spielerName(matchtag, naechste.aId)}
-          className="mt-jetzt-name"
-          startVerzoegerungMs={TEXT_START_MS}
-          delay={120}
-          direction="bottom"
-        />
+        <div className="mt-name-rahmen" style={zeichenVariable(nameA)}>
+          <BlurText
+            text={nameA}
+            className="mt-jetzt-name"
+            startVerzoegerungMs={TEXT_START_MS}
+            delay={120}
+            direction="bottom"
+          />
+        </div>
         <span className="mt-jetzt-gegen kino-einblenden" style={verzoegert(TEXT_START_MS + 500)}>
           gegen
         </span>
-        <BlurText
-          text={spielerName(matchtag, naechste.bId)}
-          className="mt-jetzt-name"
-          startVerzoegerungMs={TEXT_START_MS + 800}
-          delay={120}
-          direction="bottom"
-        />
+        <div className="mt-name-rahmen" style={zeichenVariable(nameB)}>
+          <BlurText
+            text={nameB}
+            className="mt-jetzt-name"
+            startVerzoegerungMs={TEXT_START_MS + 800}
+            delay={120}
+            direction="bottom"
+          />
+        </div>
       </div>
       {danach.length > 0 && (
         <div className="mt-danach kino-einblenden" style={verzoegert(TEXT_START_MS + 1400)}>
@@ -440,14 +451,16 @@ function FolieSieger({ matchtag }: { matchtag: MatchtagStand }) {
       <span className="mt-kicker mt-kicker--abstand kino-einblenden" style={verzoegert(TEXT_START_MS - 200)}>
         {matchtag.titel || 'Matchtag'} entschieden
       </span>
-      <BlurText
-        text={name}
-        animateBy="letters"
-        className="mt-siegername"
-        startVerzoegerungMs={TEXT_START_MS}
-        delay={70}
-        direction="bottom"
-      />
+      <div className="mt-name-rahmen" style={zeichenVariable(name)}>
+        <BlurText
+          text={name}
+          animateBy="letters"
+          className="mt-siegername"
+          startVerzoegerungMs={TEXT_START_MS}
+          delay={70}
+          direction="bottom"
+        />
+      </div>
       <p className="mt-siegerzeile kino-einblenden" style={verzoegert(nachName + 400)}>
         Sieger des Abends
       </p>
@@ -517,9 +530,15 @@ export function Matchtag({ matchtag }: { matchtag: MatchtagStand }) {
   const [index, setIndex] = useState(0)
 
   // Beginnt der Matchtag eine neue Phase, aendert sich die Folienliste. Dann
-  // von vorn, statt in einem Index zu stehen, den es nicht mehr gibt.
+  // von vorn, statt in einem Index zu stehen, den es nicht mehr gibt - noch
+  // WAEHREND des Renders zuruecksetzen (State-Herleitung), sonst zeigt genau
+  // dieser eine Render die neue Liste noch mit dem alten Index.
   const schluessel = folien.join('|')
-  useEffect(() => setIndex(0), [schluessel])
+  const [liste, setListe] = useState(schluessel)
+  if (liste !== schluessel) {
+    setListe(schluessel)
+    setIndex(0)
+  }
 
   useEffect(() => {
     if (festgehalten !== null) return

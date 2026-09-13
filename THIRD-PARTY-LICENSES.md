@@ -59,7 +59,8 @@ Sie stehen **nicht** unter der MIT-Lizenz dieses Repos, sondern unter
 **MIT + Commons Clause**, Copyright (c) 2026 David Haz. Der Volltext liegt in
 `src/renderer/spectator/reactbits/LICENSE.md`. Die Commons Clause erlaubt den
 Einsatz als Teil einer Anwendung, verbietet aber, die Komponenten selbst zu
-verkaufen, unterzulizenzieren oder einzeln weiterzugeben.
+verkaufen, unterzulizenzieren oder weiterzugeben – allein, gebündelt oder
+portiert.
 
 ## Methode und Grenzen
 

@@ -33,7 +33,7 @@
   background:
     radial-gradient(70% 80% at 50% 100%, rgba(22, 163, 74, 0.45) 0%, transparent 70%),
     radial-gradient(55% 65% at 85% 10%, rgba(14, 116, 144, 0.45) 0%, transparent 70%),
-    #052e16;
+    #04210f;
 }
 
 .kino-vignette {
@@ -509,8 +509,14 @@
   margin: 2.5vh 0 1vh;
 }
 
+/* BlurText setzt flex-wrap als Inline-Stil - ohne !important koennte ein
+   zweiwortiger Name umbrechen und der zweite unter den Bildschirmrand
+   rutschen. Die dritte min()-Grenze schrumpft lange Namen ueber --zeichen
+   (Matchtag.tsx, mt-name-rahmen). */
 .mt-jetzt-name {
-  font-size: min(22vh, 12vw);
+  font-size: min(22vh, 12vw, calc(120vw / var(--zeichen, 8)));
+  flex-wrap: nowrap !important;
+  white-space: nowrap;
   font-weight: 800;
   line-height: 0.86;
   text-transform: uppercase;
@@ -659,6 +665,13 @@
 
 .mt-plan--3 .mt-plan-zeile {
   font-size: 2.6vh;
+}
+
+.mt-plan-name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mt-plan-name:first-child {
@@ -843,7 +856,7 @@
 .mt-siegername {
   flex-wrap: nowrap !important;
   padding-top: 1.5vh;
-  font-size: min(26vh, 14vw);
+  font-size: min(26vh, 14vw, calc(165vw / var(--zeichen, 8)));
   font-weight: 800;
   line-height: 0.88;
   text-transform: uppercase;
@@ -903,6 +916,25 @@
   margin-left: 1vw;
   font-size: 0.8em;
   color: var(--jg-muted);
+}
+
+/* Siegerfolie (kino--hell): auf dem hellen Verlauf sind Gruen und Grau kaum
+   zu lesen - dort tragen Weiss und ein gedaempftes Weiss die Schrift. */
+.kino--hell .mt-kicker,
+.kino--hell .mt-siegerzeile,
+.kino--hell .mt-status-text {
+  color: var(--jg-text);
+}
+
+.kino--hell .mt-siegerwert,
+.kino--hell .mt-podest,
+.kino--hell .mt-podest-nummer,
+.kino--hell .mt-podest-punkte {
+  color: rgba(229, 236, 245, 0.85);
+}
+
+.kino--hell .kino-strich {
+  background: var(--jg-text);
 }
 
 @media (prefers-reduced-motion: reduce) {

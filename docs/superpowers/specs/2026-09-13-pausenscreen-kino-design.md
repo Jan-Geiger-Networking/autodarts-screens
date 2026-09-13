@@ -59,6 +59,7 @@ Vorspann und Matchtag teilen sich dieselbe Bühne (`KinoBuehne`).
     WebGL-Fläche läuft dann nicht weiter.
   - Liefert der Rechner kein WebGL 2, steht ein ruhiger CSS-Verlauf in
     denselben Farben da. Es gibt keine Fehlermeldung und keinen leeren Schirm.
+    Scheitert WebGL erst beim Anlegen, fängt eine Fehlergrenze das ab.
 - **Feste Elemente:** Logo oben links (`assets/logo-white.png`). Oben rechts
   „● Spielpause“ ohne Kasten, als Punkt mit Puls und Schrift. Unten eine dünne
   grüne Fortschrittslinie über die Standzeit der aktuellen Folie.
@@ -100,7 +101,7 @@ Vorspann und Matchtag teilen sich dieselbe Bühne (`KinoBuehne`).
   - Gleicher Textaufbau direkt auf Grainient.
   - Je Folie sitzt der Verlauf anders (Grainient-Props `centerX`, `centerY`
     und `blendAngle`), damit keine Folie wie die vorige aussieht.
-  - Ein Foto lässt sich später je Folie über ein optionales Feld `bild`
+  - Ein Foto lässt sich später je Folie über ein optionales Feld `foto`
     nachtragen.
 - **Zwischenfolie „Gleich geht's weiter“:** nur Grainient, mittig riesig
   „Gleich geht's weiter“ aus der Unschärfe.
@@ -249,4 +250,4 @@ Unlicense (gemeinfrei).
 
 - Live-Match im Kino-Stil (eigener Schritt).
 - Weitere Fotos je Service-Folie, sobald vorhanden. Dafür genügt das Feld
-  `bild`.
+  `foto`.
