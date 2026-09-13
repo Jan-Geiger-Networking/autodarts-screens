@@ -760,7 +760,7 @@
 
 .mt-heatmaps {
   display: grid;
-  gap: 3vh 3vw;
+  gap: 2.2vh 3vw;
   align-content: start;
 }
 
@@ -786,7 +786,7 @@
 .mt-heatmaps-6 .heatmap,
 .mt-heatmaps-7 .heatmap,
 .mt-heatmaps-8 .heatmap {
-  max-width: 21vh;
+  max-width: 19vh;
 }
 
 .mt-heatkarte {
