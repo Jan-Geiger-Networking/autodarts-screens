@@ -4,6 +4,10 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.27] - 2026-09-13
+
+Siebenundzwanzigste Beta. Der Pausenscreen bekommt einen neuen Look.
+
 ### Geändert
 - **Pausenscreen im Kino-Stil.** Vorspann und Matchtag-Folien auf dem
   Zuschauer-Screen sind neu gestaltet: Fotos mit langsamer Kamerafahrt, ein
