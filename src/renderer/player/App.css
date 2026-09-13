@@ -231,6 +231,10 @@
   color: var(--jg-accent);
 }
 
+.wurfplatz.ist-miss .wurfplatz-name {
+  color: var(--jg-warning);
+}
+
 .wurfplatz:not(.belegt):not(.ist-empfehlung) .wurfplatz-name {
   color: var(--jg-muted);
 }
@@ -974,6 +978,11 @@
   border-color: var(--jg-border-strong);
 }
 
+.jgn-pfeil.ist-miss {
+  color: var(--jg-warning);
+  border-color: var(--jg-warning);
+}
+
 .jgn-pfeil.ist-empfehlung {
   color: var(--jg-accent);
   border-color: var(--jg-accent-strong);
@@ -1349,9 +1358,16 @@
   font-size: min(78vh, 42vw);
   font-weight: 800;
   line-height: 0.85;
-  color: var(--jg-text);
+  color: var(--jg-accent);
   font-variant-numeric: tabular-nums;
   animation: jgn-vollbild-zahl 360ms var(--jg-ease) both;
+}
+
+/* Wer geworfen hat - groesser als die uebrigen Beschriftungen. */
+.jgn-vollbild-werfer {
+  font-size: 10vh;
+  letter-spacing: 0.12em;
+  color: var(--jg-text);
 }
 
 .jgn-vollbild-zahl.ist-bust {
@@ -1394,18 +1410,10 @@
   color: var(--jg-accent);
 }
 
-/* Der Naechste am Wurf auf voller Signalfarbe - dieselbe Paarung wie die
-   bisherige Bahn: dunkle Schrift auf Gruen, aus fuenf Metern lesbar. */
-.jgn-vollbild-amwurf {
-  background: var(--jg-accent);
-}
-
-.jgn-vollbild-amwurf .jgn-vollbild-oben {
-  color: rgba(2, 6, 23, 0.72);
-}
-
+/* Der Naechste am Wurf: dunkler Grund, Name in der Signalfarbe. Eine volle
+   gruene Flaeche ueber den ganzen Monitor blendete ("sonst blendet das so"). */
 .jgn-vollbild-amwurf .jgn-vollbild-name {
-  color: #02040c;
+  color: var(--jg-accent);
 }
 
 @keyframes jgn-vollbild-ein {

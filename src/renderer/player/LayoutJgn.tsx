@@ -136,7 +136,8 @@ function Pfeile({ zustand }: { zustand: MatchState }) {
         const dart = geworfen[platz]
         const empfehlung = dart ? null : (vorschlag[platz - geworfen.length] ?? null)
         const text = dart?.name ?? empfehlung ?? '–'
-        const art = dart ? 'ist-geworfen' : empfehlung ? 'ist-empfehlung' : 'ist-leer'
+        // Ein Miss steht rot: daneben ist daneben, das soll man sofort sehen.
+        const art = dart ? (dart.value === 0 ? 'ist-geworfen ist-miss' : 'ist-geworfen') : empfehlung ? 'ist-empfehlung' : 'ist-leer'
         return (
           <span className={`jgn-pfeil ${art}`} key={platz}>
             {text}
@@ -253,7 +254,7 @@ function VollbildAnzeige({ zustand }: { zustand: MatchState }) {
       <div className="jgn-vollbild-film">
         {inhalt.art === 'aufnahme' ? (
           <div className="jgn-vollbild-bild">
-            <span className="jgn-vollbild-oben">{name(inhalt.spielerId)}</span>
+            <span className="jgn-vollbild-oben jgn-vollbild-werfer">{name(inhalt.spielerId)}</span>
             <span className={`jgn-vollbild-zahl${inhalt.bust ? ' ist-bust' : ''}`}>
               {inhalt.bust ? 'Bust' : inhalt.punkte}
             </span>

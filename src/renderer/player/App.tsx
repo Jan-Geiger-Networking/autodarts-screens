@@ -311,7 +311,7 @@ export function App() {
           const empfehlung = dart ? null : (ausWeg ?? (i === zustand.currentThrow.length ? zustand.checkoutHint : null))
           return (
             <span
-              className={`wurfplatz${dart ? ' belegt' : ''}${!dart && empfehlung ? ' ist-empfehlung' : ''}`}
+              className={`wurfplatz${dart ? ' belegt' : ''}${dart?.value === 0 ? ' ist-miss' : ''}${!dart && empfehlung ? ' ist-empfehlung' : ''}`}
               key={i}
             >
               <DartSymbol gefuellt={Boolean(dart)} />
