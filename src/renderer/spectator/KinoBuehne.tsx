@@ -7,7 +7,7 @@
 //  - Verlaesst der Zuschauer-Screen die Pause, haengt App.tsx die Buehne aus;
 //    Grainient gibt dabei seinen WebGL-Kontext frei.
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useReducedMotion } from 'motion/react'
 import logoWeiss from '../../../assets/logo-white.png'
 import Grainient from './reactbits/Grainient'
@@ -88,14 +88,21 @@ export function KinoBuehne({ lage, hell = false, children }: { lage: VerlaufLage
  * alte Folie ausblenden, waehrend die neue einblendet. Danach null.
  */
 export function useVorige<T>(aktuell: T, dauerMs: number = UEBERBLENDUNG_MS): T | null {
-  const [vorige, setVorige] = useState<T | null>(null)
-  const letzte = useRef(aktuell)
+  // Der vorige Wert wird schon WAEHREND des Renders festgehalten, in dem sich
+  // aktuell aendert (setState im Render, von React fuer abgeleiteten Zustand
+  // vorgesehen). Ueber einen Effekt kaeme er erst einen Render spaeter - die
+  // alte Folie waere dazwischen ausgehaengt und wuerde neu aufgebaut.
+  const [stand, setStand] = useState<{ aktuell: T; vorige: T | null }>({ aktuell, vorige: null })
+  if (!Object.is(stand.aktuell, aktuell)) {
+    setStand({ aktuell, vorige: stand.aktuell })
+  }
+  const vorige = Object.is(stand.aktuell, aktuell) ? stand.vorige : stand.aktuell
+
   useEffect(() => {
-    if (Object.is(letzte.current, aktuell)) return
-    setVorige(letzte.current)
-    letzte.current = aktuell
-    const zeit = window.setTimeout(() => setVorige(null), dauerMs)
+    if (stand.vorige === null) return
+    const zeit = window.setTimeout(() => setStand((s) => ({ aktuell: s.aktuell, vorige: null })), dauerMs)
     return () => window.clearTimeout(zeit)
-  }, [aktuell, dauerMs])
+  }, [stand, dauerMs])
+
   return vorige
 }
