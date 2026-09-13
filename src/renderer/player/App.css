@@ -1289,6 +1289,158 @@
   }
 }
 
+/* ─── Vollbild im Layout "JGN Optimized" ──────────────────────────────
+   Zwei Bilder nebeneinander auf einem Filmstreifen von doppelter Breite:
+   links die Summe der Aufnahme oder der Leg-Sieger, rechts der Naechste am
+   Wurf. Der Wechsel schiebt den Streifen um eine Monitorbreite - so ist es
+   eine Bewegung statt zweier Einblendungen. Die Groessen haengen an vh UND
+   vw, damit auch "BUST" und lange Namen auf 16:9 in die Breite passen. */
+
+.jgn-vollbild {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  overflow: hidden;
+  pointer-events: none;
+  animation: jgn-vollbild-ein 220ms var(--jg-ease) both;
+  transition: opacity 420ms var(--jg-ease);
+}
+
+.jgn-vollbild.ist-aus {
+  opacity: 0;
+}
+
+.jgn-vollbild-film {
+  display: flex;
+  width: 200vw;
+  height: 100%;
+  transition: transform 600ms var(--jg-ease);
+}
+
+.jgn-vollbild.mit-wechsel .jgn-vollbild-film {
+  transform: translateX(-100vw);
+}
+
+.jgn-vollbild-bild {
+  flex: 0 0 100vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1vh;
+  padding: 0 4vw;
+  box-sizing: border-box;
+  background: var(--jg-bg);
+  line-height: 1;
+  min-width: 0;
+}
+
+.jgn-vollbild-oben {
+  font-family: var(--jg-font-display);
+  font-size: 6vh;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--jg-muted-strong);
+}
+
+.jgn-vollbild-zahl {
+  font-family: var(--jg-font-display);
+  font-size: min(78vh, 42vw);
+  font-weight: 800;
+  line-height: 0.85;
+  color: var(--jg-text);
+  font-variant-numeric: tabular-nums;
+  animation: jgn-vollbild-zahl 360ms var(--jg-ease) both;
+}
+
+.jgn-vollbild-zahl.ist-bust {
+  font-size: min(50vh, 30vw);
+  text-transform: uppercase;
+  color: var(--jg-warning);
+}
+
+.jgn-vollbild-name {
+  max-width: 100%;
+  font-family: var(--jg-font-display);
+  font-size: min(30vh, 15vw);
+  font-weight: 800;
+  line-height: 0.95;
+  text-transform: uppercase;
+  color: var(--jg-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jgn-vollbild-unten {
+  font-family: var(--jg-font-display);
+  font-size: 7vh;
+  font-weight: 700;
+  color: var(--jg-muted-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Leg- und Match-Sieg: derselbe dunkle Grund, die Signalfarbe steht im
+   Schriftzug und im Schein von unten. */
+.jgn-vollbild-sieg {
+  /* accent-dim ist durchscheinend - der deckende Grund liegt darunter. */
+  background:
+    radial-gradient(ellipse at 50% 110%, var(--jg-accent-dim) 0%, transparent 65%),
+    var(--jg-bg);
+}
+
+.jgn-vollbild-sieg .jgn-vollbild-oben {
+  color: var(--jg-accent);
+}
+
+/* Der Naechste am Wurf auf voller Signalfarbe - dieselbe Paarung wie die
+   bisherige Bahn: dunkle Schrift auf Gruen, aus fuenf Metern lesbar. */
+.jgn-vollbild-amwurf {
+  background: var(--jg-accent);
+}
+
+.jgn-vollbild-amwurf .jgn-vollbild-oben {
+  color: rgba(2, 6, 23, 0.72);
+}
+
+.jgn-vollbild-amwurf .jgn-vollbild-name {
+  color: #02040c;
+}
+
+@keyframes jgn-vollbild-ein {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes jgn-vollbild-zahl {
+  from {
+    transform: scale(1.12);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* Ohne Bewegung: kein Schieben, der Naechste blendet ueber. */
+@media (prefers-reduced-motion: reduce) {
+  .jgn-vollbild-film {
+    transition: none;
+  }
+
+  .jgn-vollbild-zahl {
+    animation: none;
+  }
+
+  .jgn-vollbild.mit-wechsel .jgn-vollbild-amwurf {
+    animation: jgn-vollbild-ein 300ms both;
+  }
+}
+
 
 /* ─── Viele Spieler: Tafeln kleiner statt abgeschnitten ───────────────
    Zwei Spalten teilen sich die Hoehe. Ab drei Tafeln je Spalte passt der

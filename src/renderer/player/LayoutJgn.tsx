@@ -14,15 +14,19 @@
 //   rechts oben  Das Herkunftszeichen - und an seiner Stelle die Einblendung,
 //                sobald etwas passiert (180, Bullseye, Miss, Leg, Match).
 //   rechts       Die Scheibe mit den gemessenen Auftreffpunkten.
+//   ueber allem  Das Vollbild: die Summe der Aufnahme bzw. der Leg-Sieger, bis
+//                die Pfeile gezogen sind, dann der naechste Spieler am Wurf.
 //
 // Die Ableitung der Einblendungen kommt aus useEinblendung() und ist mit der
 // Default-Fassung geteilt: zwei Ableitungen desselben Ereignisses waeren zwei
 // Gelegenheiten, auseinanderzulaufen.
 
+import { useEffect, useState } from 'react'
 import type { MatchState, Player, PlayerScore } from '../../shared/typen'
 import logoWeiss from '../../../assets/logo-white.png'
 import { Dartscheibe } from '../shared/Dartscheibe'
-import { SpielerSlide, texte, useEinblendung } from './Einblendung'
+import { texte, useEinblendung } from './Einblendung'
+import { vollbildAus, type Vollbild } from './vollbild'
 
 /** Ein Average mit einer Nachkommastelle, oder ein Strich. */
 function zahlOderStrich(wert: number | null): string {
@@ -152,7 +156,9 @@ function Logofeld({ zustand }: { zustand: MatchState }) {
   const { anzeige, sichtbar } = useEinblendung(zustand)
   const u = anzeige?.ueberlagerung
 
-  if (!u || !anzeige) {
+  // Der Spielerwechsel gehoert nicht ins Logofeld: ihn zeigt das Vollbild,
+  // zusammen mit der Summe der Aufnahme davor.
+  if (!u || !anzeige || u.art === 'playerChange') {
     return (
       <div className="jgn-logofeld">
         <img className="jgn-logo" src={logoWeiss} alt="Jan Geiger Networking" />
@@ -161,20 +167,6 @@ function Logofeld({ zustand }: { zustand: MatchState }) {
   }
 
   const { oben, gross } = texte(zustand, u)
-
-  // Der Spielerwechsel gehoert nicht ins Logofeld: er bekommt dieselbe grosse
-  // Bahn wie in der Default-Aufteilung, damit auf beiden Bildschirmen dasselbe
-  // passiert ("auf beiden JGN und default").
-  if (u.art === 'playerChange') {
-    return (
-      <>
-        <div className="jgn-logofeld">
-          <img className="jgn-logo" src={logoWeiss} alt="Jan Geiger Networking" />
-        </div>
-        <SpielerSlide name={gross} sichtbar={sichtbar} lauf={anzeige.lauf} />
-      </>
-    )
-  }
 
   return (
     <div
@@ -185,6 +177,99 @@ function Logofeld({ zustand }: { zustand: MatchState }) {
     >
       <span className="jgn-ereignis-oben">{oben}</span>
       <span className="jgn-ereignis-gross">{gross}</span>
+    </div>
+  )
+}
+
+/** Schieben (600 ms, siehe App.css) plus anderthalb Sekunden Stehen. */
+const AM_WURF_MS = 2100
+/** Muss zur Ausblende-Transition in App.css passen. */
+const AUSBLENDEN_MS = 420
+
+type Lage = {
+  inhalt: Vollbild
+  /** steht: Pfeile stecken. wechsel: der Naechste ist hereingeschoben. */
+  stufe: 'steht' | 'wechsel' | 'aus'
+  naechster: string | null
+  /** Zaehlt hoch, damit jede neue Aufnahme wieder einfaehrt. */
+  lauf: number
+}
+
+/**
+ * Ueber den ganzen Monitor, damit man es aus jeder Ecke sieht: erst die
+ * geworfene Summe (oder der Leg-Sieger), stehend bis die Pfeile gezogen sind,
+ * dann schiebt sich der naechste Spieler am Wurf herein - eine Bewegung.
+ */
+function VollbildAnzeige({ zustand }: { zustand: MatchState }) {
+  const [lage, setLage] = useState<Lage | null>(null)
+
+  useEffect(() => {
+    const jetzt = vollbildAus(zustand)
+    setLage((vorher) => {
+      if (jetzt) {
+        // Weitere Momentaufnahmen desselben Moments (doppelte Meldung, eine
+        // Korrektur in Autodarts) tauschen nur den Inhalt, ohne neu einzufahren.
+        const lauf = vorher?.stufe === 'steht' ? vorher.lauf : (vorher?.lauf ?? 0) + 1
+        return { inhalt: jetzt, stufe: 'steht', naechster: null, lauf }
+      }
+      if (!vorher) return null
+      if (vorher.stufe === 'steht') {
+        // Pfeile gezogen. Nach dem Match ist niemand mehr am Wurf.
+        const naechster = vorher.inhalt.art === 'match' ? null : zustand.activePlayerId
+        return naechster && zustand.currentThrow.length === 0
+          ? { ...vorher, stufe: 'wechsel', naechster }
+          : { ...vorher, stufe: 'aus' }
+      }
+      // Der Naechste wirft schon - dann sofort weg.
+      if (vorher.stufe === 'wechsel' && zustand.currentThrow.length > 0) return { ...vorher, stufe: 'aus' }
+      return vorher
+    })
+  }, [zustand])
+
+  const stufe = lage?.stufe
+  useEffect(() => {
+    if (stufe !== 'wechsel' && stufe !== 'aus') return
+    const zeit = window.setTimeout(
+      () => setLage((l) => (l?.stufe === 'wechsel' ? { ...l, stufe: 'aus' } : l?.stufe === 'aus' ? null : l)),
+      stufe === 'wechsel' ? AM_WURF_MS : AUSBLENDEN_MS,
+    )
+    return () => window.clearTimeout(zeit)
+  }, [stufe, lage?.lauf])
+
+  if (!lage) return null
+  const { inhalt, naechster } = lage
+  const name = (id: string | null) => {
+    const spieler = zustand.players.find((p) => p.id === id)
+    return spieler ? namen(spieler) : ''
+  }
+
+  return (
+    <div
+      className={`jgn-vollbild ist-${lage.stufe}${naechster ? ' mit-wechsel' : ''}`}
+      key={lage.lauf}
+      role="status"
+      aria-live="polite"
+    >
+      <div className="jgn-vollbild-film">
+        {inhalt.art === 'aufnahme' ? (
+          <div className="jgn-vollbild-bild">
+            <span className="jgn-vollbild-oben">{name(inhalt.spielerId)}</span>
+            <span className={`jgn-vollbild-zahl${inhalt.bust ? ' ist-bust' : ''}`}>
+              {inhalt.bust ? 'Bust' : inhalt.punkte}
+            </span>
+          </div>
+        ) : (
+          <div className="jgn-vollbild-bild jgn-vollbild-sieg">
+            <span className="jgn-vollbild-oben">{inhalt.art === 'match' ? 'Match gewonnen' : 'Leg gewonnen'}</span>
+            <span className="jgn-vollbild-name">{name(inhalt.spielerId)}</span>
+            {inhalt.finish !== null && <span className="jgn-vollbild-unten">Finish {inhalt.finish}</span>}
+          </div>
+        )}
+        <div className="jgn-vollbild-bild jgn-vollbild-amwurf">
+          <span className="jgn-vollbild-oben">Am Wurf</span>
+          <span className="jgn-vollbild-name">{name(naechster)}</span>
+        </div>
+      </div>
     </div>
   )
 }
@@ -237,6 +322,8 @@ export function LayoutJgn({ zustand }: { zustand: MatchState }) {
           <Dartscheibe darts={scheibenDarts} verblasst={zustand.currentThrow.length === 0} />
         </div>
       </div>
+
+      <VollbildAnzeige zustand={zustand} />
     </div>
   )
 }

@@ -4,6 +4,23 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.26] - 2026-09-13
+
+Sechsundzwanzigste Beta.
+
+### Neu
+- **Vollbild im Layout „JGN Optimized".** Sobald drei Pfeile stecken (oder
+  der Bust fällt), steht die geworfene Summe über den ganzen Monitor — so
+  lange, bis die Pfeile gezogen sind. Dann schiebt sich der nächste Spieler
+  am Wurf herein, alles in einer Bewegung
+- **Leg- und Match-Gewinn** stehen genauso groß da: wer gewonnen hat und mit
+  welchem Finish, bis die Pfeile gezogen sind. Danach kommt, wer das nächste
+  Leg anwirft
+
+### Geändert
+- Die grüne Bahn beim Spielerwechsel entfällt in „JGN Optimized" — das
+  Vollbild übernimmt sie. Im Layout „Default" bleibt sie
+
 ## [0.1.0-beta.25] - 2026-09-13
 
 Fünfundzwanzigste Beta.

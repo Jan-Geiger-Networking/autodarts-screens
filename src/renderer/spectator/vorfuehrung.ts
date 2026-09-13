@@ -305,6 +305,9 @@ function bauSchritte(): Schritt[] {
   ];
   const highFinish = mitCheckout({
     ...oneEighty,
+    // Wie im echten Betrieb (adapter.ts): der Siegpfeil eines Legs steht in
+    // der Leg-Pause, bis die Pfeile gezogen sind.
+    phase: "legBreak",
     scores: [
       oneEighty.scores[0]!,
       { ...oneEighty.scores[1]!, remaining: 0, legs: 2, highestFinish: 121 },
@@ -318,6 +321,7 @@ function bauSchritte(): Schritt[] {
 
   const naechsteLeg = mitCheckout({
     ...highFinish,
+    phase: "playing",
     scores: [
       highFinish.scores[0]!,
       { ...highFinish.scores[1]!, remaining: 501 },
@@ -340,6 +344,7 @@ function bauSchritte(): Schritt[] {
   ];
   const legWin = mitCheckout({
     ...naechsteLeg,
+    phase: "legBreak",
     scores: [
       { ...naechsteLeg.scores[0]!, remaining: 0, legs: 4 },
       naechsteLeg.scores[1]!,
@@ -353,6 +358,7 @@ function bauSchritte(): Schritt[] {
 
   const vorMatchgewinn = mitCheckout({
     ...legWin,
+    phase: "playing",
     scores: [
       { ...legWin.scores[0]!, remaining: 501 },
       { ...legWin.scores[1]!, remaining: 260, legs: 3 },
