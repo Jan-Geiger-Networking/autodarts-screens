@@ -327,3 +327,17 @@ Geometrie dafür steht schon.
 **75. Endstand bleibt 30 Sekunden stehen.** Danach übernimmt die Spielpause.
 Vorher blieb der Endstand bis zum nächsten Match stehen. *Kosten bei Irrtum:*
 zu kurz oder zu lang für den Geschmack; eine Zahl in `verbindung.ts`.
+
+## Pausenscreen im Kino-Stil (unveröffentlicht)
+
+**76. Pausenscreen mit React Bits statt nur CSS.** Vorspann und
+Matchtag-Folien nutzen Grainient (WebGL über `ogl`) sowie BlurText und
+CountUp (beide `motion`) aus React Bits, als angepassten Quelltext in
+`src/renderer/spectator/reactbits/`. Die Vorgabe „nur CSS" aus 0.1.0-beta.2
+gilt für diese beiden Bildschirme nicht mehr; Live-Match und Einblendungen
+bleiben CSS. Die Komponenten stehen unter MIT + Commons Clause, nicht MIT wie
+das Repo – eigene Lizenzdatei im Ordner. *Kosten bei Irrtum:* rund 200 KB
+mehr im Bündel und eine WebGL-Fläche mit halber Auflösung, solange Pause ist;
+ohne WebGL 2 steht ein CSS-Verlauf. Bewegtes Filmkorn (React Bits Noise) war
+vorgesehen und wurde nach Ansehen wieder entfernt – es flimmerte. Siehe
+`docs/superpowers/specs/2026-09-13-pausenscreen-kino-design.md`.

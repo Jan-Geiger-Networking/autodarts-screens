@@ -4,6 +4,21 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+### Geändert
+- **Pausenscreen im Kino-Stil.** Vorspann und Matchtag-Folien auf dem
+  Zuschauer-Screen sind neu gestaltet: Fotos mit langsamer Kamerafahrt, ein
+  dunkler, fließender Verlauf mit feinem Korn, riesige Schrift, die aus der
+  Unschärfe auftaucht. Der Matchtag erscheint als Titelsequenz – linksbündig,
+  Namen groß, Zahlen zählen hoch
+- Die Siegerfolie des Matchtags kommt ohne Strahlen und Konfetti aus; der
+  Hintergrund wird dafür heller
+- Folien blenden weich über statt zu fahren
+- Im Layout „JGN Optimized" steht die Summe der Aufnahme im Vollbild in Grün,
+  der Name darüber größer; „Am Wurf" liegt auf dunklem Grund mit grünem Namen
+
+### Behoben
+- Ein Miss steht in der Wurfleiste beider Player-Layouts rot
+
 ## [0.1.0-beta.26] - 2026-09-13
 
 Sechsundzwanzigste Beta.

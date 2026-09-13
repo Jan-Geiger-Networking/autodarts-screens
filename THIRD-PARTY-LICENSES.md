@@ -36,10 +36,30 @@ liefert die Pakete zusätzlich auch als Ordner mit, siehe unten):
 | react | 19.3.0 | MIT | Copyright (c) Meta Platforms, Inc. and affiliates. | `node_modules/react/LICENSE` |
 | react-dom | 19.3.0 | MIT | Copyright (c) Meta Platforms, Inc. and affiliates. | `node_modules/react-dom/LICENSE` |
 | scheduler | 0.28.0 | MIT | Copyright (c) Meta Platforms, Inc. and affiliates. | `node_modules/scheduler/LICENSE` |
+| framer-motion | 13.2.0 | MIT | Copyright (c) 2018 Framer B.V. | `node_modules/framer-motion/LICENSE.md` |
+| motion | 13.2.0 | MIT | Copyright (c) 2024 [Motion](https://motion.dev) B.V. | `node_modules/motion/LICENSE.md` |
+| motion-dom | 13.2.0 | MIT | Copyright (c) 2024 [Motion](https://motion.dev) B.V. | `node_modules/motion-dom/LICENSE.md` |
+| motion-utils | 13.0.0 | MIT | Copyright (c) 2024 [Motion](https://motion.dev) B.V. | `node_modules/motion-utils/LICENSE.md` |
+| ogl | 1.0.11 | Unlicense | (keine Copyright-Zeile in der Lizenzdatei) | `node_modules/ogl/(keine Lizenzdatei)` |
+| tslib | 2.8.1 | 0BSD | Copyright (c) Microsoft Corporation. | `node_modules/tslib/LICENSE.txt` |
 
 `scheduler` ist keine direkte Abhängigkeit dieses Projekts, sondern eine
 Laufzeitabhängigkeit von `react-dom` — sie landet über React im Bauergebnis
 und wird deshalb mitgeführt.
+
+`framer-motion`, `motion-dom`, `motion-utils` und `tslib` sind keine direkten
+Abhängigkeiten dieses Projekts, sondern Laufzeitabhängigkeiten von `motion`.
+
+## Übernommener Quelltext aus React Bits
+
+Unter `src/renderer/spectator/reactbits/` liegen angepasste Komponenten aus
+React Bits (github.com/DavidHDev/react-bits, Commit
+`3a1c7f2f9f94ed833934ab5c2635760b9e644583`): Grainient, BlurText und CountUp.
+Sie stehen **nicht** unter der MIT-Lizenz dieses Repos, sondern unter
+**MIT + Commons Clause**, Copyright (c) 2026 David Haz. Der Volltext liegt in
+`src/renderer/spectator/reactbits/LICENSE.md`. Die Commons Clause erlaubt den
+Einsatz als Teil einer Anwendung, verbietet aber, die Komponenten selbst zu
+verkaufen, unterzulizenzieren oder einzeln weiterzugeben.
 
 ## Methode und Grenzen
 

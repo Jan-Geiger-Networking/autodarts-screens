@@ -8,7 +8,7 @@ für Abschnitt freigegeben.
 Der Zuschauer-Screen soll in der Spielpause „richtig modern“ wirken, gebaut
 mit Komponenten aus React Bits (reactbits.dev). Umgesetzt wird die Richtung
 „Kino“: vollflächige Fotos mit langsamer Kamerafahrt, dunkle Verläufe,
-Filmkorn und riesige Schrift, die aus der Unschärfe auftaucht. Wenige
+feines Korn und riesige Schrift, die aus der Unschärfe auftaucht. Wenige
 Elemente, viel Wirkung.
 
 ## 2. Umfang
@@ -35,7 +35,8 @@ eigenen, späteren Schritt.
 | Stilrichtung | C · Kino (Entwürfe A Aurora & Glas und B Broadcast & Raster verworfen) |
 | Bebilderung | Mischung: 3 Foto-Folien, 5 Folien auf bewegtem Verlauf |
 | Matchtag-Anordnung | B · Titelsequenz: linksbündig, riesige Namen (A zentriert verworfen) |
-| Technik | React Bits gezielt: Grainient, BlurText, CountUp, Noise sowie `motion` und `ogl` |
+| Technik | React Bits gezielt: Grainient, BlurText, CountUp sowie `motion` und `ogl` |
+| Filmkorn | Steht still, Noise entfällt – das bewegte Korn flimmerte (Rückmeldung nach Ansehen) |
 | Sieger-Folie | Strahlen und Konfetti entfallen, das Licht übernimmt ihre Rolle |
 
 Die frühere Projektentscheidung „nur CSS, keine Animations-Bibliothek“
@@ -48,7 +49,7 @@ Vorspann und Matchtag teilen sich dieselbe Bühne (`KinoBuehne`).
 
 - **Hintergrund:** Grainient (WebGL 2 über `ogl`). Ein sehr dunkler,
   langsam fließender Verlauf aus `--jg-bg` (#020617), einem gedämpften
-  JGN-Grün und einem tiefen Petrol, mit feinem, bewegtem Korn. Darüber liegt
+  JGN-Grün und einem tiefen Petrol, mit feinem, stehendem Korn. Darüber liegt
   eine Vignette zu den Rändern (CSS).
   - Die Zeichenfläche rechnet mit höchstens halber Auflösung. Grainient
     bekommt dafür einen Deckel für die Pixeldichte (Vorgabe `0.5`), das
@@ -90,8 +91,8 @@ Vorspann und Matchtag teilen sich dieselbe Bühne (`KinoBuehne`).
   - Das Foto füllt den ganzen Bildschirm und fährt während der Standzeit
     langsam heran (Skalierung etwa 1,02 → 1,12, CSS). Die Richtung wechselt
     von Folie zu Folie.
-  - Links liegt ein dunkler Verlauf, unten ebenfalls. Das Filmkorn darüber
-    kommt von Noise (Canvas), weil Grainient hier verdeckt ist.
+  - Links liegt ein dunkler Verlauf, unten ebenfalls. Über den Fotos liegt
+    kein Korn.
   - Text unten links: grüner Strich, das Wort riesig, darunter die
     Unterzeile.
 - **Verlauf-Folien:** Videoüberwachung, Monitoring, Backup, Support und
@@ -162,7 +163,6 @@ Vorspann und Matchtag teilen sich dieselbe Bühne (`KinoBuehne`).
 | `src/renderer/spectator/reactbits/Grainient.tsx` + `.css` | aus React Bits übernommen (TS-CSS), angepasst |
 | `src/renderer/spectator/reactbits/BlurText.tsx` | übernommen, angepasst |
 | `src/renderer/spectator/reactbits/CountUp.tsx` | übernommen, angepasst |
-| `src/renderer/spectator/reactbits/Noise.tsx` + `.css` | übernommen |
 | `src/renderer/spectator/reactbits/LICENSE.md` | Lizenztext MIT + Commons Clause mit Copyright David Haz |
 | `src/renderer/spectator/KinoBuehne.tsx` | neu: Hintergrund, Vignette, Logo, Spielpause, Fortschrittslinie, WebGL-Ersatz |
 | `src/renderer/spectator/kino.css` | neu: gesamtes Pausenscreen-CSS |
@@ -191,11 +191,8 @@ Vorspann und Matchtag teilen sich dieselbe Bühne (`KinoBuehne`).
   einer Sekunde zum neuen Wert, statt zu springen. Eine einzige
   WebGL-Fläche bleibt über alle Folien bestehen, pro Folie wird kein neuer
   Kontext angelegt.
-- **Noise:** Das Original rechnet jedes zweite Bild eine feste Fläche von
-  1024 × 1024 Zufallswerten auf dem Hauptthread, das sind rund 4 Mio.
-  Werte. Angepasst bestimmt `patternSize` die Fläche (Vorgabe 512) und
-  gezeichnet wird jedes 6. Bild. Das Muster wird weich statt pixelig
-  skaliert.
+- **Noise:** entfällt. Das bewegte Korn flimmerte; das Korn von Grainient
+  steht still (`grainAnimated` aus).
 - **Vorführmodus:** `&ohnewebgl` schaltet den WebGL-Hintergrund ab, damit
   sich der CSS-Ersatz prüfen lässt. `&mtaufwaermen` zeigt einen Matchtag in
   der Aufwärmphase.
