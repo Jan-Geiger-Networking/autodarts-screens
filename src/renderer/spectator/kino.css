@@ -347,3 +347,566 @@
     transform: scaleX(1);
   }
 }
+
+/* ─── Matchtag als Titelsequenz ──────────────────────────────────── */
+
+.mt-kopf {
+  position: absolute;
+  top: 3.4vh;
+  left: 50%;
+  z-index: 6;
+  width: 46vw;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.1vh;
+}
+
+.mt-roadmap {
+  position: relative;
+  width: 100%;
+}
+
+.mt-roadmap-linie {
+  position: absolute;
+  top: 0.6vh;
+  left: 5%;
+  right: 5%;
+  height: 1px;
+  background: rgba(229, 236, 245, 0.18);
+}
+
+.mt-roadmap-fuellung {
+  display: block;
+  height: 100%;
+  background: var(--jg-accent);
+  transition: width 1200ms var(--jg-ease);
+}
+
+.mt-roadmap-stationen {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+}
+
+.mt-station {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9vh;
+  font-size: 1.5vh;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--jg-muted);
+}
+
+.mt-station-punkt {
+  width: 1.2vh;
+  height: 1.2vh;
+  border-radius: 50%;
+  background: var(--jg-bg);
+  border: 1px solid rgba(229, 236, 245, 0.35);
+}
+
+.mt-station.ist-vorbei {
+  color: var(--jg-muted-strong);
+}
+
+.mt-station.ist-vorbei .mt-station-punkt,
+.mt-station.ist-hier .mt-station-punkt {
+  background: var(--jg-accent);
+  border-color: var(--jg-accent);
+}
+
+.mt-station.ist-hier {
+  color: var(--jg-accent);
+}
+
+.mt-status-text {
+  max-width: 100%;
+  font-size: 1.9vh;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--jg-muted-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Flaeche jeder Folie: unter dem Kopf, ueber der Fortschrittslinie. */
+.mt-folie {
+  position: absolute;
+  left: 6vw;
+  right: 6vw;
+  top: 17vh;
+  bottom: 8vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.mt-titel {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 4vh;
+}
+
+.mt-kicker {
+  font-size: 2.4vh;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--jg-accent);
+}
+
+.mt-kicker--grau {
+  color: var(--jg-muted);
+}
+
+.mt-kicker--abstand {
+  margin: 2.5vh 0 1vh;
+}
+
+.mt-titel-gross {
+  padding-top: 1vh;
+  font-size: 9vh;
+  font-weight: 800;
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+/* Tabellenzeilen: filter auf <tr> wirkt nicht zuverlaessig - nur Deckkraft
+   und Versatz. */
+.mt-tabelle tr.kino-einblenden {
+  animation-name: kino-einblenden-zeile;
+}
+
+@keyframes kino-einblenden-zeile {
+  from {
+    opacity: 0;
+    transform: translateY(1.5vh);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Folie: Als Naechstes */
+
+.mt-jetzt-paar {
+  position: absolute;
+  left: 0;
+  top: 5vh;
+  max-width: 66vw;
+  display: flex;
+  flex-direction: column;
+}
+
+.mt-jetzt-paar .mt-kicker {
+  margin: 2.5vh 0 1vh;
+}
+
+.mt-jetzt-name {
+  font-size: min(22vh, 12vw);
+  font-weight: 800;
+  line-height: 0.86;
+  text-transform: uppercase;
+}
+
+.mt-jetzt-gegen {
+  margin: 2vh 0 1.6vh 0.4vw;
+  font-size: 2.8vh;
+  font-weight: 700;
+  letter-spacing: 0.45em;
+  text-transform: uppercase;
+  color: var(--jg-muted);
+}
+
+.mt-danach {
+  position: absolute;
+  right: 0;
+  bottom: 2vh;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1.2vh;
+  text-align: right;
+}
+
+.mt-danach-zeile {
+  font-size: 3.4vh;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--jg-muted-strong);
+}
+
+.mt-danach-zeile em {
+  margin: 0 0.5vw;
+  font-style: normal;
+  font-size: 0.7em;
+  color: var(--jg-muted);
+}
+
+/* Folie: Tabelle / Endstand und Analyse */
+
+.mt-tabelle {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 3.6vh;
+  font-variant-numeric: tabular-nums;
+}
+
+.mt-tabelle th {
+  padding: 0 1.2vw 1.4vh;
+  font-size: 1.7vh;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--jg-muted);
+  text-align: right;
+}
+
+.mt-tabelle td {
+  padding: 1.1vh 1.2vw;
+  color: var(--jg-text);
+  text-align: right;
+}
+
+.mt-tabelle .mt-sp-platz {
+  width: 4vw;
+  text-align: left;
+  color: var(--jg-muted);
+}
+
+.mt-tabelle .mt-sp-name {
+  text-align: left;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.mt-punkte {
+  font-weight: 800;
+  color: var(--jg-accent);
+}
+
+/* Die Fuehrung (im Endstand: der Sieger) steht groesser, mit gruenem Strich. */
+.mt-tabelle tr.ist-vorn td {
+  font-size: 5vh;
+  font-weight: 800;
+}
+
+.mt-tabelle tr.ist-vorn .mt-sp-platz {
+  color: var(--jg-accent);
+  box-shadow: inset 0.5vh 0 0 var(--jg-accent);
+}
+
+.mt-tabelle--dicht {
+  font-size: 2.9vh;
+}
+
+.mt-tabelle--dicht td {
+  padding: 0.7vh 1.2vw;
+}
+
+.mt-tabelle--dicht tr.ist-vorn td {
+  font-size: 3.8vh;
+}
+
+.mt-analyse {
+  font-size: 2.8vh;
+}
+
+.mt-analyse th {
+  padding: 0 0.7vw 1.2vh;
+  font-size: 1.5vh;
+  letter-spacing: 0.14em;
+}
+
+.mt-analyse td {
+  padding: 0.8vh 0.7vw;
+}
+
+/* Folie: Spielplan */
+
+.mt-plan {
+  display: grid;
+  gap: 1.2vh 5vw;
+}
+
+.mt-plan--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mt-plan--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.mt-plan-zeile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 7vw minmax(0, 1fr);
+  align-items: baseline;
+  gap: 1vw;
+  padding: 0.6vh 0 0.6vh 1.2vw;
+  font-size: 3.3vh;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--jg-text);
+}
+
+.mt-plan--3 .mt-plan-zeile {
+  font-size: 2.6vh;
+}
+
+.mt-plan-name:first-child {
+  text-align: right;
+}
+
+.mt-plan-mitte {
+  text-align: center;
+  font-size: 0.75em;
+  letter-spacing: 0.12em;
+  color: var(--jg-muted);
+}
+
+.mt-plan-zeile.ist-gespielt {
+  color: var(--jg-muted);
+}
+
+.mt-plan-zeile.ist-gespielt .mt-plan-mitte {
+  color: var(--jg-muted-strong);
+}
+
+.mt-plan-name.ist-sieger {
+  color: var(--jg-text);
+}
+
+.mt-plan-zeile.ist-naechste {
+  box-shadow: inset 0.35vh 0 0 var(--jg-accent);
+}
+
+.mt-plan-zeile.ist-naechste .mt-plan-mitte {
+  color: var(--jg-accent);
+}
+
+/* Folie: Zahlen des Abends */
+
+.mt-werte {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 3vw;
+  margin-bottom: 5vh;
+}
+
+.mt-wert {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8vh;
+}
+
+.mt-wert-titel {
+  font-size: 1.9vh;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--jg-muted);
+}
+
+.mt-wert-zahl {
+  font-size: 14vh;
+  font-weight: 800;
+  line-height: 0.9;
+  color: var(--jg-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.mt-wert-name {
+  font-size: 3vh;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--jg-accent);
+}
+
+.mt-schnitte {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1vh 5vw;
+  max-width: 70vw;
+}
+
+.mt-schnitte .mt-kicker {
+  grid-column: 1 / -1;
+  margin-bottom: 1vh;
+}
+
+.mt-schnitt-zeile {
+  display: flex;
+  justify-content: space-between;
+  font-size: 3vh;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--jg-muted-strong);
+}
+
+.mt-schnitt-wert {
+  color: var(--jg-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Folie: Heatmaps. Die Scheibe selbst (.heatmap) ist in App.css gestaltet. */
+
+.mt-heatmaps {
+  display: grid;
+  gap: 3vh 3vw;
+  align-content: start;
+}
+
+.mt-heatmaps-1,
+.mt-heatmaps-2,
+.mt-heatmaps-3,
+.mt-heatmaps-5,
+.mt-heatmaps-6 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.mt-heatmaps-4,
+.mt-heatmaps-7,
+.mt-heatmaps-8 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.mt-heatmaps .heatmap {
+  max-width: 26vh;
+}
+
+.mt-heatmaps-5 .heatmap,
+.mt-heatmaps-6 .heatmap,
+.mt-heatmaps-7 .heatmap,
+.mt-heatmaps-8 .heatmap {
+  max-width: 21vh;
+}
+
+.mt-heatkarte {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6vh;
+}
+
+.mt-heatname {
+  font-size: 2.8vh;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.mt-heatzahl {
+  font-size: 1.8vh;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--jg-muted);
+}
+
+/* Folie: Aufwaermrunde */
+
+.mt-aufwaermen {
+  justify-content: center;
+}
+
+.mt-riesig {
+  padding-top: 1.5vh;
+  font-size: min(24vh, 13vw);
+  font-weight: 800;
+  line-height: 0.88;
+  text-transform: uppercase;
+}
+
+.mt-hinweis {
+  padding-top: 3vh;
+  max-width: 55vw;
+  font-family: var(--jg-font-body);
+  font-size: 3vh;
+  font-weight: 500;
+  color: var(--jg-muted-strong);
+}
+
+/* Folie: Sieger */
+
+.mt-sieger {
+  justify-content: center;
+}
+
+/* Buchstabe fuer Buchstabe: BlurText setzt flex-wrap als Inline-Stil - ohne
+   !important koennte ein Name mitten im Wort umbrechen. */
+.mt-siegername {
+  flex-wrap: nowrap !important;
+  padding-top: 1.5vh;
+  font-size: min(26vh, 14vw);
+  font-weight: 800;
+  line-height: 0.88;
+  text-transform: uppercase;
+}
+
+.mt-siegerzeile {
+  padding-top: 2vh;
+  font-size: 3vh;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--jg-accent);
+}
+
+.mt-siegerwerte {
+  display: flex;
+  gap: 4vw;
+  margin-top: 5vh;
+}
+
+.mt-siegerwert {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6vh;
+  font-size: 2vh;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--jg-muted);
+}
+
+.mt-siegerwert-zahl {
+  font-size: 9vh;
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: 0;
+  color: var(--jg-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.mt-podest {
+  display: flex;
+  gap: 4vw;
+  margin-top: 5vh;
+  font-size: 2.8vh;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--jg-muted-strong);
+}
+
+.mt-podest-nummer {
+  margin-right: 1vw;
+  color: var(--jg-muted);
+}
+
+.mt-podest-punkte {
+  margin-left: 1vw;
+  font-size: 0.8em;
+  color: var(--jg-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mt-roadmap-fuellung {
+    transition: none;
+  }
+}

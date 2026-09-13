@@ -562,6 +562,12 @@ export function useVorfuehrung(): MatchState | null {
  * koennte.
  */
 export function vorfuehrMatchtag(): Matchtag {
+  // ?mtaufwaermen zeigt den Matchtag vor der ersten Runde - nur dort gibt es
+  // die Folie "Aufwaermrunde", der uebrige Vorfuehr-Matchtag ist schon weiter.
+  if (vorfuehrungAktiv() && parameter().has('mtaufwaermen')) {
+    return matchtagStarten('Hüttenabend', '2026-09-11T19:00:00.000Z')
+  }
+
   const namen = ['Jan', 'Mareike', 'Tobi', 'Sven', 'Kevin']
   const aufwaermen: MatchErgebnis = {
     matchId: 'vorfuehrung-warmup',
@@ -742,7 +748,7 @@ export function mitSpielerzahl(zustand: MatchState, anzahl: number): MatchState 
  * Vorspann sichtbar - sonst liesse er sich gar nicht mehr begutachten.
  */
 export function vorfuehrMatchtagAktiv(): boolean {
-  return vorfuehrungAktiv() && (parameter().has('matchtag') || parameter().has('mtfolie'))
+  return vorfuehrungAktiv() && (parameter().has('matchtag') || parameter().has('mtfolie') || parameter().has('mtaufwaermen'))
 }
 
 /**
