@@ -187,8 +187,20 @@ Vorspann und Matchtag teilen sich dieselbe Bühne (`KinoBuehne`).
   sichtbaren Bereich ist (`useInView`). Auf dem festen Vollbild ist das sofort
   der Fall, es bleibt deshalb. Bei reduzierter Bewegung gibt es keine
   Unschärfe bzw. sofort den Endwert.
-- **Kopf jeder Datei:** eine Herkunftszeile mit Quelle, Commit bzw. Datum
-  und Lizenz.
+- **Grainient, Lage und Farben:** Sie gleiten beim Folienwechsel in etwa
+  einer Sekunde zum neuen Wert, statt zu springen. Eine einzige
+  WebGL-Fläche bleibt über alle Folien bestehen, pro Folie wird kein neuer
+  Kontext angelegt.
+- **Noise:** Das Original rechnet jedes zweite Bild eine feste Fläche von
+  1024 × 1024 Zufallswerten auf dem Hauptthread, das sind rund 4 Mio.
+  Werte. Angepasst bestimmt `patternSize` die Fläche (Vorgabe 512) und
+  gezeichnet wird jedes 6. Bild. Das Muster wird weich statt pixelig
+  skaliert.
+- **Vorführmodus:** `&ohnewebgl` schaltet den WebGL-Hintergrund ab, damit
+  sich der CSS-Ersatz prüfen lässt. `&mtaufwaermen` zeigt einen Matchtag in
+  der Aufwärmphase.
+- **Kopf jeder Datei:** eine Herkunftszeile mit Quelle, Commit
+  (`3a1c7f2f9f94ed833934ab5c2635760b9e644583`) und Lizenz.
 - **Stil:** Tailwind wird nicht verwendet, nur die TS-CSS-Varianten.
 
 ### Lizenz
@@ -197,7 +209,8 @@ React Bits steht unter **MIT + Commons Clause**. Der Einbau in eine Anwendung
 ist erlaubt, der Weiterverkauf oder die Weitergabe der Komponenten selbst
 nicht. Das Repo ist MIT-lizenziert. Deshalb liegen die Komponenten in einem
 eigenen Ordner mit eigener `LICENSE.md`, und `THIRD-PARTY-LICENSES.md` nennt
-diese Ausnahme ausdrücklich. `motion` und `ogl` stehen unter MIT.
+diese Ausnahme ausdrücklich. `motion` steht unter MIT, `ogl` unter
+Unlicense (gemeinfrei).
 
 ### Leistung
 
@@ -228,8 +241,12 @@ diese Ausnahme ausdrücklich. `motion` und `ogl` stehen unter MIT.
 - **Leistung:** auf 4K ein Performance-Trace über etwa 10 s Vorspann. Die
   Bildrate muss stabil bleiben, der Hauptthread darf nicht dauernd belegt
   sein.
-- **Ersatz ohne WebGL:** WebGL im Test-Browser abschalten und prüfen, dass
-  der CSS-Verlauf erscheint.
+- **Ersatz ohne WebGL:** mit `&ohnewebgl` prüfen, dass der CSS-Verlauf
+  erscheint und keine Zeichenfläche angelegt wird.
+- **Hinweis zur Messung:** Ein Browser ohne Bildschirm rechnet WebGL in
+  Software. Die Bildrate dort ist nur ein Anhaltspunkt, entscheidend sind
+  die langen Aufgaben auf dem Hauptthread. Die Bildrate auf echter Hardware
+  prüft der Herausgeber in der App.
 
 ## 9. Offen für später
 
