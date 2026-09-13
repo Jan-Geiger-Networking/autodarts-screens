@@ -860,6 +860,9 @@
   justify-content: center;
   gap: 0.5vh;
   padding: 1.5vh 1.5vw;
+  /* Die geerbten 1.6 kosteten jede Zeile ein Drittel Hoehe - Platz, der den
+     Aufnahmen darunter fehlte. */
+  line-height: 1.15;
   border-radius: 1vh;
   background: rgba(10, 19, 36, 0.75);
   border: 0.2vh solid var(--jg-border-strong);
@@ -1125,6 +1128,8 @@
 
 .jgn-aktiv-schnitt {
   margin: 0;
+  /* p bringt aus tokens.css 1.75 mit. */
+  line-height: 1.15;
   font-family: var(--jg-font-display);
   font-size: 3vh;
   letter-spacing: 0.04em;
@@ -1139,6 +1144,7 @@
 
 .jgn-aktiv-darts {
   margin: 0;
+  line-height: 1.15;
   display: flex;
   align-items: center;
   gap: 0.8vh;
@@ -1192,6 +1198,20 @@
   text-align: center;
   width: 50%;
   border-left: 0.15vh solid var(--jg-border-strong);
+}
+
+/* Ist die erste Tabelle voll, steht die zweite rechts daneben - die Zeilen
+   je Tabelle legt zeilenJeTabelle() in LayoutJgn.tsx fest. */
+.jgn-aufnahmen-tabellen {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 2vw;
+  width: 100%;
+}
+
+.jgn-aufnahmen-tabellen .jgn-aufnahmen {
+  flex: 0 1 17vw;
 }
 
 /* ─── Spielerwechsel als grosse Bahn ──────────────────────────────────

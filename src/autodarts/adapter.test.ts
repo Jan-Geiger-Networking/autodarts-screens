@@ -343,6 +343,14 @@ describe('anwenden: checkout und checkoutHint schliessen sich aus', () => {
     expect(ergebnis.checkout !== null && ergebnis.checkoutHint !== null).toBe(false)
   })
 
+  it('richtet den Checkout-Weg nach settings.outMode', () => {
+    const settings = { baseScore: 501, outMode: 'Straight' }
+    const start = anwenden(RUHEZUSTAND, stateEreignis('match-1', { settings }))
+    const ergebnis = anwenden(start, stateEreignis('match-1', { settings, gameScores: { '0': 57, '1': 501 } }))
+
+    expect(ergebnis.checkout).toEqual(['T19'])
+  })
+
   it('laesst bei variant "other" (kein X01) beide Felder leer', () => {
     const ergebnis = anwenden(RUHEZUSTAND, stateEreignis('match-1', { variant: 'Cricket', gameScores: { '0': 40, '1': 501 } }))
 

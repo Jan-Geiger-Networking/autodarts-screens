@@ -66,38 +66,51 @@ function SpielerStack({ zustand }: { zustand: MatchState }) {
 }
 
 /**
+ * Zeilen, die eine Tabelle fasst, bevor die naechste daneben beginnt. Die
+ * Spielerliste darueber waechst mit der Spielerzahl, alle Masse sind in vh -
+ * die Zahl haengt deshalb nur an der Spielerzahl, nicht an der Aufloesung.
+ * Im Browser nachgemessen: mehr Zeilen schneiden den Block oben und unten ab.
+ */
+function zeilenJeTabelle(spieler: number): number {
+  return spieler <= 4 ? 5 : spieler <= 6 ? 3 : 2
+}
+
+/**
  * Die Aufnahmen des Spielers am Wurf in diesem Leg, juengste zuletzt.
- * Zwei Spalten: was die Aufnahme gebracht hat und was danach blieb.
+ * Je Zeile: was die Aufnahme gebracht hat und was danach blieb. Ist die
+ * erste Tabelle voll, beginnt rechts daneben die zweite; ist auch die voll,
+ * faellt die aelteste Zeile weg - aeltere Aufnahmen interessieren beim
+ * Werfen nicht mehr.
  */
 function Aufnahmen({ zustand, spielerId }: { zustand: MatchState; spielerId: string }) {
-  const eigene = zustand.legHistory.filter((e) => e.playerId === spielerId)
-  // Nur die letzten sechs: darunter wird die Zeile zu niedrig, und aeltere
-  // Aufnahmen interessieren beim Werfen nicht mehr.
-  const sichtbare = eigene.slice(-6)
+  const proTabelle = zeilenJeTabelle(zustand.players.length)
+  const zeilen = [
+    // Erste Zeile ohne Punkte: die Startpunktzahl, von der aus gezaehlt
+    // wird - genauso wie in der Autodarts-Ansicht.
+    { punkte: '', rest: zustand.startScore, bust: false },
+    ...zustand.legHistory
+      .filter((e) => e.playerId === spielerId)
+      .map((e) => ({ punkte: e.bust ? 'Bust' : String(e.scored), rest: e.remainingAfter, bust: e.bust })),
+  ].slice(-2 * proTabelle)
+  const tabellen = [zeilen.slice(0, proTabelle), zeilen.slice(proTabelle)].filter((t) => t.length > 0)
 
   return (
-    <table className="jgn-aufnahmen">
-      <tbody>
-        {/* Erste Zeile ohne Punkte: die Startpunktzahl, von der aus gezaehlt
-            wird - genauso wie in der Autodarts-Ansicht. */}
-        {eigene.length === sichtbare.length && (
-          <tr>
-            <td className="jgn-aufnahme-punkte" />
-            <td className="jgn-aufnahme-rest">
-              <span className="jgn-restkasten">{zustand.startScore}</span>
-            </td>
-          </tr>
-        )}
-        {sichtbare.map((eintrag, index) => (
-          <tr key={`${index}-${eintrag.remainingAfter}`} className={eintrag.bust ? 'ist-bust' : undefined}>
-            <td className="jgn-aufnahme-punkte">{eintrag.bust ? 'Bust' : eintrag.scored}</td>
-            <td className="jgn-aufnahme-rest">
-              <span className="jgn-restkasten">{eintrag.remainingAfter}</span>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="jgn-aufnahmen-tabellen">
+      {tabellen.map((tabelle, t) => (
+        <table className="jgn-aufnahmen" key={t}>
+          <tbody>
+            {tabelle.map((zeile, index) => (
+              <tr key={index} className={zeile.bust ? 'ist-bust' : undefined}>
+                <td className="jgn-aufnahme-punkte">{zeile.punkte}</td>
+                <td className="jgn-aufnahme-rest">
+                  <span className="jgn-restkasten">{zeile.rest}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ))}
+    </div>
   )
 }
 

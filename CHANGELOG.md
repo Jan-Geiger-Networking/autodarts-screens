@@ -4,6 +4,20 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.25] - 2026-09-13
+
+Fünfundzwanzigste Beta.
+
+### Behoben
+- **Bei Single Out wurden Double-Out-Wege vorgeschlagen.** Die Vorschläge
+  richten sich jetzt nach dem Out-Modus des Spiels: bei Single Out beendet
+  jedes Feld (57 ist T19, nicht 17 und D20), bei Master Out Doppel oder
+  Triple, bei Double Out wie bisher
+- **Die Aufnahmen im Layout „JGN Optimized" liefen bei vielen Würfen aus dem
+  Bild** — oben verschwand der Name, unten die letzten Zeilen. Ist die erste
+  Tabelle voll, beginnt jetzt rechts daneben die zweite; ist auch die voll,
+  fällt die älteste Zeile weg. Die Zeilen sind enger gesetzt
+
 ## [0.1.0-beta.22] - 2026-09-11
 
 Zweiundzwanzigste Beta. Der Matchtag bekommt einen zweiten Modus und eine

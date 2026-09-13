@@ -12,7 +12,15 @@ const FELDER: Feld[] = (() => {
   return f
 })()
 
-const DOPPEL = FELDER.filter((f) => f.doppel)
+/** Wie ein Leg beendet werden muss - settings.outMode bei Autodarts. */
+export type OutModus = 'double' | 'straight' | 'master'
+
+const istMehrfach = (f: Feld) => f.doppel || f.name.startsWith('T')
+
+function darfBeenden(f: Feld, modus: OutModus): boolean {
+  if (modus === 'straight') return true
+  return f.doppel || (modus === 'master' && f.name.startsWith('T'))
+}
 
 // Doppel, die Spieler tatsaechlich anvisieren. Alles andere ist zweite Wahl.
 // BULL (50) ist absichtlich NICHT dabei: es ist zwar ein haeufiges Finish,
@@ -42,7 +50,7 @@ const BEVORZUGTE_DOPPEL = new Set(['D20', 'D16', 'D18', 'D12', 'D10', 'D8', 'D4'
 
 type Kandidat = { weg: string[]; stufe: number; aufbau: number }
 
-function kandidaten(rest: number, darts: number): Kandidat[] {
+function kandidaten(rest: number, darts: number, modus: OutModus): Kandidat[] {
   const gefunden: Kandidat[] = []
 
   // hatDoppelAufbau: ob einer der Darts VOR dem Finish selbst ein Doppel war.
@@ -66,15 +74,21 @@ function kandidaten(rest: number, darts: number): Kandidat[] {
     weg: string[],
     aufbau: number,
     hatDoppelAufbau: boolean,
+    mehrfachImAufbau: number,
   ) => {
-    for (const d of DOPPEL) {
-      if (d.wert === offen) {
+    for (const d of FELDER) {
+      if (d.wert === offen && darfBeenden(d, modus)) {
         // finalRang: D20 ist das mit Abstand meistgenutzte Finish (rang 0),
         // die uebrigen ueblichen Doppel folgen (rang 1), alles andere zuletzt.
         const finalRang = d.name === 'D20' ? 0 : BEVORZUGTE_DOPPEL.has(d.name) ? 1 : 2
         gefunden.push({
           weg: [...weg, d.name],
-          stufe: (hatDoppelAufbau ? 3 : 0) + finalRang,
+          // Bei Single Out zaehlt nur, wie viele schmale Felder (Doppel,
+          // Triple) der Weg braucht: 23 ist 20 + 3, nicht T7 + 2.
+          stufe:
+            modus === 'straight'
+              ? mehrfachImAufbau + (istMehrfach(d) ? 1 : 0)
+              : (hatDoppelAufbau ? 3 : 0) + finalRang,
           aufbau,
         })
       }
@@ -82,26 +96,36 @@ function kandidaten(rest: number, darts: number): Kandidat[] {
     if (uebrig <= 1) return
     for (const f of FELDER) {
       if (f.wert < offen) {
-        suchen(offen - f.wert, uebrig - 1, [...weg, f.name], aufbau + f.wert, hatDoppelAufbau || f.doppel)
+        suchen(
+          offen - f.wert,
+          uebrig - 1,
+          [...weg, f.name],
+          aufbau + f.wert,
+          hatDoppelAufbau || f.doppel,
+          mehrfachImAufbau + (istMehrfach(f) ? 1 : 0),
+        )
       }
     }
   }
 
-  suchen(rest, darts, [], 0, false)
+  suchen(rest, darts, [], 0, false, 0)
   return gefunden
 }
 
 /**
- * Gaengiger Weg, den Rest mit hoechstens `dartsUebrig` Darts auf einem Doppel
- * zu beenden. `null`, wenn es keinen gibt.
+ * Gaengiger Weg, den Rest mit hoechstens `dartsUebrig` Darts zu beenden -
+ * bei Double Out auf einem Doppel, bei Master Out auf Doppel oder Triple, bei
+ * Single Out auf jedem Feld. `null`, wenn es keinen gibt.
  *
  * ponytail: erschoepfende Suche ueber hoechstens drei Darts, im schlimmsten
  * Fall rund 62^2 Kombinationen. Billiger als eine gepflegte Tabelle, und die
  * Vorlieben unten sind damit eine Stellschraube statt 170 Handeintraegen.
  */
-export function checkoutWeg(rest: number, dartsUebrig: 1 | 2 | 3 = 3): string[] | null {
-  if (!Number.isInteger(rest) || rest < 2 || rest > 170) return null
-  const alle = kandidaten(rest, dartsUebrig)
+export function checkoutWeg(rest: number, dartsUebrig: 1 | 2 | 3 = 3, modus: OutModus = 'double'): string[] | null {
+  const hoechstens = modus === 'double' ? 170 : 180
+  const mindestens = modus === 'straight' ? 1 : 2
+  if (!Number.isInteger(rest) || rest < mindestens || rest > hoechstens) return null
+  const alle = kandidaten(rest, dartsUebrig, modus)
   if (alle.length === 0) return null
   alle.sort(
     (a, b) => a.weg.length - b.weg.length || a.stufe - b.stufe || b.aufbau - a.aufbau,
@@ -130,11 +154,11 @@ export const BOGEY_ZAHLEN: ReadonlySet<number> = new Set(
  * sind T17, BULL, T18, T19 und T20 — sie hinterlassen 168, 169, 165, 162
  * und 159, allesamt Bogey-Zahlen. Regel 3 liefert dort ebenfalls 'T20'.
  */
-export function setupWurf(rest: number): string | null {
-  if (checkoutWeg(rest) !== null) return null
+export function setupWurf(rest: number, modus: OutModus = 'double'): string | null {
+  if (checkoutWeg(rest, 3, modus) !== null) return null
   for (const f of FELDER) {
     const uebrig = rest - f.wert
-    if (uebrig >= 2 && checkoutWeg(uebrig) !== null) return f.name
+    if (uebrig >= 1 && checkoutWeg(uebrig, 3, modus) !== null) return f.name
   }
   return 'T20'
 }

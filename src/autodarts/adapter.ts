@@ -34,7 +34,7 @@
 
 import { BOARD_BEGINN_WERTE, MATCH_ABO_ZWECKE } from './websocket'
 import { protokollieren } from './diagnose'
-import { checkoutWeg, setupWurf } from '../shared/checkout'
+import { checkoutWeg, setupWurf, type OutModus } from '../shared/checkout'
 import type { LegEntry, MatchEvent, MatchState, Player, PlayerScore, Segment } from '../shared/typen'
 
 export const RUHEZUSTAND: MatchState = {
@@ -832,9 +832,13 @@ export function anwenden(zustand: MatchState, roh: unknown): MatchState {
   let checkoutHint: string | null = null
   if (variant === 'x01' && restAktiv > 0) {
     const dartsUebrig = Math.max(1, Math.min(3, 3 - currentThrow.length)) as 1 | 2 | 3
-    const weg = checkoutWeg(restAktiv, dartsUebrig)
+    // Mitschnitt belegt settings.outMode "Double" und "Straight"; "Master" ist
+    // die dritte Einstellung in Autodarts. Unbekannt oder fehlend: Double.
+    const outRoh = ersterText(nutz.settings, ['outMode'], '')?.toLowerCase()
+    const modus: OutModus = outRoh === 'straight' || outRoh === 'master' ? outRoh : 'double'
+    const weg = checkoutWeg(restAktiv, dartsUebrig, modus)
     if (weg) checkout = weg
-    else checkoutHint = setupWurf(restAktiv)
+    else checkoutHint = setupWurf(restAktiv, modus)
   }
 
   return {

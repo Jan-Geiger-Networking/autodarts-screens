@@ -64,6 +64,46 @@ describe('checkoutWeg', () => {
   })
 })
 
+describe('checkoutWeg bei Single Out', () => {
+  it('beendet auch auf Single und Triple', () => {
+    expect(checkoutWeg(1, 3, 'straight')).toEqual(['1'])
+    expect(checkoutWeg(20, 3, 'straight')).toEqual(['20'])
+    expect(checkoutWeg(57, 3, 'straight')).toEqual(['T19'])
+    expect(checkoutWeg(23, 3, 'straight')).toEqual(['20', '3'])
+    expect(checkoutWeg(180, 3, 'straight')).toEqual(['T20', 'T20', 'T20'])
+    expect(checkoutWeg(181, 3, 'straight')).toBeNull()
+  })
+
+  it('jeder gelieferte Weg ist gueltig, und nur die Single-Out-Bogeys fehlen', () => {
+    const ohneWeg: number[] = []
+    for (let rest = 1; rest <= 180; rest++) {
+      const weg = checkoutWeg(rest, 3, 'straight')
+      if (weg === null) {
+        ohneWeg.push(rest)
+        continue
+      }
+      expect(weg.reduce((s, d) => s + WERT[d]!, 0), `Rest ${rest}`).toBe(rest)
+    }
+    // Drei Darts mit hoechstens 60 treffen diese Summen nicht, auch ohne Doppel.
+    expect(ohneWeg).toEqual([163, 166, 169, 172, 173, 175, 176, 178, 179])
+  })
+
+  it('setupWurf laesst einen Single-Out-Rest uebrig', () => {
+    expect(setupWurf(170, 'straight')).toBeNull()
+    const wurf = setupWurf(200, 'straight')!
+    expect(checkoutWeg(200 - WERT[wurf]!, 3, 'straight')).not.toBeNull()
+  })
+})
+
+describe('checkoutWeg bei Master Out', () => {
+  it('beendet auf Doppel oder Triple', () => {
+    expect(checkoutWeg(57, 3, 'master')).toEqual(['T19'])
+    expect(checkoutWeg(40, 3, 'master')).toEqual(['D20'])
+    expect(checkoutWeg(20, 1, 'master')).toEqual(['D10'])
+    expect(checkoutWeg(1, 3, 'master')).toBeNull()
+  })
+})
+
 describe('setupWurf', () => {
   it('empfiehlt einen Wurf, der eine ausmachbare Zahl uebrig laesst, wo das moeglich ist', () => {
     for (const rest of [...BOGEY_ZAHLEN, 171, 200, 230]) {
