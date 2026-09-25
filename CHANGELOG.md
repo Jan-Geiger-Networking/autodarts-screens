@@ -4,6 +4,15 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.29] - 2026-09-25
+
+Neunundzwanzigste Beta. „JGN Optimized" nutzt den Monitor besser.
+
+### Geändert
+- Sets und Legs stehen in der Spielerliste mittig und größer
+- Beim Spielerwechsel ist das Profilbild deutlich größer, der Name ebenso
+- Weniger Rand um das Layout und um die Vollbilder
+
 ## [0.1.0-beta.28] - 2026-09-25
 
 Achtundzwanzigste Beta. Spieler bekommen Gesichter.
