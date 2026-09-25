@@ -61,8 +61,12 @@ function SpielerStack({ zustand }: { zustand: MatchState }) {
         const aktiv = spieler.id === zustand.activePlayerId
         return (
           <div className={`jgn-stack-eintrag${aktiv ? ' ist-aktiv' : ''}`} key={spieler.id}>
-            <Profilbild spieler={spieler} className="jgn-stack-bild" />
-            <span className="jgn-stack-name">{namen(spieler)}</span>
+            {/* Bild und Name bilden die linke Spalte, damit Sets/Legs genau
+                in der Mitte des Feldes stehen. */}
+            <span className="jgn-stack-wer">
+              <Profilbild spieler={spieler} className="jgn-stack-bild" />
+              <span className="jgn-stack-name">{namen(spieler)}</span>
+            </span>
             <span className="jgn-stack-stand">
               S {score?.sets ?? 0} · L {score?.legs ?? 0}
             </span>

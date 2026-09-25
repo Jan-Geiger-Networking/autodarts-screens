@@ -1823,3 +1823,58 @@
   padding: 0.3vh 0;
   font-size: 2vh;
 }
+
+/* ─── JGN: Monitor besser ausnutzen ───────────────────────────────────
+   Weniger Rand, Sets/Legs mittig und groesser, das Profilbild beim
+   Spielerwechsel so gross, dass es den Monitor fuellt. */
+
+.jgn {
+  padding: 1.5vh 1.5vw;
+  gap: 1.5vh 1.5vw;
+}
+
+.jgn-stack-eintrag {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.8vw;
+}
+
+.jgn-stack-wer {
+  display: flex;
+  align-items: center;
+  gap: 0.8vw;
+  min-width: 0;
+}
+
+.jgn-stack-stand {
+  margin: 0;
+  font-size: 3.4vh;
+  letter-spacing: 0.04em;
+}
+
+.jgn-stack-score {
+  justify-self: end;
+}
+
+.jgn-vollbild-bild {
+  padding: 0 1.5vw;
+  gap: 1.5vh;
+}
+
+.jgn-vollbild-profil {
+  width: 46vh;
+  height: 46vh;
+  font-size: 14vh;
+  border-width: 0.8vh;
+  margin-bottom: 0;
+}
+
+/* Mit Bild darueber: Name und Zeile passen zusammen noch in die Hoehe. */
+.jgn-vollbild-amwurf .jgn-vollbild-oben {
+  font-size: 5vh;
+}
+
+.jgn-vollbild-amwurf .jgn-vollbild-name {
+  font-size: min(34vh, 17vw);
+}
