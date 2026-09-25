@@ -4,6 +4,25 @@ Das Format folgt Keep a Changelog, die Versionierung folgt Semantic Versioning.
 
 ## [Unveröffentlicht]
 
+## [0.1.0-beta.28] - 2026-09-25
+
+Achtundzwanzigste Beta. Spieler bekommen Gesichter.
+
+### Neu
+- **Spieler-Verwaltung im Control-Fenster.** Jeder Spieler aus einem
+  Autodarts-Match wird von selbst gemerkt – nur auf diesem Rechner. Pro
+  Spieler lässt sich ein Profilbild wählen und passend zuschneiden
+  (verschieben, zoomen, runder Ausschnitt)
+- **Profilbild auf dem Player-Screen**: in den Spielertafeln, in der
+  Spielerliste von „JGN Optimized" und groß im „Am Wurf"-Banner beider
+  Layouts. Ohne Bild stehen die Initialen
+- **Sets und Legs** des laufenden Spiels stehen in der Spielerliste neben
+  dem Namen
+- **Endstand nach dem Match**: Der Player-Screen zeigt je Spieler eine Karte
+  mit Profilbild, Sets/Legs, Average, First 9, Checkout-Quote, höchstem
+  Finish, Darts, 180ern und 140+/100+/60+. Der Sieger ist markiert. Die
+  Karten stehen zwei Minuten oder bis das nächste Spiel startet
+
 ## [0.1.0-beta.27] - 2026-09-13
 
 Siebenundzwanzigste Beta. Der Pausenscreen bekommt einen neuen Look.
