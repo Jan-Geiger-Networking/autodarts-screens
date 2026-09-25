@@ -20,6 +20,8 @@ const ANMELDE_ABLAGE = 'anmeldung.bin'
 // Der Matchtag traegt Spielernamen und Ergebnisse eines Abends - die
 // gehoeren zu "alle lokalen Daten" und muessen mit weg.
 const MATCHTAG_DATEI = 'matchtag.json'
+// Spielernamen und Profilbilder aus der Spieler-Verwaltung.
+const SPIELER_DATEI = 'spieler.json'
 const AUFZEICHNUNGS_ORDNER = 'recordings'
 const PARTITIONS_ORDNER = 'Partitions'
 // Electron legt Sitzungspartitionen unter <userData>/Partitions/<name ohne
@@ -37,7 +39,7 @@ export async function alleDatenLoeschen(): Promise<string[]> {
   const basis = app.getPath('userData')
   const geloescht: string[] = []
 
-  for (const datei of [KONFIGURATIONS_DATEI, ANMELDE_ABLAGE, MATCHTAG_DATEI]) {
+  for (const datei of [KONFIGURATIONS_DATEI, ANMELDE_ABLAGE, MATCHTAG_DATEI, SPIELER_DATEI]) {
     const pfad = join(basis, datei)
     if (existsSync(pfad)) {
       await rm(pfad, { force: true })

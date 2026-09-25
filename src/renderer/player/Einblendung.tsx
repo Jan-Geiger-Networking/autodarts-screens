@@ -16,7 +16,8 @@
 // Ereignis, statt zwei Auslegungen desselben MatchState zu pflegen.
 
 import { useEffect, useRef, useState } from 'react'
-import type { MatchState } from '../../shared/typen'
+import type { MatchState, Player } from '../../shared/typen'
+import { Profilbild } from '../shared/Profilbild'
 import { szeneAusZustand, type Ueberlagerung } from '../spectator/szene'
 import { vorfuehrungEingefroren } from '../spectator/vorfuehrung'
 
@@ -127,12 +128,25 @@ export function useEinblendung(zustand: MatchState): { anzeige: Anzeige | null; 
  * JGN Optimized) ueber den ganzen Bildschirm geht, egal an welcher Stelle im
  * Baum sie haengt.
  */
-export function SpielerSlide({ name, sichtbar, lauf }: { name: string; sichtbar: boolean; lauf: number }) {
+export function SpielerSlide({
+  name,
+  spieler,
+  sichtbar,
+  lauf,
+}: {
+  name: string
+  spieler: Player | undefined
+  sichtbar: boolean
+  lauf: number
+}) {
   return (
     <div className="spielerslide" key={lauf} role="status" aria-live="polite">
       <div className={`spielerslide-bahn${sichtbar ? ' ist-sichtbar' : ' faehrt-aus'}`}>
-        <span className="spielerslide-oben">Am Wurf</span>
-        <span className="spielerslide-name">{name}</span>
+        {spieler && <Profilbild spieler={spieler} className="spielerslide-bild" />}
+        <div className="spielerslide-text">
+          <span className="spielerslide-oben">Am Wurf</span>
+          <span className="spielerslide-name">{name}</span>
+        </div>
       </div>
     </div>
   )
@@ -147,7 +161,10 @@ export function Einblendung({ zustand }: { zustand: MatchState }) {
 
   // Der Spielerwechsel bekommt die grosse Bahn statt der kleinen Einblendung
   // ueber der Scheibe.
-  if (u.art === 'playerChange') return <SpielerSlide name={gross} sichtbar={sichtbar} lauf={anzeige.lauf} />
+  if (u.art === 'playerChange') {
+    const spieler = zustand.players.find((p) => p.id === u.zuSpielerId)
+    return <SpielerSlide name={gross} spieler={spieler} sichtbar={sichtbar} lauf={anzeige.lauf} />
+  }
   const klassen = [
     'einblendung',
     `einblendung-${u.art}`,

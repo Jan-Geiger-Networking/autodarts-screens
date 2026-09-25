@@ -23,6 +23,7 @@ import { kontoNameLaden, kontoNameVerwerfen, type AnmeldungsStatus } from '../au
 import { diagnosePfad, protokollieren } from '../autodarts/diagnose'
 import { matchtagBefehlAusfuehren, matchtagStand, type MatchtagBefehl } from './matchtagDienst'
 import type { Matchtag } from '../shared/matchtag'
+import { fotoSetzen, spielerEntfernen, spielerListe, spielerVergessen, type SpielerProfil } from './spielerDienst'
 
 const GUELTIGE_FENSTER_ARTEN: readonly FensterArt[] = ['control', 'player', 'spectator']
 
@@ -78,6 +79,11 @@ const NUR_CONTROL: ReadonlySet<string> = new Set([
   // der nur vom Hauptprozess zum Renderer laeuft.
   'matchtag:lesen',
   'matchtag:befehl',
+  // Die Spieler-Verwaltung liegt im Control-Fenster; foto und entfernen
+  // SCHREIBEN auf die Platte.
+  'spieler:lesen',
+  'spieler:foto',
+  'spieler:entfernen',
 ])
 
 /**
@@ -165,6 +171,7 @@ export function ipcRegistrieren(): void {
   // dieser Kanal loescht ohne Rueckfrage, sobald er aufgerufen wird.
   ipcMain.handle('daten:loeschen', (event) => {
     kanalPruefen(event, 'daten:loeschen')
+    spielerVergessen()
     return alleDatenLoeschen()
   })
 
@@ -309,6 +316,21 @@ export function ipcRegistrieren(): void {
   ipcMain.handle('matchtag:befehl', (event, befehl: unknown): Promise<Matchtag> => {
     kanalPruefen(event, 'matchtag:befehl')
     return matchtagBefehlAusfuehren(matchtagBefehlPruefen(befehl))
+  })
+
+  // Spieler-Verwaltung. Name und Bild kommen ungeprueft aus dem Renderer -
+  // fotoSetzen nimmt nur eine data:image-Adresse mit Groessengrenze an.
+  ipcMain.handle('spieler:lesen', (event): SpielerProfil[] => {
+    kanalPruefen(event, 'spieler:lesen')
+    return spielerListe()
+  })
+  ipcMain.handle('spieler:foto', (event, name: unknown, foto: unknown): Promise<SpielerProfil[]> => {
+    kanalPruefen(event, 'spieler:foto')
+    return fotoSetzen(name, foto)
+  })
+  ipcMain.handle('spieler:entfernen', (event, name: unknown): Promise<SpielerProfil[]> => {
+    kanalPruefen(event, 'spieler:entfernen')
+    return spielerEntfernen(name)
   })
 }
 

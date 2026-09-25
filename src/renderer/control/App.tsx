@@ -5,6 +5,7 @@ import type { Verbindungszustand } from '../../autodarts/websocket'
 import type { Aktualisierungszustand } from '../../main/aktualisierung'
 import { UeberPanel } from './UeberPanel'
 import { MatchtagPanel } from './MatchtagPanel'
+import { SpielerPanel } from './SpielerPanel'
 import '../shared/tokens.css'
 import './App.css'
 
@@ -277,6 +278,11 @@ export function App() {
           Beim Start gehen die Screens wieder auf, die beim letzten Beenden offen waren — auf denselben Monitoren. Ist
           ein Monitor noch aus, wartet die Anwendung und legt den Screen darauf, sobald er sich meldet.
         </p>
+      </fieldset>
+
+      <fieldset className="bereich">
+        <legend>Spieler</legend>
+        <SpielerPanel />
       </fieldset>
 
       <fieldset className="bereich">

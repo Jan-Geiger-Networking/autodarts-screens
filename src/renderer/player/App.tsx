@@ -19,6 +19,8 @@ import standbyVideo from '../../../assets/standby-darts.mp4'
 import { Dartscheibe } from '../shared/Dartscheibe'
 import { Anfangsermittlung } from '../shared/Anfangsermittlung'
 import { Einblendung } from './Einblendung'
+import { Endstand } from './Endstand'
+import { Profilbild } from '../shared/Profilbild'
 import { LayoutJgn } from './LayoutJgn'
 import { spielerAufteilen } from '../spectator/aufteilung'
 import { legStatistik } from '../spectator/statistik'
@@ -33,17 +35,6 @@ function DartSymbol({ gefuellt }: { gefuellt: boolean }) {
       <path d="M2 8 H44 M44 2 L60 8 L44 14 Z M8 3 L14 8 L8 13 Z" />
     </svg>
   )
-}
-
-/** Initialen als Ersatz fuer ein Spielerfoto - es gibt bisher keines. */
-function initialenVon(name: string): string {
-  const kurz = name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((teil) => teil[0] ?? '')
-    .join('')
-    .toUpperCase()
-  return kurz || '?'
 }
 
 /**
@@ -113,8 +104,11 @@ function Spielertafel({
     <div className={`tafel${aktiv ? ' aktiv' : ''}`}>
       <div className="tafel-kopf">
         <span className={`tafel-punkt${aktiv ? '' : ' unsichtbar'}`} aria-hidden="true" />
-        <span className="tafel-avatar">{initialenVon(spieler.displayName)}</span>
+        <Profilbild spieler={spieler} className="tafel-avatar" />
         <span className="tafel-name">{spieler.displayName}</span>
+        <span className="tafel-stand">
+          S {score?.sets ?? 0} · L {score?.legs ?? 0}
+        </span>
         {spieler.country && <span className="tafel-land">{spieler.country}</span>}
       </div>
 
@@ -157,6 +151,9 @@ function Spielertafel({
   )
 }
 
+/** Wie lange die Spielerkarten nach dem Match stehen. */
+const ENDSTAND_MS = 2 * 60_000
+
 export function App() {
   // Vorfuehrmodus (?vorfuehrung in der Adresse) ersetzt window.app komplett -
   // derselbe Schalter wie beim Zuschauer-Screen, damit sich der Aufbau auch
@@ -171,6 +168,20 @@ export function App() {
   }, [vorfuehrung])
 
   const zustand = vorfuehrung ? vorfuehrZustand : echterZustand
+
+  // Der Endstand bleibt ENDSTAND_MS stehen oder bis das naechste Match
+  // beginnt - auch ueber den Ruecksprung in den Ruhezustand hinweg, den der
+  // Hauptprozess nach 30 s fuer die Spielpause des Zuschauer-Screens schickt.
+  const [endstand, setEndstand] = useState<MatchState | null>(null)
+  useEffect(() => {
+    if (zustand?.phase === 'finished' && zustand.players.length > 0) setEndstand(zustand)
+    else if (zustand && zustand.phase !== 'idle') setEndstand(null)
+  }, [zustand])
+  useEffect(() => {
+    if (!endstand) return
+    const zeit = window.setTimeout(() => setEndstand(null), ENDSTAND_MS)
+    return () => window.clearTimeout(zeit)
+  }, [endstand])
 
   // Welches Layout gezeigt wird, steht in der Konfiguration und wird vom
   // Hauptprozess an alle Fenster verteilt. Im Vorfuehrmodus (kein
@@ -190,6 +201,8 @@ export function App() {
   // Zwischen Startmeldung und erster Zustandsmeldung: die Runde laeuft
   // schon, es ist nur noch nichts bekannt. Der Standby-Bildschirm waere hier
   // falsch - er sagt "es passiert nichts".
+  if (endstand) return <Endstand zustand={endstand} />
+
   if (zustand && zustand.phase === 'starting') {
     return (
       <div className="ruhezustand">

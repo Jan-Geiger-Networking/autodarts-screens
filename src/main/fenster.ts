@@ -10,6 +10,8 @@ import type { Verbindungszustand } from '../autodarts/websocket'
 // Verteilen aus dieser Datei. Ein Typimport verschwindet beim Uebersetzen,
 // zur Laufzeit entsteht dadurch kein Kreis.
 import type { Aktualisierungszustand } from './aktualisierung'
+// Ebenso nur der Typ: spielerDienst.ts importiert spielerVerteilen von hier.
+import type { SpielerProfil } from './spielerDienst'
 import { beiMonitoraenderung, monitorFuer, monitorFuerKennung } from './monitore'
 import { konfigurationLesen, konfigurationSchreiben, standardKonfiguration, type Konfiguration } from './konfiguration'
 import { protokollieren } from '../autodarts/diagnose'
@@ -358,5 +360,17 @@ export function aktualisierungszustandVerteilen(z: Aktualisierungszustand): void
   const control = fenster.get('control')
   if (control && !control.isDestroyed() && !control.webContents.isDestroyed()) {
     control.webContents.send('aktualisierungszustand', z)
+  }
+}
+
+/**
+ * Schickt die gespeicherten Spieler an das Control-Fenster, damit ein neuer
+ * Spieler aus einem laufenden Match dort sofort auftaucht. Die Bilder
+ * erreichen Player- und Zuschauer-Screen ueber den MatchState (photoPath).
+ */
+export function spielerVerteilen(liste: SpielerProfil[]): void {
+  const control = fenster.get('control')
+  if (control && !control.isDestroyed() && !control.webContents.isDestroyed()) {
+    control.webContents.send('spieler', liste)
   }
 }

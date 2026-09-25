@@ -192,3 +192,105 @@ button:disabled {
   width: auto;
   margin: 0;
 }
+
+/* Spieler-Verwaltung (SpielerPanel.tsx) */
+.spielerliste {
+  list-style: none;
+  margin: 0.5rem 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.spielerzeile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.spielerzeile-bild {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--jg-border-strong);
+  background: var(--jg-surface-hi);
+  flex: 0 0 auto;
+}
+
+.spielerzeile-name {
+  flex: 1 1 8rem;
+  font-weight: 600;
+}
+
+/* Die Dateiauswahl sieht aus wie jeder andere Knopf; das Eingabefeld selbst
+   bleibt fuer Tastatur und Vorleseprogramm erreichbar, nur unsichtbar. */
+.knopf-datei {
+  position: relative;
+  font-weight: 500;
+  background: var(--jg-surface-hi);
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-sm);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+.knopf-datei:hover,
+.knopf-datei:focus-within {
+  border-color: var(--jg-border-hover);
+}
+
+.knopf-datei input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.zuschnitt {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 6, 23, 0.8);
+}
+
+.zuschnitt-kasten {
+  background: var(--jg-surface);
+  border: 1px solid var(--jg-border-strong);
+  border-radius: var(--jg-radius-lg);
+  padding: 1.25rem;
+  display: grid;
+  gap: 0.75rem;
+  justify-items: center;
+}
+
+.zuschnitt-ansicht {
+  position: relative;
+  touch-action: none;
+}
+
+.zuschnitt-ansicht canvas {
+  display: block;
+  cursor: grab;
+  border-radius: var(--jg-radius-sm);
+}
+
+.zuschnitt-ansicht canvas:active {
+  cursor: grabbing;
+}
+
+/* Alles ausserhalb des Kreises abgedunkelt: so wird das Bild auf den Screens
+   gezeigt. */
+.zuschnitt-kreis {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 999px rgba(2, 6, 23, 0.6);
+  outline: 2px solid var(--jg-accent);
+  pointer-events: none;
+  clip-path: inset(0 round var(--jg-radius-sm));
+}

@@ -8,6 +8,7 @@ import type { AnmeldungsStatus } from '../autodarts/konto'
 import type { Aktualisierungszustand } from '../main/aktualisierung'
 import type { MatchtagBefehl } from '../main/matchtagDienst'
 import type { Matchtag } from '../shared/matchtag'
+import type { SpielerProfil } from '../main/spielerDienst'
 
 contextBridge.exposeInMainWorld('app', {
   // Synchron per sendSync statt eines Umgebungsvariablen-Rueckfalls: npm
@@ -106,4 +107,16 @@ contextBridge.exposeInMainWorld('app', {
 
   matchtagLesen: (): Promise<Matchtag> => ipcRenderer.invoke('matchtag:lesen'),
   matchtagBefehl: (befehl: MatchtagBefehl): Promise<Matchtag> => ipcRenderer.invoke('matchtag:befehl', befehl),
+
+  // Spieler-Verwaltung im Control-Fenster: gespeicherte Spieler und ihre
+  // zugeschnittenen Profilbilder (data:image-Adressen, kein Dateipfad).
+  spielerLesen: (): Promise<SpielerProfil[]> => ipcRenderer.invoke('spieler:lesen'),
+  spielerFotoSetzen: (name: string, foto: string | null): Promise<SpielerProfil[]> =>
+    ipcRenderer.invoke('spieler:foto', name, foto),
+  spielerEntfernen: (name: string): Promise<SpielerProfil[]> => ipcRenderer.invoke('spieler:entfernen', name),
+  beiSpieler(rueckruf: (liste: SpielerProfil[]) => void): () => void {
+    const listener = (_event: Electron.IpcRendererEvent, liste: SpielerProfil[]) => rueckruf(liste)
+    ipcRenderer.on('spieler', listener)
+    return () => ipcRenderer.removeListener('spieler', listener)
+  },
 })

@@ -25,6 +25,7 @@ import { useEffect, useState } from 'react'
 import type { MatchState, Player, PlayerScore } from '../../shared/typen'
 import logoWeiss from '../../../assets/logo-white.png'
 import { Dartscheibe } from '../shared/Dartscheibe'
+import { Profilbild } from '../shared/Profilbild'
 import { texte, useEinblendung } from './Einblendung'
 import { vollbildAus, type Vollbild } from './vollbild'
 
@@ -60,7 +61,11 @@ function SpielerStack({ zustand }: { zustand: MatchState }) {
         const aktiv = spieler.id === zustand.activePlayerId
         return (
           <div className={`jgn-stack-eintrag${aktiv ? ' ist-aktiv' : ''}`} key={spieler.id}>
+            <Profilbild spieler={spieler} className="jgn-stack-bild" />
             <span className="jgn-stack-name">{namen(spieler)}</span>
+            <span className="jgn-stack-stand">
+              S {score?.sets ?? 0} · L {score?.legs ?? 0}
+            </span>
             <span className="jgn-stack-score">{score?.remaining ?? '–'}</span>
           </div>
         )
@@ -243,6 +248,7 @@ function VollbildAnzeige({ zustand }: { zustand: MatchState }) {
     const spieler = zustand.players.find((p) => p.id === id)
     return spieler ? namen(spieler) : ''
   }
+  const naechsterSpieler = zustand.players.find((p) => p.id === naechster)
 
   return (
     <div
@@ -267,6 +273,7 @@ function VollbildAnzeige({ zustand }: { zustand: MatchState }) {
           </div>
         )}
         <div className="jgn-vollbild-bild jgn-vollbild-amwurf">
+          {naechsterSpieler && <Profilbild spieler={naechsterSpieler} className="jgn-vollbild-profil" />}
           <span className="jgn-vollbild-oben">Am Wurf</span>
           <span className="jgn-vollbild-name">{name(naechster)}</span>
         </div>

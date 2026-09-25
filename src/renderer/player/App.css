@@ -1524,3 +1524,302 @@
 .spielflaeche.spieler-8 .tafel-schnitte {
   display: none;
 }
+
+/* ─── Profilbilder ────────────────────────────────────────────────────
+   Das im Control-Fenster zugeschnittene Bild (siehe shared/Profilbild.tsx).
+   Groesse je Einsatzort unten; hier nur Form und Ersatz durch Initialen. */
+
+.profilbild {
+  flex: 0 0 auto;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--jg-surface-hi);
+  border: 1px solid var(--jg-border-strong);
+  box-sizing: border-box;
+}
+
+.profilbild-initialen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--jg-font-display);
+  font-weight: 700;
+  color: var(--jg-muted-strong);
+}
+
+/* Default-Layout: das Bild im Tafelkopf war bisher nur ein Initialenkreis. */
+.tafel-avatar {
+  width: 5vh;
+  height: 5vh;
+  font-size: 1.8vh;
+}
+
+.tafel.aktiv .tafel-avatar {
+  border-color: var(--jg-accent);
+}
+
+/* Sets und Legs dieses Spiels neben dem Namen. */
+.tafel-stand,
+.jgn-stack-stand {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-family: var(--jg-font-display);
+  font-size: 2.4vh;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--jg-muted-strong);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tafel.aktiv .tafel-stand {
+  color: var(--jg-accent);
+}
+
+.jgn-stack-stand {
+  margin-left: 0;
+  font-size: 2vh;
+}
+
+.jgn-stack-eintrag.ist-aktiv .jgn-stack-stand {
+  color: var(--jg-accent);
+}
+
+/* JGN: Bild vor dem Namen in der Spielerliste. */
+.jgn-stack-eintrag {
+  align-items: center;
+}
+
+.jgn-stack-bild {
+  width: 4.4vh;
+  height: 4.4vh;
+  font-size: 1.6vh;
+}
+
+.jgn-stack-eintrag.ist-aktiv .jgn-stack-bild {
+  border-color: var(--jg-accent);
+}
+
+.jgn-stack-name {
+  flex: 1 1 auto;
+}
+
+/* Banner "Am Wurf" im Default-Layout: Bild links vom Namen. */
+.spielerslide-bahn {
+  flex-direction: row;
+  align-items: center;
+  gap: 2.4vw;
+}
+
+.spielerslide-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4vh;
+  min-width: 0;
+}
+
+.spielerslide-bild {
+  width: 18vh;
+  height: 18vh;
+  font-size: 6vh;
+  border: 0.5vh solid #02040c;
+}
+
+/* Vollbild "Am Wurf" im JGN-Layout. */
+.jgn-vollbild-profil {
+  width: 28vh;
+  height: 28vh;
+  font-size: 9vh;
+  border: 0.6vh solid var(--jg-accent);
+  margin-bottom: 1vh;
+}
+
+/* ─── Endstand nach dem Match ─────────────────────────────────────── */
+
+.endstand {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3vh;
+  padding: 4vh 3vw;
+  box-sizing: border-box;
+  background: var(--jg-bg);
+  color: var(--jg-text);
+  font-family: var(--jg-font-body);
+}
+
+.endstand-titel {
+  margin: 0;
+  font-family: var(--jg-font-display);
+  font-size: 4.4vh;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--jg-muted-strong);
+}
+
+.endstand-karten {
+  display: grid;
+  grid-template-columns: repeat(var(--spalten, 2), minmax(0, 1fr));
+  gap: 2vh 1.6vw;
+  width: 100%;
+  max-width: 150vh;
+  min-height: 0;
+}
+
+.endstand-3 { --spalten: 3; }
+.endstand-4 { --spalten: 4; }
+.endstand-5,
+.endstand-6,
+.endstand-7,
+.endstand-8 { --spalten: 4; }
+
+.endkarte {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1vh;
+  padding: 3vh 1.6vw 2.4vh;
+  border-radius: 1.2vh;
+  background: var(--jg-surface);
+  border: 1px solid var(--jg-border-strong);
+  min-width: 0;
+}
+
+.endkarte.ist-sieger {
+  border-color: var(--jg-accent);
+  box-shadow: 0 0 3vh var(--jg-accent-glow);
+}
+
+.endkarte-sieger {
+  position: absolute;
+  top: 1.4vh;
+  right: 1.4vh;
+  padding: 0.4vh 1vh;
+  border-radius: 0.6vh;
+  background: var(--jg-accent);
+  color: #02040c;
+  font-family: var(--jg-font-display);
+  font-size: 1.8vh;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.endkarte-bild {
+  width: 16vh;
+  height: 16vh;
+  font-size: 5vh;
+  border-width: 0.4vh;
+}
+
+.endkarte.ist-sieger .endkarte-bild {
+  border-color: var(--jg-accent);
+}
+
+.endkarte-name {
+  max-width: 100%;
+  font-family: var(--jg-font-display);
+  font-size: 4vh;
+  font-weight: 800;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.endkarte-stand {
+  font-family: var(--jg-font-display);
+  font-size: 3vh;
+  font-weight: 700;
+  color: var(--jg-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.endkarte-werte {
+  width: 100%;
+  margin: 1vh 0 0;
+  display: grid;
+  gap: 0.5vh;
+}
+
+.endkarte-zeile {
+  display: flex;
+  justify-content: space-between;
+  gap: 1vw;
+  padding: 0.5vh 0;
+  border-top: 1px solid var(--jg-border);
+  font-size: 2.2vh;
+}
+
+.endkarte-zeile dt {
+  color: var(--jg-muted);
+}
+
+.endkarte-zeile dd {
+  margin: 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ab fuenf Spielern zwei Reihen - die Karten muessen flacher werden. */
+.endstand-5 .endkarte-bild,
+.endstand-6 .endkarte-bild,
+.endstand-7 .endkarte-bild,
+.endstand-8 .endkarte-bild {
+  width: 9vh;
+  height: 9vh;
+  font-size: 3vh;
+}
+
+.endstand-5 .endkarte-zeile,
+.endstand-6 .endkarte-zeile,
+.endstand-7 .endkarte-zeile,
+.endstand-8 .endkarte-zeile {
+  font-size: 1.6vh;
+  padding: 0.2vh 0;
+}
+
+.endstand-5 .endkarte,
+.endstand-6 .endkarte,
+.endstand-7 .endkarte,
+.endstand-8 .endkarte {
+  padding: 1.6vh 1vw;
+  gap: 0.5vh;
+}
+
+/* Klein, aber auf jedem Foto vom Endstand mit drauf. */
+.endstand-logo {
+  height: 5vh;
+  width: auto;
+  opacity: 0.85;
+}
+
+/* Titel, Karten und Logo muessen zusammen in die Hoehe passen. */
+.endstand {
+  gap: 2vh;
+  padding: 3vh 3vw;
+}
+
+.endstand-titel {
+  font-size: 3.6vh;
+}
+
+.endkarte {
+  padding: 2.4vh 1.6vw 1.6vh;
+  gap: 0.6vh;
+}
+
+.endkarte-bild {
+  width: 13vh;
+  height: 13vh;
+}
+
+.endkarte-zeile {
+  padding: 0.3vh 0;
+  font-size: 2vh;
+}

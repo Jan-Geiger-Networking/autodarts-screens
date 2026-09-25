@@ -10,6 +10,7 @@ import { autostartAnwenden, ipcRegistrieren } from "./ipc";
 import { konfigurationLesen } from "./konfiguration";
 import { verbindungBeenden, verbindungStarten } from "./verbindung";
 import { matchtagLaden } from "./matchtagDienst";
+import { spielerLaden } from "./spielerDienst";
 import { aktualisierungStarten } from "./aktualisierung";
 import { checkoutWeg, setupWurf } from "../shared/checkout";
 import type { MatchState, Player, Segment } from "../shared/typen";
@@ -123,6 +124,7 @@ app.whenReady().then(async () => {
   // waere ein laufendes Turnier auf dem Zuschauer-Screen erst mit der
   // naechsten Aenderung zu sehen.
   await matchtagLaden();
+  await spielerLaden();
   const controlFenster = fensterOeffnen("control");
 
   // Autostart-Eintrag am gespeicherten Wunsch ausrichten: er koennte durch

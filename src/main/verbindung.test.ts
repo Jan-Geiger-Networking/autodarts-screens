@@ -34,6 +34,7 @@ const zustandVerteilenMock = vi.fn()
 vi.mock('./fenster', () => ({
   verbindungszustandVerteilen: verbindungszustandVerteilenMock,
   zustandVerteilen: zustandVerteilenMock,
+  spielerVerteilen: vi.fn(),
 }))
 
 // anwenden() bleibt standardmaessig die echte Implementierung (siehe

@@ -7,6 +7,7 @@ import type { AnmeldungsStatus } from '../autodarts/konto'
 import type { Aktualisierungszustand } from '../main/aktualisierung'
 import type { MatchtagBefehl } from '../main/matchtagDienst'
 import type { Matchtag } from '../shared/matchtag'
+import type { SpielerProfil } from '../main/spielerDienst'
 
 export {}
 
@@ -37,6 +38,10 @@ declare global {
       beiKonfiguration: (rueckruf: (k: Konfiguration) => void) => () => void
       matchtagLesen: () => Promise<Matchtag>
       matchtagBefehl: (befehl: MatchtagBefehl) => Promise<Matchtag>
+      spielerLesen: () => Promise<SpielerProfil[]>
+      spielerFotoSetzen: (name: string, foto: string | null) => Promise<SpielerProfil[]>
+      spielerEntfernen: (name: string) => Promise<SpielerProfil[]>
+      beiSpieler: (rueckruf: (liste: SpielerProfil[]) => void) => () => void
     }
   }
 }

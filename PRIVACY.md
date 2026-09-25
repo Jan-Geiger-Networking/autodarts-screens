@@ -14,8 +14,12 @@ Zugangsdaten nimmt die Anwendung nicht entgegen, die Anmeldung erfolgt auf der
 Autodarts-Seite im eingebetteten Fenster. Der Aktualisierungs-Token liegt
 lokal und verschlüsselt.
 
-Spielernamen, Anzeigenamen, Fotos und Ländercodes werden nur verarbeitet,
-soweit sie selbst eingetragen wurden.
+Die **Spieler-Verwaltung** merkt sich die Autodarts-Namen der Spieler aus
+gespielten Matches und – nur wenn im Control-Fenster eines ausgewählt wurde –
+ein zugeschnittenes Profilbild je Spieler, lokal in `spieler.json`. Das Bild
+wird auf dem Player- und dem Zuschauer-Screen gezeigt. Einträge lassen sich
+im Control-Fenster einzeln löschen oder mit „Alle lokalen Daten löschen"
+insgesamt.
 
 Match-Ereignisse werden während des Spiels verarbeitet und nur bei
 eingeschalteter Aufzeichnung gespeichert.

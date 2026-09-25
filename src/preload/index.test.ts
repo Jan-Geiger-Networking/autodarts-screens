@@ -47,6 +47,10 @@ const ERWARTETE_SCHLUESSEL = [
   'beiKonfiguration',
   'matchtagLesen',
   'matchtagBefehl',
+  'spielerLesen',
+  'spielerFotoSetzen',
+  'spielerEntfernen',
+  'beiSpieler',
 ].sort()
 
 describe('preload: exponierte window.app-Oberflaeche', () => {

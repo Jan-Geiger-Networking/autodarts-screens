@@ -13,6 +13,7 @@ import { standardAufzeichnungspfad } from '../autodarts/aufzeichnung'
 import { protokollieren } from '../autodarts/diagnose'
 import { anwenden, RUHEZUSTAND } from '../autodarts/adapter'
 import { matchZustandVerarbeiten } from './matchtagDienst'
+import { spielerAusZustand } from './spielerDienst'
 import type { MatchState } from '../shared/typen'
 
 // Die einzige offene Verbindung dieses Prozesses - gehalten, um sie beim
@@ -112,7 +113,10 @@ function rohbeispielProtokollieren(roh: unknown): void {
  * stehen, danach uebernimmt die Spielpause. Beginnt vorher ein neues Match,
  * wird der Ruecksprung verworfen.
  */
-function zustandUebernehmen(neu: MatchState): void {
+function zustandUebernehmen(roh: MatchState): void {
+  // Neue Spieler merken und gespeicherte Profilbilder eintragen - vor dem
+  // Verteilen, damit beide Screens das Bild schon mit der ersten Meldung haben.
+  const neu = spielerAusZustand(roh)
   matchZustand = neu
   zustandVerteilen(neu)
   stilleUeberwachen(neu)
